@@ -116,6 +116,101 @@ function RevokeAccessPage() {
   );
 }
 
+function PrivacyPage() {
+  const privacyContact = supportEmail || 'contato@hfnew.com.br';
+
+  return (
+    <InfoPage title="Política de privacidade">
+      <div className="policy-content">
+        <section>
+          <h2>1. Objetivo desta politica</h2>
+          <p>Esta Politica de Privacidade descreve como o HF New Control Hub trata dados pessoais e dados operacionais relacionados ao uso do sistema. O objetivo e informar, de forma clara, quais dados podem ser coletados, como sao utilizados, por quanto tempo podem ser mantidos, com quem podem ser compartilhados e como o titular pode exercer seus direitos, em conformidade com a Lei Geral de Protecao de Dados Pessoais (LGPD) e com as politicas aplicaveis do Google e do YouTube.</p>
+        </section>
+
+        <section>
+          <h2>2. Quem controla o tratamento e contato</h2>
+          <p>O tratamento dos dados relacionados ao uso do sistema e realizado pelo operador do HF New Control Hub, no contexto de operacao interna e acesso restrito. Para duvidas, solicitacoes sobre dados pessoais, revogacao de acesso ou exercicio de direitos do titular, o contato indicado e <a href={`mailto:${privacyContact}`}>{privacyContact}</a>.</p>
+        </section>
+
+        <section>
+          <h2>3. Quais dados podem ser coletados</h2>
+          <p>Dependendo da funcionalidade utilizada, o sistema pode tratar: dados de autenticacao e identificacao de conta Google, como nome, e-mail e identificador da conta; dados de canais e contas conectadas, como nome do canal, identificador do canal, permissao concedida e status da conexao; metadados de publicacao, como titulo, descricao, hashtags, categoria, status de privacidade, horarios de agendamento e registros de publicacao; dados operacionais e tecnicos, como logs minimos de acesso, historico de acoes, status de integracoes, respostas resumidas de erro, trilhas de auditoria e informacoes estritamente necessarias para suporte e seguranca.</p>
+        </section>
+
+        <section>
+          <h2>4. Dados que nao buscamos coletar</h2>
+          <p>O sistema nao foi projetado para solicitar senha da conta Google, numero de cartao, credenciais bancarias ou dados pessoais sensiveis alem do estritamente necessario para autenticacao, operacao das integracoes autorizadas e suporte tecnico. O acesso aos dados segue os escopos de permissao efetivamente concedidos pelo usuario no fluxo de autorizacao.</p>
+        </section>
+
+        <section>
+          <h2>5. Fontes dos dados</h2>
+          <p>Os dados podem ser obtidos diretamente do usuario, do administrador responsavel pela autorizacao de acesso, do Google OAuth 2.0, de APIs do YouTube e de registros tecnicos gerados durante o uso do sistema. O sistema tambem pode tratar informacoes inseridas pelo proprio usuario no processo de publicacao, edicao, agendamento ou monitoramento.</p>
+        </section>
+
+        <section>
+          <h2>6. Finalidades do tratamento</h2>
+          <p>Os dados sao utilizados para: autenticar usuarios autorizados; conectar e operar canais e contas vinculadas; permitir publicacao, agendamento, atualizacao de metadados e monitoramento de status; manter trilha de auditoria e seguranca; atender solicitacoes de suporte; cumprir obrigacoes legais ou regulatórias; investigar incidentes; prevenir fraude, abuso ou uso nao autorizado; e preservar a integridade tecnica e operacional do sistema.</p>
+        </section>
+
+        <section>
+          <h2>7. Bases legais</h2>
+          <p>O tratamento pode se fundamentar, conforme o caso concreto, em consentimento do titular, execucao de procedimentos preliminares e servicos solicitados pelo usuario, cumprimento de obrigacao legal ou regulatoria, exercicio regular de direitos, e legitimo interesse para seguranca, auditoria, prevencao a fraude, suporte tecnico e administracao do ambiente, observados os limites da legislacao aplicavel.</p>
+        </section>
+
+        <section>
+          <h2>8. Google OAuth, YouTube API e Limited Use</h2>
+          <p>Quando o usuario conecta uma conta Google ou um canal do YouTube, o sistema pode acessar dados autorizados por meio do Google OAuth 2.0 e das APIs correspondentes, exclusivamente para finalidades compativeis com a operacao interna da plataforma. Dados recebidos de Google APIs nao sao vendidos a terceiros. O uso desses dados e limitado ao necessario para fornecer, manter, proteger e auditar as funcionalidades solicitadas pelo usuario, em linha com a Google API Services User Data Policy e, quando aplicavel, com os requisitos de Limited Use.</p>
+        </section>
+
+        <section>
+          <h2>9. Compartilhamento de dados</h2>
+          <p>Os dados podem ser compartilhados com provedores e plataformas estritamente necessarios para a execucao do servico, como Google, YouTube e infraestrutura tecnica utilizada para hospedagem, autenticacao, logs e entrega do sistema. O compartilhamento tambem pode ocorrer quando exigido por lei, ordem judicial, autoridade competente ou para defesa de direitos. Fora dessas hipoteses, nao ha compartilhamento deliberado de dados pessoais com terceiros sem base legal adequada.</p>
+        </section>
+
+        <section>
+          <h2>10. Armazenamento, retencao e descarte</h2>
+          <p>Os dados sao mantidos pelo tempo necessario para cumprir as finalidades informadas nesta politica, atender obrigacoes legais, preservar trilhas de auditoria e resolver incidentes operacionais. Dados de sessao, historico, filas, registros tecnicos e vinculacoes podem ser removidos, anonimizados, desvinculados ou descartados quando deixarem de ser necessarios, ressalvadas hipoteses legais de conservacao. O tempo exato pode variar conforme a natureza da informacao e a necessidade tecnica ou juridica associada.</p>
+        </section>
+
+        <section>
+          <h2>11. Seguranca e controles internos</h2>
+          <p>Medidas tecnicas e organizacionais razoaveis sao adotadas para restringir acesso, reduzir risco de divulgacao indevida, evitar tratamento nao autorizado e preservar a integridade do ambiente. Ainda assim, nenhum sistema conectado a internet e absolutamente imune a falhas, acessos indevidos, vulnerabilidades, indisponibilidades de terceiros ou eventos fora do controle do operador. O usuario tambem deve adotar boas praticas de seguranca na propria conta Google e nos canais conectados.</p>
+        </section>
+
+        <section>
+          <h2>12. Cookies, logs e identificadores tecnicos</h2>
+          <p>O sistema pode utilizar cookies tecnicos, armazenamento local do navegador, identificadores de sessao e logs minimos para autenticacao, navegacao, seguranca, continuidade de fluxo, preservacao de configuracoes e auditoria operacional. Esses mecanismos nao devem ser utilizados para finalidades ocultas ou incompatíveis com o funcionamento declarado da plataforma.</p>
+        </section>
+
+        <section>
+          <h2>13. Transferencia internacional</h2>
+          <p>Em razao do uso de provedores globais e APIs de terceiros, alguns dados podem ser processados em infraestrutura localizada fora do Brasil. Nessas situacoes, o tratamento busca observar bases legais adequadas, protecoes contratuais, medidas tecnicas razoaveis e requisitos aplicaveis das plataformas envolvidas.</p>
+        </section>
+
+        <section>
+          <h2>14. Direitos do titular</h2>
+          <p>Nos termos da LGPD e da legislacao aplicavel, o titular pode solicitar confirmacao de tratamento, acesso, correcao de dados incompletos, inexatos ou desatualizados, anonimizacao, bloqueio ou eliminacao quando cabivel, informacao sobre compartilhamento, portabilidade quando juridicamente aplicavel, revogacao de consentimento e revisao de decisoes que se enquadrem nas hipoteses legais. Solicitações podem ser encaminhadas para <a href={`mailto:${privacyContact}`}>{privacyContact}</a>, observadas as limitacoes tecnicas, obrigacoes legais e necessidade de verificacao de identidade.</p>
+        </section>
+
+        <section>
+          <h2>15. Revogacao de acesso e desconexao</h2>
+          <p>O usuario pode revogar permissoes concedidas ao aplicativo diretamente pela pagina de permissoes da Conta Google. Dependendo da funcionalidade disponivel e do contexto operacional, tambem pode solicitar a desconexao de canais ou contas conectadas no proprio painel ou por meio do suporte. As instrucoes publicas estao disponiveis em <Link to="/revogar-acesso">Revogar acesso</Link>.</p>
+        </section>
+
+        <section>
+          <h2>16. Menores de idade</h2>
+          <p>O sistema nao e destinado ao uso autonomo por menores de idade sem supervisao e base legal adequada. Caso seja identificado tratamento inadequado de dados de menor em desconformidade com a legislacao aplicavel, o operador pode adotar medidas de restricao, remocao ou interrupcao do acesso.</p>
+        </section>
+
+        <section>
+          <h2>17. Alteracoes desta politica</h2>
+          <p>Esta politica pode ser atualizada para refletir mudancas legais, regulatórias, tecnicas, operacionais ou relacionadas a integracoes com terceiros. A versao vigente sera a publicada nesta pagina, com producao de efeitos a partir da respectiva disponibilizacao.</p>
+        </section>
+      </div>
+    </InfoPage>
+  );
+}
+
 function TermsPage() {
   return (
     <InfoPage title="Termos de uso">
@@ -189,7 +284,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/sobre-dashboard" element={<InfoPage title="Sobre o dashboard"><p>HF New Control Hub é um painel interno para operação autorizada de conteúdo, com acesso restrito e páginas públicas de suporte e conformidade.</p></InfoPage>} />
-      <Route path="/politica-de-privacidade" element={<InfoPage title="Política de privacidade"><p>Esta página descreve, em alto nível, como dados de sessão, conexões e operações internas são tratados no sistema. O acesso é restrito e o usuário pode revogar permissões pela Conta Google.</p></InfoPage>} />
+      <Route path="/politica-de-privacidade" element={<PrivacyPage />} />
       <Route path="/termos-de-uso" element={<TermsPage />} />
       <Route path="/revogar-acesso" element={<RevokeAccessPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
