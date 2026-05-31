@@ -6,9 +6,12 @@
     <meta name="theme-color" content="#07110c" />
     <meta name="description" content="HF New Control Hub. Dashboard interno para publicação autorizada no YouTube." />
     <title>HF New Control Hub</title>
+    <script>
+      sessionStorage.redirect = location.href;
+      location.replace('/');
+    </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <noscript>Redirecionando...</noscript>
   </body>
 </html>
