@@ -6,88 +6,91 @@ const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || '';
 
 function PageShell({ title, children }) {
   return (
-    <main className="page-shell">
-      <div className="brand-row">
-        <div className="brand-mark">HF</div>
-        <div>
-          <div className="brand-name">HF New Control Hub</div>
-          <div className="brand-sub">Dashboard interno para publicação autorizada no YouTube</div>
+    <main className="dashboard-login-page">
+      <div className="dashboard-login-shell">
+        <div className="dashboard-login-brand">
+          <div className="dashboard-login-mark">HF</div>
+          <strong>HF New Control Hub</strong>
+          <span>Dashboard interno para publicação autorizada no YouTube</span>
         </div>
+
+        <section className="dashboard-login-card page-panel">
+          <div className="dashboard-login-copy">
+            <h1>{title}</h1>
+          </div>
+          <div className="copy-block">{children}</div>
+          <div className="page-links">
+            <Link to="/">Voltar à entrada</Link>
+          </div>
+        </section>
       </div>
-      <section className="panel">
-        <div className="panel-head">
-          <h1>{title}</h1>
-        </div>
-        {children}
-      </section>
     </main>
   );
 }
 
 function LoginPage() {
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <div className="login-brand">
-          <div className="login-badge">HF</div>
-          <div>
-            <h1>HF New Control Hub</h1>
-            <p>Dashboard interno para publicação autorizada no YouTube</p>
+    <main className="dashboard-login-page">
+      <div className="dashboard-login-shell">
+        <div className="dashboard-login-brand">
+          <div className="dashboard-login-mark">HF</div>
+          <strong>HF New Control Hub</strong>
+          <span>Dashboard interno para publicação autorizada no YouTube</span>
+        </div>
+
+        <section className="dashboard-login-card">
+          <div className="dashboard-login-copy">
+            <h1>Acessar</h1>
+            <p>Entre com uma conta Google autorizada para acessar o painel interno.</p>
           </div>
-        </div>
 
-        <div className="login-copy">
-          <h2>Acessar</h2>
-          <p>Entre com uma conta Google autorizada para acessar o painel interno.</p>
-        </div>
+          <div className="dashboard-login-field">
+            <span>Conta autorizada</span>
+            <strong>Somente e-mails previamente autorizados podem acessar este sistema.</strong>
+          </div>
 
-        <div className="info-grid">
-          <article className="info-card">
-            <span className="info-label">Conta autorizada</span>
-            <p>Somente e-mails previamente autorizados podem acessar este sistema.</p>
-          </article>
-          <article className="info-card">
-            <span className="info-label">Autenticação</span>
-            <p>Login seguro via Google OAuth 2.0.</p>
-          </article>
-        </div>
+          <div className="dashboard-login-field">
+            <span>Autenticação</span>
+            <strong>Login seguro via Google OAuth 2.0.</strong>
+          </div>
 
-        <div className="status-card">
-          <span className="status-dot" />
-          <p>Status: aguardando autenticação Google.</p>
-        </div>
+          <div className="dashboard-login-status">
+            <div className="dashboard-login-status-mark">OK</div>
+            <div>
+              <strong>Status: aguardando autenticação Google.</strong>
+              <span>Google OAuth 2.0</span>
+            </div>
+          </div>
 
-        <div className="actions">
-          <button className="primary-btn" type="button">Entrar com Google</button>
-          {showLocalLogin ? (
-            <button className="secondary-btn" type="button">Uso interno autorizado</button>
+          <button className="dashboard-login-button" type="button">Entrar com Google</button>
+
+          <div className="dashboard-login-note">
+            Acesso restrito a usuários autorizados pelo administrador do sistema.
+          </div>
+
+          <div className="dashboard-login-links" aria-label="Links publicos obrigatorios">
+            <Link to="/sobre-dashboard">Sobre o dashboard</Link>
+            <Link to="/politica-de-privacidade">Política de privacidade</Link>
+            <Link to="/termos-de-uso">Termos de serviço</Link>
+            <Link to="/revogar-acesso">Revogar acesso</Link>
+          </div>
+
+          {supportEmail ? (
+            <a className="dashboard-login-support" href={`mailto:${supportEmail}`}>
+              Suporte: {supportEmail}
+            </a>
           ) : null}
-        </div>
+        </section>
 
-        <p className="supporting-copy">
-          Acesso restrito a usuários autorizados pelo administrador do sistema.
-        </p>
-
-        <div className="usage-card">
-          <div className="usage-icon">★</div>
+        <div className="dashboard-login-limited">
+          <span>★</span>
           <div>
             <strong>Uso interno autorizado</strong>
-            <p>Este dashboard é privado e usado apenas para gerenciar publicações próprias ou autorizadas em canais conectados do YouTube.</p>
+            <small>Este dashboard é privado e usado apenas para gerenciar publicações próprias ou autorizadas em canais conectados do YouTube.</small>
           </div>
+          <b>{showLocalLogin ? '>' : '>'}</b>
         </div>
-
-        {supportEmail ? <p className="support-email">Suporte: {supportEmail}</p> : null}
-
-        <footer className="footer-links">
-          <Link to="/sobre-dashboard">Sobre o dashboard</Link>
-          <span>|</span>
-          <Link to="/politica-de-privacidade">Política de privacidade</Link>
-          <span>|</span>
-          <Link to="/termos-de-uso">Termos de serviço</Link>
-          <span>|</span>
-          <Link to="/revogar-acesso">Revogar acesso</Link>
-        </footer>
-      </section>
+      </div>
     </main>
   );
 }
@@ -95,10 +98,7 @@ function LoginPage() {
 function InfoPage({ title, children }) {
   return (
     <PageShell title={title}>
-      <div className="copy-block">{children}</div>
-      <div className="page-links">
-        <Link to="/">Voltar à entrada</Link>
-      </div>
+      {children}
     </PageShell>
   );
 }
