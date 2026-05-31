@@ -17,8 +17,16 @@ Aplicacao separada do funil existente, criada para o subdominio `app.hfnew.com.b
 
 ## Variaveis
 
+- `.env.local` para valores reais locais.
+- `.env.example` e `.env.local.example` como template.
 - `VITE_SUPPORT_EMAIL`
 - `VITE_SHOW_LOCAL_LOGIN`
+
+## Seguranca
+
+- Nao commitar credenciais, tokens ou arquivos de chave.
+- Manter valores reais somente em `.env.local`.
+- O repositório do app pode ficar privado sem quebrar a auditoria; o que precisa ser publico sao a home, a politica de privacidade, os termos e a tela de revogacao.
 
 ## Deploy
 
