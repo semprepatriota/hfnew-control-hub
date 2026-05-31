@@ -323,6 +323,34 @@ a {
   color: rgba(255, 255, 255, 0.62);
 }
 
+.terms-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.terms-content section {
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(0, 255, 65, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.terms-content h2 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.terms-content p {
+  margin: 0;
+}
+
+.terms-content a {
+  color: #00ff41;
+}
+
 .page-links {
   display: flex;
   justify-content: center;
