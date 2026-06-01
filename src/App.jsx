@@ -6,7 +6,8 @@ const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'contato@hfne
 const localGoogleLoginUrl = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
   ? 'http://127.0.0.1:9000/api/auth/google/login'
   : '';
-const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL?.trim() || localGoogleLoginUrl;
+const productionGoogleLoginUrl = 'https://api.hfnew.com.br/api/auth/google/login';
+const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL?.trim() || localGoogleLoginUrl || productionGoogleLoginUrl;
 
 function PageShell({ title, children }) {
   return (
