@@ -19,6 +19,9 @@ function PageShell({ title, children }) {
             <h1>{title}</h1>
           </div>
           <div className="copy-block">{children}</div>
+          <a className="dashboard-login-support" href={`mailto:${supportEmail}`}>
+            Suporte: {supportEmail}
+          </a>
           <div className="page-links">
             <Link to="/">Voltar à entrada</Link>
           </div>
