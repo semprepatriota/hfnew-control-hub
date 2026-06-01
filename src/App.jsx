@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Route, Routes, Link } from 'react-router-dom';
 
 const showLocalLogin = String(import.meta.env.VITE_SHOW_LOCAL_LOGIN ?? 'false').toLowerCase() === 'true';
-const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || '';
+const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'contato@hfnew.com.br';
 
 function PageShell({ title, children }) {
   return (
