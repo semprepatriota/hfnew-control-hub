@@ -3,7 +3,10 @@ import { Navigate, Route, Routes, Link } from 'react-router-dom';
 
 const showLocalLogin = String(import.meta.env.VITE_SHOW_LOCAL_LOGIN ?? 'false').toLowerCase() === 'true';
 const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'contato@hfnew.com.br';
-const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL?.trim() || '';
+const localGoogleLoginUrl = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? 'http://127.0.0.1:9000/api/auth/google/login'
+  : '';
+const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL?.trim() || localGoogleLoginUrl;
 
 function PageShell({ title, children }) {
   return (
