@@ -104,14 +104,43 @@ function InfoPage({ title, children }) {
 }
 
 function RevokeAccessPage() {
+  const revokeContact = supportEmail || 'contato@hfnew.com.br';
+
   return (
     <InfoPage title="Revogar acesso">
-      <p>Para revogar o acesso, remova a permissão desta aplicação na sua Conta Google, desconecte o canal no painel se essa opção estiver disponível, ou solicite a remoção pelo suporte.</p>
-      <ul>
-        <li>Conta Google: página de permissões da conta</li>
-        <li>Painel interno: desconectar canal vinculado</li>
-        <li>Suporte: solicitar remoção do acesso</li>
-      </ul>
+      <div className="revoke-content">
+        <section>
+          <h2>1. Revogacao pela Conta Google</h2>
+          <p>O usuario pode revogar a permissao concedida ao aplicativo diretamente na pagina de permissoes da Conta Google. Esse e o caminho principal para interromper o acesso concedido por meio do Google OAuth 2.0.</p>
+          <p><a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">Abrir pagina de permissoes da Conta Google</a></p>
+        </section>
+
+        <section>
+          <h2>2. Desconexao operacional no painel</h2>
+          <p>Quando essa funcionalidade estiver disponivel no ambiente operacional, o usuario tambem pode solicitar ou executar a desconexao de canais e contas vinculadas dentro do proprio painel. A desconexao operacional nao substitui a revogacao da permissao na Conta Google quando o objetivo for interromper totalmente o acesso do aplicativo.</p>
+        </section>
+
+        <section>
+          <h2>3. Solicitacao por suporte</h2>
+          <p>Se o usuario nao conseguir concluir a revogacao ou a desconexao por conta propria, pode solicitar apoio pelo canal de suporte informado nesta pagina. O pedido pode envolver remocao de acesso, desvinculacao de canal, exclusao de vinculos operacionais ou orientacao para exercicio de direitos relacionados a dados pessoais.</p>
+          <p><a href={`mailto:${revokeContact}`}>Contato de suporte: {revokeContact}</a></p>
+        </section>
+
+        <section>
+          <h2>4. O que acontece depois da revogacao</h2>
+          <p>Apos a revogacao na Conta Google, o aplicativo deixa de poder utilizar as credenciais concedidas para novas operacoes autorizadas. Dependendo do estado da sessao, da fila ou de caches operacionais, pode haver necessidade de renovacao manual do estado interno ou limpeza de vinculacoes tecnicas. A revogacao nao obriga a exclusao imediata de registros que precisem ser mantidos por obrigacao legal, seguranca, auditoria, prevencao a fraude ou exercicio regular de direitos, conforme a politica de privacidade e a legislacao aplicavel.</p>
+        </section>
+
+        <section>
+          <h2>5. Exclusao de dados e outras solicitacoes</h2>
+          <p>Pedidos relacionados a confirmacao de tratamento, acesso, correcao, anonimização, bloqueio, eliminacao quando cabivel ou outras medidas ligadas a LGPD devem ser encaminhados ao suporte. O atendimento pode depender de verificacao de identidade, analise tecnica e observancia de limitacoes legais ou operacionais.</p>
+        </section>
+
+        <section>
+          <h2>6. Integracoes e plataformas de terceiros</h2>
+          <p>Se o usuario tambem concedeu autorizacoes adicionais a outras plataformas ou ferramentas integradas, a revogacao no Google pode nao ser suficiente para encerrar acessos concedidos em outros ambientes. Nesses casos, o usuario deve revisar separadamente as permissoes e acessos ativos em cada provedor conectado.</p>
+        </section>
+      </div>
     </InfoPage>
   );
 }

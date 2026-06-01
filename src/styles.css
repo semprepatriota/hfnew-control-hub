@@ -324,14 +324,16 @@ a {
 }
 
 .terms-content,
-.policy-content {
+.policy-content,
+.revoke-content {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
 .terms-content section,
-.policy-content section {
+.policy-content section,
+.revoke-content section {
   padding: 14px 14px 12px;
   border: 1px solid rgba(0, 255, 65, 0.12);
   border-radius: 8px;
@@ -339,7 +341,8 @@ a {
 }
 
 .terms-content h2,
-.policy-content h2 {
+.policy-content h2,
+.revoke-content h2 {
   margin: 0 0 8px;
   color: #ffffff;
   font-size: 14px;
@@ -347,12 +350,14 @@ a {
 }
 
 .terms-content p,
-.policy-content p {
+.policy-content p,
+.revoke-content p {
   margin: 0;
 }
 
 .terms-content a,
-.policy-content a {
+.policy-content a,
+.revoke-content a {
   color: #00ff41;
 }
 
