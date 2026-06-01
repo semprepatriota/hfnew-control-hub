@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, Link } from 'react-router-dom';
 
 const showLocalLogin = String(import.meta.env.VITE_SHOW_LOCAL_LOGIN ?? 'false').toLowerCase() === 'true';
 const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'contato@hfnew.com.br';
+const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL?.trim() || '';
 
 function PageShell({ title, children }) {
   return (
@@ -65,7 +66,20 @@ function LoginPage() {
             </div>
           </div>
 
-          <button className="dashboard-login-button" type="button">Entrar com Google</button>
+          {googleLoginUrl ? (
+            <a className="dashboard-login-button" href={googleLoginUrl}>
+              Entrar com Google
+            </a>
+          ) : (
+            <button
+              className="dashboard-login-button dashboard-login-button--disabled"
+              type="button"
+              disabled
+              title="Login Google ainda nao configurado neste deploy"
+            >
+              Entrar com Google
+            </button>
+          )}
 
           <div className="dashboard-login-note">
             Acesso restrito a usuários autorizados pelo administrador do sistema.

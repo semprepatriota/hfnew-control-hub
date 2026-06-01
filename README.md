@@ -21,6 +21,7 @@ Aplicacao separada do funil existente, criada para o subdominio `app.hfnew.com.b
 - `.env.example` e `.env.local.example` como template.
 - `VITE_SUPPORT_EMAIL`
 - `VITE_SHOW_LOCAL_LOGIN`
+- `VITE_GOOGLE_LOGIN_URL`
 
 ## Seguranca
 

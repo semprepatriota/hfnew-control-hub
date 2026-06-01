@@ -217,6 +217,20 @@ a {
   box-shadow: 0 14px 30px rgba(0, 255, 65, 0.18);
 }
 
+.dashboard-login-button--disabled,
+.dashboard-login-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.dashboard-login-button--disabled:hover,
+.dashboard-login-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .dashboard-login-note {
   color: rgba(255, 255, 255, 0.44);
   font-size: 12px;
