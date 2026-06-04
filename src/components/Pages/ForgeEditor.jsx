@@ -1035,9 +1035,13 @@ function ForgeEditor() {
 
       const data = await response.json();
       setRenderResult(data);
+      setMetadataTitle(data.title || '');
+      setMetadataDescription(data.description || '');
+      setMetadataHashtags((data.hashtags || []).join(' '));
+      setMetadataCategory(String(data.category_id || '22'));
+      setMetadataPrivacyStatus(String(data.privacy_status || 'private'));
       setTopRatio(ratioSnapshot.top);
       setBottomRatio(ratioSnapshot.bottom);
-      setMetadataPrivacyStatus('private');
       setScheduleDateTime(getDefaultScheduleDateTime());
     } catch (err) {
       setError(err.message);
