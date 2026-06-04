@@ -171,7 +171,7 @@ function RevokeAccessPage() {
 }
 
 function CallbackPage() {
-  const [status, setStatus] = useState('Processando autenticação Google.');
+  const [status, setStatus] = useState('Validando a sessao autorizada.');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -181,7 +181,7 @@ function CallbackPage() {
 
     if (!code || !state) {
       setError('Callback sem code/state do Google.');
-      setStatus('Não foi possível concluir o login.');
+      setStatus('Nao foi possivel concluir o login.');
       return;
     }
 
@@ -205,9 +205,31 @@ function CallbackPage() {
       .catch((err) => {
         window.localStorage.removeItem(authTokenKey);
         setError(err?.message || 'Erro desconhecido no callback OAuth.');
-        setStatus('Não foi possível concluir o login.');
+        setStatus('Nao foi possivel concluir o login.');
       });
   }, []);
+
+  if (!error) {
+    return (
+      <main className="dashboard-login-page">
+        <div className="dashboard-login-shell dashboard-login-shell--callback">
+          <div className="dashboard-login-brand">
+            <div className="dashboard-login-mark">HF</div>
+            <strong>HF New Control Hub</strong>
+            <span>Dashboard interno para publicacao autorizada no YouTube</span>
+          </div>
+
+          <section className="dashboard-login-card dashboard-login-card--callback">
+            <div className="callback-progress" aria-live="polite">
+              <div className="callback-progress-spinner" aria-hidden="true" />
+              <h1>Concluindo acesso</h1>
+              <p>{status}</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="dashboard-login-page">
@@ -215,7 +237,7 @@ function CallbackPage() {
         <div className="dashboard-login-brand">
           <div className="dashboard-login-mark">HF</div>
           <strong>HF New Control Hub</strong>
-          <span>Dashboard interno para publicação autorizada no YouTube</span>
+          <span>Dashboard interno para publicacao autorizada no YouTube</span>
         </div>
 
         <section className="dashboard-login-card">
