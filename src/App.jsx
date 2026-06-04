@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, Link } from 'react-router-dom';
 
 const showLocalLogin = String(import.meta.env.VITE_SHOW_LOCAL_LOGIN ?? 'false').toLowerCase() === 'true';
 const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'contato@hfnew.com.br';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim() || 'https://api.hfnew.com.br';
+const authTokenKey = 'alliance_dark_auth_token';
 const localGoogleLoginUrl = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
   ? 'http://127.0.0.1:9000/api/auth/google/login'
   : '';
@@ -37,6 +39,8 @@ function PageShell({ title, children }) {
 }
 
 function LoginPage() {
+  const hasAuthToken = typeof window !== 'undefined' && Boolean(window.localStorage.getItem(authTokenKey));
+
   return (
     <main className="dashboard-login-page">
       <div className="dashboard-login-shell">
@@ -65,8 +69,8 @@ function LoginPage() {
           <div className="dashboard-login-status">
             <div className="dashboard-login-status-mark">OK</div>
             <div>
-              <strong>Status: aguardando autenticação Google.</strong>
-              <span>Google OAuth 2.0</span>
+              <strong>{hasAuthToken ? 'Status: acesso autorizado.' : 'Status: aguardando autenticação Google.'}</strong>
+              <span>{hasAuthToken ? 'Sessao local validada' : 'Google OAuth 2.0'}</span>
             </div>
           </div>
 
@@ -163,6 +167,82 @@ function RevokeAccessPage() {
         </section>
       </div>
     </InfoPage>
+  );
+}
+
+function CallbackPage() {
+  const [status, setStatus] = useState('Processando autenticação Google.');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+
+    if (!code || !state) {
+      setError('Callback sem code/state do Google.');
+      setStatus('Não foi possível concluir o login.');
+      return;
+    }
+
+    const callbackUrl = `${apiBaseUrl}/api/auth/google/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+
+    fetch(callbackUrl, { method: 'POST' })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.detail || 'Erro no callback OAuth.');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!data?.auth_token) {
+          throw new Error('Backend não retornou token de sessão.');
+        }
+        window.localStorage.setItem(authTokenKey, data.auth_token);
+        window.history.replaceState({}, document.title, '/');
+        setStatus('Status: acesso autorizado.');
+      })
+      .catch((err) => {
+        window.localStorage.removeItem(authTokenKey);
+        setError(err?.message || 'Erro desconhecido no callback OAuth.');
+        setStatus('Não foi possível concluir o login.');
+      });
+  }, []);
+
+  return (
+    <main className="dashboard-login-page">
+      <div className="dashboard-login-shell">
+        <div className="dashboard-login-brand">
+          <div className="dashboard-login-mark">HF</div>
+          <strong>HF New Control Hub</strong>
+          <span>Dashboard interno para publicação autorizada no YouTube</span>
+        </div>
+
+        <section className="dashboard-login-card">
+          <div className="dashboard-login-copy">
+            <h1>Acessar</h1>
+            <p>{status}</p>
+          </div>
+
+          {error ? (
+            <div className="dashboard-login-field">
+              <span>Erro</span>
+              <strong>{error}</strong>
+            </div>
+          ) : (
+            <div className="dashboard-login-field">
+              <span>Autenticação</span>
+              <strong>A sessão foi recebida do backend público.</strong>
+            </div>
+          )}
+
+          <Link className="dashboard-login-button" to="/">
+            Voltar para entrada
+          </Link>
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -333,6 +413,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LoginPage />} />
+      <Route path="/callback" element={<CallbackPage />} />
       <Route path="/sobre-dashboard" element={<InfoPage title="Sobre o dashboard"><p>HF New Control Hub é um painel interno para operação autorizada de conteúdo, com acesso restrito e páginas públicas de suporte e conformidade.</p></InfoPage>} />
       <Route path="/politica-de-privacidade" element={<PrivacyPage />} />
       <Route path="/termos-de-uso" element={<TermsPage />} />
