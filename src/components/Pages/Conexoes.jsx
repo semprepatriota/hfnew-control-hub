@@ -21,6 +21,25 @@ const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const PENDING_AUTH_FLOW_KEY = 'alliance_dark_pending_auth_flow';
 const OAUTH_ERROR_KEY = 'alliance_dark_oauth_error';
 
+async function readResponseData(response) {
+  const contentType = response.headers.get('content-type') || '';
+  const responseText = await response.text();
+
+  if (!responseText) {
+    return {};
+  }
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      return {};
+    }
+  }
+
+  return { detail: responseText };
+}
+
 function Conexoes() {
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [instagramStatus, setInstagramStatus] = useState(null);
@@ -60,23 +79,58 @@ function Conexoes() {
       setError('');
     }
     try {
-      const [youtubeResponse, instagramResponse, facebookResponse, integrationsResponse] = await Promise.all([
+      const [youtubeResult, instagramResult, facebookResult, integrationsResult] = await Promise.allSettled([
         fetch(apiUrl(`/api/conexoes/youtube/status${forceRefresh ? '?refresh=1' : ''}`), { headers: getAuthHeaders() }),
         fetch(apiUrl('/api/instagram/status'), { headers: getAuthHeaders() }),
         fetch(apiUrl('/api/facebook/status'), { headers: getAuthHeaders() }),
         fetch(apiUrl('/api/integrations/settings'), { headers: getAuthHeaders() }),
       ]);
 
-      if (youtubeResponse.ok) setYoutubeStatus(await youtubeResponse.json());
-      if (instagramResponse.ok) setInstagramStatus(await instagramResponse.json());
-      if (facebookResponse.ok) setFacebookStatus(await facebookResponse.json());
+      const refreshFailures = [];
 
-      if (!integrationsResponse.ok) {
-        const data = await integrationsResponse.json();
-        throw new Error(data.detail || 'Erro ao carregar integrações');
+      if (youtubeResult.status === 'fulfilled') {
+        if (youtubeResult.value.ok) {
+          setYoutubeStatus(await readResponseData(youtubeResult.value));
+        } else {
+          refreshFailures.push('YouTube');
+        }
+      } else {
+        refreshFailures.push('YouTube');
       }
 
-      setIntegrationSettings(await integrationsResponse.json());
+      if (instagramResult.status === 'fulfilled') {
+        if (instagramResult.value.ok) {
+          setInstagramStatus(await readResponseData(instagramResult.value));
+        } else {
+          refreshFailures.push('Instagram');
+        }
+      } else {
+        refreshFailures.push('Instagram');
+      }
+
+      if (facebookResult.status === 'fulfilled') {
+        if (facebookResult.value.ok) {
+          setFacebookStatus(await readResponseData(facebookResult.value));
+        } else {
+          refreshFailures.push('Facebook');
+        }
+      } else {
+        refreshFailures.push('Facebook');
+      }
+
+      if (integrationsResult.status === 'fulfilled') {
+        const data = await readResponseData(integrationsResult.value);
+        if (!integrationsResult.value.ok) {
+          throw new Error(data.detail || 'Erro ao carregar integrações');
+        }
+        setIntegrationSettings(data);
+      } else {
+        throw integrationsResult.reason;
+      }
+
+      if (refreshFailures.length > 0) {
+        console.warn('Atualizacao parcial das conexoes:', refreshFailures.join(', '));
+      }
     } catch (err) {
       setError(err.message || 'Erro ao verificar conexões');
     } finally {
@@ -132,7 +186,7 @@ function Conexoes() {
       if (provider === 'instagram') endpoint = '/api/instagram/auth-url';
       if (provider === 'facebook') endpoint = '/api/facebook/auth-url';
       const response = await fetch(apiUrl(endpoint), { headers: getAuthHeaders() });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) {
         throw new Error(data.detail || 'Erro ao obter URL de autenticação');
       }
@@ -154,7 +208,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ channel_id: channelId }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar canal');
       window.localStorage.setItem('alliance_forge_library_channel_id', channelId);
       window.dispatchEvent(new CustomEvent('alliance:forge-library-channel-changed', { detail: { channel_id: channelId } }));
@@ -175,7 +229,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ profile_id: profileId }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar perfil');
       await checkStatuses(true);
     } catch (err) {
@@ -194,7 +248,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ page_id: pageId }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar página');
       await checkStatuses(true);
     } catch (err) {
@@ -215,7 +269,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ channel_id: channel.channel_id }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao desconectar');
       await checkStatuses(true);
     } catch (err) {
@@ -236,7 +290,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ profile_id: profile.profile_id }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao remover perfil');
       await checkStatuses(true);
     } catch (err) {
@@ -257,7 +311,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ page_id: page.page_id }),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao remover página');
       await checkStatuses(true);
     } catch (err) {
@@ -299,7 +353,7 @@ function Conexoes() {
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
+      const data = await readResponseData(response);
       if (!response.ok) {
         throw new Error(data.detail || 'Erro ao salvar preferências');
       }
