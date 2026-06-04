@@ -1841,7 +1841,7 @@ function ForgeEditor() {
             {rendering ? (
               <>
                 <Loader size={18} className="spinner" />
-                Renderizando... (pode levar até 2 min)
+                Renderizando... (pode levar alguns minutos)
               </>
             ) : (
               <>
