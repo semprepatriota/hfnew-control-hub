@@ -47,6 +47,12 @@ function markSingleActive(items, idField, activeId) {
   }));
 }
 
+function refreshSoon(refreshFn) {
+  window.setTimeout(() => {
+    refreshFn(true);
+  }, 900);
+}
+
 function Conexoes() {
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [instagramStatus, setInstagramStatus] = useState(null);
@@ -224,7 +230,7 @@ function Conexoes() {
         active_channel_id: channelId,
         channels: markSingleActive(current.channels, 'channel_id', channelId),
       }) : current);
-      await checkStatuses(true);
+      refreshSoon(checkStatuses);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -248,7 +254,7 @@ function Conexoes() {
         active_profile_id: profileId,
         profiles: markSingleActive(current.profiles, 'profile_id', profileId),
       }) : current);
-      await checkStatuses(true);
+      refreshSoon(checkStatuses);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -272,7 +278,7 @@ function Conexoes() {
         active_page_id: pageId,
         pages: markSingleActive(current.pages, 'page_id', pageId),
       }) : current);
-      await checkStatuses(true);
+      refreshSoon(checkStatuses);
     } catch (err) {
       setError(err.message);
     } finally {
