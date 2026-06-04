@@ -1109,6 +1109,12 @@
   padding: 10px;
 }
 
+.video-limit-note {
+  margin-bottom: 10px;
+  color: #9fb3c8;
+  font-size: 12px;
+}
+
 .audio-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

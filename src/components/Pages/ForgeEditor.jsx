@@ -17,6 +17,11 @@ import {
   Link
 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
+import {
+  VIDEO_EDIT_MAX_DURATION_LABEL,
+  buildVideoDurationLimitMessage,
+  isVideoDurationWithinEditLimit,
+} from '../../config/videoLimits';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
@@ -651,8 +656,19 @@ function ForgeEditor() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao fazer upload');
+        const responseText = await response.text();
+        let errorMessage = 'Erro ao fazer upload';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          if (response.status === 413) {
+            errorMessage = 'Arquivo muito grande para o proxy da API. Aumente client_max_body_size no Nginx da VPS.';
+          } else if (responseText.trim()) {
+            errorMessage = responseText.trim();
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -693,8 +709,19 @@ function ForgeEditor() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao fazer upload do áudio');
+        const responseText = await response.text();
+        let errorMessage = 'Erro ao fazer upload do áudio';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          if (response.status === 413) {
+            errorMessage = 'Arquivo muito grande para o proxy da API. Aumente client_max_body_size no Nginx da VPS.';
+          } else if (responseText.trim()) {
+            errorMessage = responseText.trim();
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       await response.json();
@@ -930,6 +957,23 @@ function ForgeEditor() {
 
     if (slideshowMode && slideshowStyle === 'mixed' && !selectedVideo) {
       setError('No modo misto, selecione um vídeo de fundo');
+      return;
+    }
+
+    const renderUsesBackgroundVideo = Boolean(
+      selectedVideo && (
+        (slideshowMode && slideshowStyle === 'mixed')
+        || (!slideshowMode && bottomRatio > 0)
+        || (!slideshowMode && bottomRatio === 0)
+      )
+    );
+
+    if (
+      renderUsesBackgroundVideo
+      && Number(selectedVideo?.duration || 0) > 0
+      && !isVideoDurationWithinEditLimit(selectedVideo.duration)
+    ) {
+      setError(`O Forge aceita vídeo de fundo de até ${VIDEO_EDIT_MAX_DURATION_LABEL}. Escolha ou recorte um vídeo menor.`);
       return;
     }
 
@@ -1524,6 +1568,7 @@ function ForgeEditor() {
 
                 {/* Upload de Vídeo */}
                 <div className="video-upload-section">
+                  <div className="video-limit-note">{buildVideoDurationLimitMessage('O Forge')}</div>
                   <label className="upload-video-label">
                     <input
                       type="file"

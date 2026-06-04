@@ -16,6 +16,12 @@ import {
   Video,
 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
+import {
+  VIDEO_EDIT_MAX_DURATION_LABEL,
+  buildVideoDurationLimitMessage,
+  formatVideoDurationLabel,
+  isVideoDurationWithinEditLimit,
+} from '../../config/videoLimits';
 import './Pages.css';
 import './InstagramPublisher.css';
 import './FacebookPublisher.css';
@@ -362,6 +368,9 @@ function FacebookPublisher() {
       if (!response.ok) {
         throw new Error(data.detail || 'Erro ao baixar vídeo');
       }
+      if (Number(data.duration || 0) > 0 && !isVideoDurationWithinEditLimit(data.duration)) {
+        throw new Error(`Facebook para edição aceita vídeos de até ${VIDEO_EDIT_MAX_DURATION_LABEL}.`);
+      }
       setDownloadedVideo(data);
       setVideoPreviewUrl(apiUrl(data.preview_url || data.video_url));
       if (selectedPageId && data.filename) {
@@ -381,6 +390,10 @@ function FacebookPublisher() {
   };
 
   const applyLibraryVideo = (video) => {
+    if (Number(video?.duration || 0) > 0 && !isVideoDurationWithinEditLimit(video.duration)) {
+      setError(`Facebook para edição aceita vídeos de até ${VIDEO_EDIT_MAX_DURATION_LABEL}.`);
+      return;
+    }
     const previewUrl = apiUrl(`/api/forge/play-video/${encodeURIComponent(video.filename)}`);
     setSelectedLibraryVideo(video.filename);
     setVideoPreviewUrl(previewUrl);
@@ -616,6 +629,7 @@ function FacebookPublisher() {
                   Atualizar
                 </button>
               </div>
+              <div className="social-library-note">{buildVideoDurationLimitMessage('Facebook para edição')}</div>
               {localVideos.length === 0 ? (
                 <div className="social-library-empty">Nenhum vídeo local encontrado.</div>
               ) : (
@@ -642,6 +656,7 @@ function FacebookPublisher() {
                                   <video src={previewSrc} muted playsInline preload="metadata" />
                                 </div>
                                 <span>{video.filename}</span>
+                                <small>{formatVideoDurationLabel(video.duration)}</small>
                               </button>
                               <button type="button" className="social-library-remove" onClick={() => removeScopedVideo(video.filename)}>
                                 Tirar
@@ -676,6 +691,7 @@ function FacebookPublisher() {
                                 <video src={previewSrc} muted playsInline preload="metadata" />
                               </div>
                               <span>{video.filename}</span>
+                              <small>{formatVideoDurationLabel(video.duration)}</small>
                             </button>
                           );
                         })}
