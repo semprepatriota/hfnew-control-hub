@@ -40,6 +40,13 @@ async function readResponseData(response) {
   return { detail: responseText };
 }
 
+function markSingleActive(items, idField, activeId) {
+  return (items || []).map((item) => ({
+    ...item,
+    is_active: item[idField] === activeId,
+  }));
+}
+
 function Conexoes() {
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [instagramStatus, setInstagramStatus] = useState(null);
@@ -80,10 +87,10 @@ function Conexoes() {
     }
     try {
       const [youtubeResult, instagramResult, facebookResult, integrationsResult] = await Promise.allSettled([
-        fetch(apiUrl(`/api/conexoes/youtube/status${forceRefresh ? '?refresh=1' : ''}`), { headers: getAuthHeaders() }),
-        fetch(apiUrl('/api/instagram/status'), { headers: getAuthHeaders() }),
-        fetch(apiUrl('/api/facebook/status'), { headers: getAuthHeaders() }),
-        fetch(apiUrl('/api/integrations/settings'), { headers: getAuthHeaders() }),
+        fetch(apiUrl(`/api/conexoes/youtube/status${forceRefresh ? '?refresh=1' : ''}`), { headers: getAuthHeaders(), cache: 'no-store' }),
+        fetch(apiUrl('/api/instagram/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
+        fetch(apiUrl('/api/facebook/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
+        fetch(apiUrl('/api/integrations/settings'), { headers: getAuthHeaders(), cache: 'no-store' }),
       ]);
 
       const refreshFailures = [];
@@ -212,6 +219,11 @@ function Conexoes() {
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar canal');
       window.localStorage.setItem('alliance_forge_library_channel_id', channelId);
       window.dispatchEvent(new CustomEvent('alliance:forge-library-channel-changed', { detail: { channel_id: channelId } }));
+      setYoutubeStatus((current) => current ? ({
+        ...current,
+        active_channel_id: channelId,
+        channels: markSingleActive(current.channels, 'channel_id', channelId),
+      }) : current);
       await checkStatuses(true);
     } catch (err) {
       setError(err.message);
@@ -231,6 +243,11 @@ function Conexoes() {
       });
       const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar perfil');
+      setInstagramStatus((current) => current ? ({
+        ...current,
+        active_profile_id: profileId,
+        profiles: markSingleActive(current.profiles, 'profile_id', profileId),
+      }) : current);
       await checkStatuses(true);
     } catch (err) {
       setError(err.message);
@@ -250,6 +267,11 @@ function Conexoes() {
       });
       const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar página');
+      setFacebookStatus((current) => current ? ({
+        ...current,
+        active_page_id: pageId,
+        pages: markSingleActive(current.pages, 'page_id', pageId),
+      }) : current);
       await checkStatuses(true);
     } catch (err) {
       setError(err.message);
