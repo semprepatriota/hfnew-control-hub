@@ -1,0 +1,90 @@
+.facebook-publisher-page .panel-title {
+  color: #7db0ff;
+}
+
+.facebook-publisher-page .instagram-panel {
+  border-color: rgba(0, 102, 255, 0.24);
+}
+
+.facebook-publisher-page .media-type-tabs button.active {
+  background: rgba(0, 102, 255, 0.16);
+  border-color: rgba(0, 102, 255, 0.42);
+  color: #7db0ff;
+}
+
+.facebook-publisher-page .profile-summary {
+  background: rgba(0, 102, 255, 0.08);
+  border-color: rgba(0, 102, 255, 0.2);
+}
+
+.facebook-publisher-page .schedule-button {
+  background: rgba(0, 102, 255, 0.16);
+  border-color: rgba(0, 102, 255, 0.36);
+  color: #7db0ff;
+}
+
+.facebook-tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.facebook-carousel-row {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.facebook-publisher-page .media-url-input {
+  border-color: rgba(0, 102, 255, 0.22);
+}
+
+.facebook-publisher-page .media-url-input:focus-within {
+  border-color: rgba(0, 102, 255, 0.62);
+  box-shadow: 0 0 14px rgba(0, 102, 255, 0.14);
+}
+
+.facebook-publisher-page .media-url-input svg {
+  color: #7db0ff;
+}
+
+.facebook-publisher-page .media-link-preview {
+  border-color: rgba(0, 102, 255, 0.22);
+}
+
+.facebook-publisher-page .social-library-box {
+  border-color: rgba(0, 102, 255, 0.16);
+}
+
+.facebook-publisher-page .social-library-header .refresh-button {
+  border-color: rgba(0, 102, 255, 0.24);
+  background: rgba(0, 102, 255, 0.08);
+  color: #7db0ff;
+}
+
+.facebook-publisher-page .social-library-card:hover {
+  border-color: rgba(0, 102, 255, 0.34);
+  background: rgba(0, 102, 255, 0.06);
+}
+
+.facebook-publisher-page .social-library-card.selected {
+  border-color: rgba(0, 102, 255, 0.46);
+  background: rgba(0, 102, 255, 0.1);
+  box-shadow: 0 0 0 1px rgba(0, 102, 255, 0.18);
+}
+
+.facebook-publisher-page .social-library-remove:hover {
+  border-color: rgba(0, 102, 255, 0.28);
+  color: #7db0ff;
+}
+
+.facebook-publisher-page .media-link-actions button:hover:not(:disabled) {
+  border-color: rgba(0, 102, 255, 0.42);
+  background: rgba(0, 102, 255, 0.12);
+}
+
+.facebook-preview .youtube-preview-empty {
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.12), rgba(0, 0, 0, 0.2));
+}
+
+@media (max-width: 760px) {
+  .facebook-tabs {
+    grid-template-columns: 1fr;
+  }
+}

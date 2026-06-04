@@ -1,0 +1,184 @@
+.quota-monitor-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quota-monitor-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  background: rgba(255, 0, 0, 0.08);
+  color: #ff8f8f;
+  font-size: 12px;
+}
+
+.quota-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.quota-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  background: rgba(7, 7, 8, 0.8);
+}
+
+.quota-card svg {
+  color: #00ff41;
+}
+
+.quota-card span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+}
+
+.quota-card strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.quota-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(7, 7, 8, 0.78);
+}
+
+.quota-filter-group {
+  display: grid;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.quota-filter-group label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.filter-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.filter-inline svg {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.quota-filters select,
+.quota-filters input[type="date"] {
+  width: 100%;
+  height: 34px;
+  background: transparent;
+  color: #fff;
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+}
+
+.quota-apply-button {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 102, 255, 0.38);
+  border-radius: 6px;
+  background: rgba(0, 102, 255, 0.14);
+  color: #8ab7ff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.quota-table-panel,
+.quota-summary-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(7, 7, 8, 0.78);
+}
+
+.quota-table-panel h2,
+.quota-summary-panel h2 {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+}
+
+.quota-table-wrap {
+  overflow: auto;
+}
+
+.quota-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 940px;
+}
+
+.quota-table th,
+.quota-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  font-size: 12px;
+}
+
+.quota-table th {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+}
+
+.quota-table td {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.quota-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quota-status.success {
+  background: rgba(0, 255, 65, 0.12);
+  border: 1px solid rgba(0, 255, 65, 0.35);
+  color: #00ff41;
+}
+
+.quota-status.failed {
+  background: rgba(255, 0, 0, 0.12);
+  border: 1px solid rgba(255, 0, 0, 0.35);
+  color: #ff8f8f;
+}
+
+.quota-compliance-note {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
