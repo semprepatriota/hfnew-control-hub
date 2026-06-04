@@ -903,6 +903,7 @@ function ForgeEditor() {
 
   const activePreviewImage = screenshotPath || selectedImagePaths[0] || '';
   const hasPreviewImage = Boolean(activePreviewImage);
+  const hasSingleVideoPreview = !slideshowMode && Boolean(selectedVideo);
 
   const reorderSlideshowImage = (index, direction) => {
     setSelectedImagePaths((prev) => {
@@ -1403,10 +1404,10 @@ function ForgeEditor() {
             ) : (
               <div className="image-preview-container">
                 <div className="screenshot-preview-large">
-                  {hasPreviewImage ? (
-                    <img src={activePreviewImage} alt="Preview da imagem" />
-                  ) : selectedVideo ? (
+                  {hasSingleVideoPreview ? (
                     <video src={getSelectedVideoSource(selectedVideo)} controls className="rendered-video" style={{ width: '100%', aspectRatio: '9/16', objectFit: 'contain' }} />
+                  ) : hasPreviewImage ? (
+                    <img src={activePreviewImage} alt="Preview da imagem" />
                   ) : (
                     <div className="preview-empty">
                       <p>Selecione uma imagem ou vídeo para visualizar</p>
@@ -1423,9 +1424,7 @@ function ForgeEditor() {
                     setScreenshotPath('');
                     setSelectedImagePaths([]);
                     setSelectedImageUploadPaths([]);
-                    if (slideshowMode) {
-                      setSelectedVideo(null);
-                    }
+                    setSelectedVideo(null);
                   }}
                   className="remove-button-simple"
                 >
