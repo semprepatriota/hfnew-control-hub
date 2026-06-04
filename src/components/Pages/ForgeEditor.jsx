@@ -464,8 +464,8 @@ function ForgeEditor() {
     try {
       if (slideshowMode) {
         const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, 6);
-        if (imageFiles.length < 2) {
-          throw new Error('Selecione de 2 a 6 imagens para o modo sequência');
+        if (imageFiles.length < 1) {
+          throw new Error('Selecione de 1 a 6 imagens para o modo sequência');
         }
 
         const previousPreviewPaths = selectedImagePaths || [];
@@ -951,8 +951,8 @@ function ForgeEditor() {
       return;
     }
 
-    if (slideshowMode && getUploadedImageNames().length < 2) {
-      setError('Selecione de 2 a 6 imagens para o modo sequência');
+    if (slideshowMode && getUploadedImageNames().length < 1) {
+      setError('Selecione de 1 a 6 imagens para o modo sequência');
       return;
     }
 
@@ -1392,9 +1392,9 @@ function ForgeEditor() {
                     ) : (
                       <>
                         <Upload size={32} />
-                        <p>Clique para selecionar {slideshowMode ? 'até 6 imagens' : 'imagem ou vídeo'}</p>
+                        <p>Clique para selecionar {slideshowMode ? 'de 1 a 6 imagens' : 'imagem ou vídeo'}</p>
                         <span className="upload-hint">
-                          {slideshowMode ? 'Somente imagens para criar a sequência' : 'JPG, PNG, MP4, MOV e similares'}
+                          {slideshowMode ? 'Uma imagem já funciona. Use vídeo no modo misto quando quiser.' : 'JPG, PNG, MP4, MOV e similares'}
                         </span>
                       </>
                     )}
@@ -1836,7 +1836,7 @@ function ForgeEditor() {
             disabled={
               rendering ||
               !hasPreviewImage ||
-              (slideshowMode && selectedImagePaths.length < 2) ||
+              (slideshowMode && selectedImagePaths.length < 1) ||
               (slideshowMode && slideshowStyle === 'mixed' && !selectedVideo)
             }
             className="render-button"
