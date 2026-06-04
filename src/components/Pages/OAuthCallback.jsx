@@ -5,6 +5,7 @@ import { apiUrl } from '../../config/api';
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const PENDING_AUTH_FLOW_KEY = 'alliance_dark_pending_auth_flow';
 const OAUTH_ERROR_KEY = 'alliance_dark_oauth_error';
+const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 
 function OAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -12,11 +13,23 @@ function OAuthCallback() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const googleError = searchParams.get('error');
-    const googleErrorDescription = searchParams.get('error_description');
-    const provider = searchParams.get('provider') || 'youtube';
+    const storedCallbackUrl = window.sessionStorage.getItem(OAUTH_CALLBACK_URL_KEY) || '';
+    let fallbackParams = null;
+
+    if (storedCallbackUrl) {
+      try {
+        fallbackParams = new URL(storedCallbackUrl).searchParams;
+      } catch (error) {
+        window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
+      }
+    }
+
+    const getParam = (key, fallbackValue = '') => searchParams.get(key) || fallbackParams?.get(key) || fallbackValue;
+    const code = getParam('code');
+    const state = getParam('state');
+    const googleError = getParam('error');
+    const googleErrorDescription = getParam('error_description');
+    const provider = getParam('provider', 'youtube');
     const pendingFlow = window.localStorage.getItem(PENDING_AUTH_FLOW_KEY) || '';
     const authFlow = pendingFlow || provider;
     const processedKey = code && state
@@ -34,6 +47,7 @@ function OAuthCallback() {
       setErrorMessage(detail);
       window.localStorage.setItem(OAUTH_ERROR_KEY, detail);
       window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+      window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
       setTimeout(() => {
         window.location.href = authFlow === 'dashboard' ? '/acesso-negado' : '/conexoes?oauth_error=1';
       }, 2500);
@@ -76,6 +90,7 @@ function OAuthCallback() {
               window.localStorage.setItem(AUTH_TOKEN_KEY, data.auth_token);
             }
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+            window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
             setTimeout(() => {
               window.location.href = '/painel';
             }, 1200);
@@ -87,6 +102,7 @@ function OAuthCallback() {
               window.localStorage.setItem(AUTH_TOKEN_KEY, data.dashboard_auth_token);
             }
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+            window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
             setTimeout(() => {
               window.location.href = '/conexoes';
             }, 1200);
@@ -94,6 +110,7 @@ function OAuthCallback() {
           }
 
           // Aguardar 2 segundos antes de redirecionar
+          window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
           setTimeout(() => {
             window.location.href = '/conexoes';
           }, 2000);
@@ -103,6 +120,7 @@ function OAuthCallback() {
           const detail = err?.data?.detail || err?.message || 'Erro desconhecido no callback OAuth';
           setErrorMessage(detail);
           window.localStorage.setItem(OAUTH_ERROR_KEY, detail);
+          window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
           if (authFlow === 'dashboard') {
             window.localStorage.removeItem(AUTH_TOKEN_KEY);
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
@@ -132,6 +150,7 @@ function OAuthCallback() {
     const missingCallbackData = 'Callback OAuth sem code/state. Inicie a conexão novamente.';
     setErrorMessage(missingCallbackData);
     window.localStorage.setItem(OAUTH_ERROR_KEY, missingCallbackData);
+    window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
     setTimeout(() => {
       window.location.href = '/conexoes?oauth_error=1';
     }, 2500);

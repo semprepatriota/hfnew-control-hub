@@ -23,6 +23,7 @@ import { apiUrl } from './config/api';
 import './App.css';
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
+const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/acesso-negado'];
 const AUTH_BYPASS_ROUTES = ['/callback'];
 
@@ -42,7 +43,25 @@ function AppShell() {
   const navigate = useNavigate();
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const isAuthBypassRoute = AUTH_BYPASS_ROUTES.includes(location.pathname);
-  const requiresAuth = !isPublicRoute && !isAuthBypassRoute;
+  const pendingOAuthCallbackUrl = typeof window !== 'undefined'
+    ? window.sessionStorage.getItem(OAUTH_CALLBACK_URL_KEY) || ''
+    : '';
+  const hasPendingOAuthCallback = Boolean(pendingOAuthCallbackUrl);
+  const requiresAuth = !isPublicRoute && !isAuthBypassRoute && !hasPendingOAuthCallback;
+
+  useEffect(() => {
+    if (!pendingOAuthCallbackUrl || location.pathname === '/callback') {
+      return;
+    }
+
+    try {
+      const pendingUrl = new URL(pendingOAuthCallbackUrl);
+      const callbackPath = `${pendingUrl.pathname}${pendingUrl.search}${pendingUrl.hash}`;
+      navigate(callbackPath, { replace: true });
+    } catch (error) {
+      window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
+    }
+  }, [location.pathname, navigate, pendingOAuthCallbackUrl]);
 
   useEffect(() => {
     // Verificar status da API
