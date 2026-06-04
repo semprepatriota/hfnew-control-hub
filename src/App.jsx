@@ -200,8 +200,7 @@ function CallbackPage() {
           throw new Error('Backend não retornou token de sessão.');
         }
         window.localStorage.setItem(authTokenKey, data.auth_token);
-        window.history.replaceState({}, document.title, '/');
-        setStatus('Status: acesso autorizado.');
+        window.location.replace('/');
       })
       .catch((err) => {
         window.localStorage.removeItem(authTokenKey);
