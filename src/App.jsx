@@ -233,12 +233,12 @@ function CallbackPage() {
           ) : (
             <div className="dashboard-login-field">
               <span>Autenticação</span>
-              <strong>A sessão foi recebida do backend público.</strong>
+              <strong>Sessão autorizada com segurança.</strong>
             </div>
           )}
 
           <Link className="dashboard-login-button" to="/">
-            Voltar para entrada
+            Continuar
           </Link>
         </section>
       </div>
