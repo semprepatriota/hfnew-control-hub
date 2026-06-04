@@ -246,6 +246,31 @@ function CallbackPage() {
   );
 }
 
+function RedirectRestorer() {
+  const [redirectPath, setRedirectPath] = useState(null);
+
+  useEffect(() => {
+    const rawRedirect = window.sessionStorage.getItem('redirect');
+    if (!rawRedirect) {
+      return;
+    }
+
+    window.sessionStorage.removeItem('redirect');
+    try {
+      const url = new URL(rawRedirect, window.location.origin);
+      setRedirectPath(`${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      setRedirectPath(rawRedirect);
+    }
+  }, []);
+
+  if (redirectPath) {
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  return <LoginPage />;
+}
+
 function PrivacyPage() {
   const privacyContact = supportEmail || 'contato@hfnew.com.br';
 
@@ -412,7 +437,7 @@ function TermsPage() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/" element={<RedirectRestorer />} />
       <Route path="/callback" element={<CallbackPage />} />
       <Route path="/sobre-dashboard" element={<InfoPage title="Sobre o dashboard"><p>HF New Control Hub é um painel interno para operação autorizada de conteúdo, com acesso restrito e páginas públicas de suporte e conformidade.</p></InfoPage>} />
       <Route path="/politica-de-privacidade" element={<PrivacyPage />} />
