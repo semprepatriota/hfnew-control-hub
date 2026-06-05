@@ -32,8 +32,9 @@ function OAuthCallback() {
     const provider = getParam('provider', 'youtube');
     const pendingFlow = window.localStorage.getItem(PENDING_AUTH_FLOW_KEY) || '';
     const authFlow = pendingFlow || provider;
+    const processedFlowKey = provider === 'instagram' || provider === 'facebook' ? provider : 'google';
     const processedKey = code && state
-      ? `alliance_dark_oauth_processed:${authFlow}:${provider}:${state}:${code}`
+      ? `alliance_dark_oauth_processed:${processedFlowKey}:${state}:${code}`
       : '';
 
     if (processedKey && window.sessionStorage.getItem(processedKey)) {
@@ -60,9 +61,7 @@ function OAuthCallback() {
       }
       setMessage('Validando retorno do Google...');
       let callbackPath = `/api/conexoes/youtube/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-      if (authFlow === 'dashboard') {
-        callbackPath = `/api/auth/google/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-      } else if (provider === 'instagram') {
+      if (provider === 'instagram') {
         callbackPath = `/api/instagram/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       } else if (provider === 'facebook') {
         callbackPath = `/api/facebook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
