@@ -100,10 +100,14 @@ function Conexoes() {
       ]);
 
       const refreshFailures = [];
+      let youtubeData = null;
+      let instagramData = null;
+      let facebookData = null;
 
       if (youtubeResult.status === 'fulfilled') {
         if (youtubeResult.value.ok) {
-          setYoutubeStatus(await readResponseData(youtubeResult.value));
+          youtubeData = await readResponseData(youtubeResult.value);
+          setYoutubeStatus(youtubeData);
         } else {
           refreshFailures.push('YouTube');
         }
@@ -113,7 +117,8 @@ function Conexoes() {
 
       if (instagramResult.status === 'fulfilled') {
         if (instagramResult.value.ok) {
-          setInstagramStatus(await readResponseData(instagramResult.value));
+          instagramData = await readResponseData(instagramResult.value);
+          setInstagramStatus(instagramData);
         } else {
           refreshFailures.push('Instagram');
         }
@@ -123,7 +128,8 @@ function Conexoes() {
 
       if (facebookResult.status === 'fulfilled') {
         if (facebookResult.value.ok) {
-          setFacebookStatus(await readResponseData(facebookResult.value));
+          facebookData = await readResponseData(facebookResult.value);
+          setFacebookStatus(facebookData);
         } else {
           refreshFailures.push('Facebook');
         }
@@ -144,18 +150,33 @@ function Conexoes() {
       if (refreshFailures.length > 0) {
         console.warn('Atualizacao parcial das conexoes:', refreshFailures.join(', '));
       }
+
+      return {
+        hasYoutube: Boolean(youtubeData?.channels?.length),
+        hasInstagram: Boolean(instagramData?.profiles?.length),
+        hasFacebook: Boolean(facebookData?.pages?.length),
+      };
     } catch (err) {
       setError(err.message || 'Erro ao verificar conexões');
+      return {
+        hasYoutube: false,
+        hasInstagram: false,
+        hasFacebook: false,
+      };
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    checkStatuses().finally(() => {
+    checkStatuses().then((statusSnapshot) => {
       const oauthError = window.localStorage.getItem(OAUTH_ERROR_KEY);
       if (oauthError) {
-        setError(`Falha na autenticação: ${oauthError}`);
+        if (statusSnapshot?.hasYoutube || statusSnapshot?.hasInstagram || statusSnapshot?.hasFacebook) {
+          setError('');
+        } else {
+          setError(`Falha na autenticação: ${oauthError}`);
+        }
         window.localStorage.removeItem(OAUTH_ERROR_KEY);
       }
     });
