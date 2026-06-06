@@ -210,16 +210,14 @@ function AppShell() {
       )}
 
       {!isPublicRoute && isMobileViewport && !sidebarOpen && (
-        <div className="mobile-topbar">
-          <button
-            type="button"
-            className="mobile-menu-trigger"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Abrir menu"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="mobile-menu-trigger"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Abrir menu"
+        >
+          <Menu size={20} />
+        </button>
       )}
 
       <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}`}>
