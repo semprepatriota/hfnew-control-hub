@@ -148,27 +148,23 @@
 /* Responsive */
 @media (max-width: 1024px) {
   .main-content.sidebar-open {
-    margin-left: 256px;
+    margin-left: 0;
   }
 
   .main-content.sidebar-closed {
-    margin-left: 72px;
+    margin-left: 0;
   }
 
   .main-content {
-    padding: 18px;
+    padding: 68px 18px 18px;
+  }
+
+  .mobile-menu-trigger {
+    display: inline-flex;
   }
 }
 
 @media (max-width: 767px) {
-  .main-content.sidebar-open {
-    margin-left: 0;
-  }
-
-  .main-content.sidebar-closed {
-    margin-left: 0;
-  }
-
   .main-content.public-page {
     margin-left: 0;
   }
@@ -182,9 +178,5 @@
     bottom: 14px;
     max-width: calc(100vw - 28px);
     padding: 8px 12px;
-  }
-
-  .mobile-menu-trigger {
-    display: inline-flex;
   }
 }

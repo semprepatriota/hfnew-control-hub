@@ -27,7 +27,7 @@ const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/acesso-negado'];
 const AUTH_BYPASS_ROUTES = ['/callback'];
-const MOBILE_BREAKPOINT = 767;
+const MOBILE_BREAKPOINT = 1024;
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
