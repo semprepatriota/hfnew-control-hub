@@ -21,6 +21,10 @@ body {
   overflow-x: hidden;
 }
 
+#root {
+  min-height: 100vh;
+}
+
 /* Scrollbar customizado global */
 ::-webkit-scrollbar {
   width: 8px;
@@ -53,6 +57,20 @@ a {
 
 button {
   font-family: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 /* Inputs */
@@ -170,4 +188,31 @@ select:focus {
 
 .animate-glowPulse {
   animation: glowPulse 2s ease-in-out infinite;
+}
+
+@media (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 767px) {
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    min-width: 320px;
+  }
+
+  button,
+  [role="button"] {
+    min-height: 42px;
+  }
 }

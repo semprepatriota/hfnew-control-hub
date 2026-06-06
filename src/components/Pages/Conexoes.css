@@ -858,6 +858,32 @@
 }
 
 /* Responsividade */
+@media (max-width: 1024px) {
+  .conexoes-page {
+    gap: 24px;
+  }
+
+  .conexao-card.youtube-wide,
+  .conexao-card.instagram-wide,
+  .conexao-card.facebook-wide {
+    grid-column: span 1;
+  }
+
+  .conexoes-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+
+  .settings-provider-row,
+  .tool-settings-card__header {
+    flex-direction: column;
+  }
+
+  .tool-settings-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .conexao-card.youtube-wide,
   .conexao-card.instagram-wide,
@@ -867,6 +893,10 @@
 
   .conexoes-grid {
     grid-template-columns: 1fr;
+  }
+
+  .conexoes-page {
+    gap: 20px;
   }
 
   .conexoes-header,
@@ -920,6 +950,10 @@
 }
 
 @media (max-width: 480px) {
+  .conexao-card {
+    border-radius: 10px;
+  }
+
   .page-header h1 {
     font-size: 22px;
   }
@@ -951,5 +985,9 @@
   .connection-actions,
   .channel-actions {
     width: 100%;
+  }
+
+  .channel-info {
+    align-items: flex-start;
   }
 }

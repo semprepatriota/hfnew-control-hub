@@ -679,3 +679,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 767px) {
+  .agents-card,
+  .agents-batch-panel,
+  .agents-comment,
+  .agents-empty-state {
+    min-width: 0;
+  }
+
+  .agents-card__header,
+  .agents-card__header-actions,
+  .agents-queue-item__top,
+  .agents-generated-item__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .agents-card__header-actions,
+  .agents-card__actions {
+    width: 100%;
+  }
+
+  .agents-card__actions > *,
+  .agents-card__header-actions > * {
+    width: 100%;
+  }
+}

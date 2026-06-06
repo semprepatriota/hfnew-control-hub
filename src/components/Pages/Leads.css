@@ -690,3 +690,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 767px) {
+  .lead-folder-detail__field-row,
+  .lead-folder-detail__field-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-folder-detail__download-button,
+  .lead-folder-detail__field-buttons > * {
+    width: 100%;
+  }
+
+  .lead-row {
+    padding: 12px;
+  }
+}

@@ -1923,6 +1923,10 @@
     grid-template-columns: 1fr;
   }
 
+  .preview-container {
+    max-height: 680px;
+  }
+
   .videos-grid-10 {
     grid-template-columns: repeat(8, 1fr);
   }
@@ -1933,8 +1937,17 @@
     padding: 20px;
   }
 
+  .forge-grid,
+  .forge-controls {
+    gap: 18px;
+  }
+
   .forge-header h1 {
     font-size: 22px;
+  }
+
+  .control-section {
+    padding: 18px;
   }
 
   .videos-grid-10 {
@@ -1958,7 +1971,15 @@
   }
 
   .preview-container {
-    max-height: 400px;
+    max-height: 420px;
+  }
+
+  .upload-section {
+    padding: 0 0 18px;
+  }
+
+  .upload-box {
+    padding: 28px 18px;
   }
 }
 
@@ -1979,6 +2000,10 @@
     font-size: 18px;
   }
 
+  .ratio-bars {
+    height: 92px;
+  }
+
   .render-button {
     font-size: 12px;
     padding: 12px;
@@ -1990,5 +2015,11 @@
 
   .duration {
     font-size: 8px;
+  }
+
+  .search-button,
+  .social-image-button,
+  .remove-button-simple {
+    width: 100%;
   }
 }

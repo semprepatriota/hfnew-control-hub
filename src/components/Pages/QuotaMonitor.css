@@ -182,3 +182,43 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 1024px) {
+  .quota-filters {
+    align-items: stretch;
+  }
+
+  .quota-filter-group {
+    min-width: 0;
+    flex: 1 1 220px;
+  }
+
+  .quota-apply-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .quota-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .quota-filters {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .quota-filter-group {
+    width: 100%;
+    flex: none;
+  }
+
+  .quota-table {
+    min-width: 760px;
+  }
+
+  .quota-table-panel,
+  .quota-summary-panel {
+    padding: 12px;
+  }
+}

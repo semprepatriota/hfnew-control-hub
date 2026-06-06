@@ -87,4 +87,8 @@
   .facebook-tabs {
     grid-template-columns: 1fr;
   }
+
+  .facebook-carousel-row {
+    grid-template-columns: 1fr;
+  }
 }

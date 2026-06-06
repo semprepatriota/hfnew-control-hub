@@ -759,3 +759,25 @@
     grid-column: 1 / -1;
   }
 }
+
+@media (max-width: 1024px) {
+  .instagram-panel,
+  .youtube-style-preview,
+  .instagram-format-box {
+    padding: 12px;
+  }
+
+  .instagram-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .instagram-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .action-panel {
+    top: 0;
+  }
+}

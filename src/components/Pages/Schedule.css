@@ -650,3 +650,41 @@
     justify-content: space-between;
   }
 }
+
+@media (max-width: 767px) {
+  .schedule-stat {
+    padding: 16px;
+  }
+
+  .schedule-stat span {
+    font-size: 24px;
+  }
+
+  .schedule-item,
+  .schedule-history-item,
+  .schedule-group,
+  .schedule-history-panel {
+    padding: 14px;
+  }
+
+  .schedule-time-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-time-edit button,
+  .schedule-delete,
+  .schedule-retry {
+    width: 100%;
+    height: 40px;
+  }
+
+  .schedule-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schedule-tags {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}
