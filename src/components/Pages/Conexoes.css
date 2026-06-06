@@ -870,8 +870,23 @@
   }
 
   .conexoes-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .channel-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .channel-stats {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .channel-actions,
+  .connection-actions {
+    flex-wrap: wrap;
   }
 
   .settings-provider-row,
@@ -954,6 +969,10 @@
     border-radius: 10px;
   }
 
+  .conexoes-grid {
+    gap: 14px;
+  }
+
   .page-header h1 {
     font-size: 22px;
   }
@@ -989,5 +1008,27 @@
 
   .channel-info {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .channel-thumbnail {
+    width: 42px;
+    height: 42px;
+  }
+
+  .provider-pill-row {
+    gap: 6px;
+  }
+
+  .provider-pill,
+  .provider-status,
+  .active-channel-badge {
+    font-size: 10px;
+  }
+
+  .settings-drawer__body,
+  .card-body,
+  .card-header {
+    padding: 16px;
   }
 }

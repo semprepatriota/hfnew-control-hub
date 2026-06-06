@@ -21,6 +21,11 @@ import './Sidebar.css';
 
 function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   const location = useLocation();
+  const handleNavigate = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 767) {
+      setIsOpen(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -141,6 +146,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
                 to={item.path}
                 className={`nav-item ${active ? 'active' : ''} ${item.color}`}
                 title={!isOpen ? item.label : ''}
+                onClick={handleNavigate}
               >
                 <div className="nav-item-icon">
                   <Icon size={20} />

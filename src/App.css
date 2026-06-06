@@ -65,6 +65,23 @@
   z-index: 1000;
 }
 
+.mobile-menu-trigger {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(0, 255, 65, 0.28);
+  border-radius: 12px;
+  background: rgba(7, 7, 8, 0.92);
+  color: #00FF41;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  z-index: 1100;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -157,7 +174,7 @@
   }
 
   .main-content {
-    padding: 14px;
+    padding: 68px 14px 14px;
   }
 
   .api-status-indicator {
@@ -165,5 +182,9 @@
     bottom: 14px;
     max-width: calc(100vw - 28px);
     padding: 8px 12px;
+  }
+
+  .mobile-menu-trigger {
+    display: inline-flex;
   }
 }

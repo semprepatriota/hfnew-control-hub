@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
@@ -26,9 +27,21 @@ const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/acesso-negado'];
 const AUTH_BYPASS_ROUTES = ['/callback'];
+const MOBILE_BREAKPOINT = 767;
 
 function AppShell() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return window.innerWidth > MOBILE_BREAKPOINT;
+  });
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.innerWidth <= MOBILE_BREAKPOINT;
+  });
   const [apiStatus, setApiStatus] = useState(null);
   const [authStatus, setAuthStatus] = useState({
     checked: false,
@@ -48,6 +61,27 @@ function AppShell() {
     : '';
   const hasPendingOAuthCallback = Boolean(pendingOAuthCallbackUrl);
   const requiresAuth = !isPublicRoute && !isAuthBypassRoute && !hasPendingOAuthCallback;
+
+  useEffect(() => {
+    const syncViewport = () => {
+      const mobile = window.innerWidth <= MOBILE_BREAKPOINT;
+      setIsMobileViewport(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => window.removeEventListener('resize', syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport || isPublicRoute) {
+      return;
+    }
+    setSidebarOpen(false);
+  }, [isMobileViewport, isPublicRoute, location.pathname]);
 
   useEffect(() => {
     if (!pendingOAuthCallbackUrl || location.pathname === '/callback') {
@@ -173,6 +207,17 @@ function AppShell() {
             name: authStatus.name
           }}
         />
+      )}
+
+      {!isPublicRoute && isMobileViewport && !sidebarOpen && (
+        <button
+          type="button"
+          className="mobile-menu-trigger"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Abrir menu"
+        >
+          <Menu size={20} />
+        </button>
       )}
 
       <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}`}>
