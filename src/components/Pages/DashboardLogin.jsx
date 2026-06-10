@@ -5,6 +5,10 @@ import { apiUrl } from '../../config/api';
 import './DashboardLogin.css';
 
 const PENDING_AUTH_FLOW_KEY = 'alliance_dark_pending_auth_flow';
+const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
+const RECENT_AUTH_KEY = 'alliance_dark_recent_auth_at';
+const OAUTH_ERROR_KEY = 'alliance_dark_oauth_error';
+const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 
 function DashboardLogin({ message = '' }) {
   const isLocalDev = typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -13,6 +17,10 @@ function DashboardLogin({ message = '' }) {
   const [localLoginError, setLocalLoginError] = useState('');
 
   const handleGoogleLogin = (event) => {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.localStorage.removeItem(RECENT_AUTH_KEY);
+    window.localStorage.removeItem(OAUTH_ERROR_KEY);
+    window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
     window.localStorage.setItem(PENDING_AUTH_FLOW_KEY, 'dashboard');
     if (event?.currentTarget?.getAttribute('href')) {
       return;
@@ -31,7 +39,8 @@ function DashboardLogin({ message = '' }) {
         throw new Error(data?.detail || 'Falha ao abrir login local');
       }
 
-      window.localStorage.setItem('alliance_dark_auth_token', data.auth_token);
+      window.localStorage.setItem(AUTH_TOKEN_KEY, data.auth_token);
+      window.localStorage.setItem(RECENT_AUTH_KEY, String(Date.now()));
       window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
       window.location.href = '/painel';
     } catch (error) {

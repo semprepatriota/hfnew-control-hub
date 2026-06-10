@@ -25,9 +25,13 @@ import './App.css';
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
+const RECENT_AUTH_KEY = 'alliance_dark_recent_auth_at';
 const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/acesso-negado'];
 const AUTH_BYPASS_ROUTES = ['/callback'];
 const MOBILE_BREAKPOINT = 1024;
+const RECENT_AUTH_WINDOW_MS = 30000;
+const AUTH_STATUS_RETRY_LIMIT = 2;
+const AUTH_STATUS_RETRY_DELAY_MS = 1200;
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -43,6 +47,7 @@ function AppShell() {
     return window.innerWidth <= MOBILE_BREAKPOINT;
   });
   const [apiStatus, setApiStatus] = useState(null);
+  const [authAttempt, setAuthAttempt] = useState(0);
   const [authStatus, setAuthStatus] = useState({
     checked: false,
     loading: false,
@@ -52,6 +57,8 @@ function AppShell() {
     name: ''
   });
   const authRequestStarted = useRef(false);
+  const authRetryCount = useRef(0);
+  const authRetryTimeout = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
@@ -61,6 +68,12 @@ function AppShell() {
     : '';
   const hasPendingOAuthCallback = Boolean(pendingOAuthCallbackUrl);
   const requiresAuth = !isPublicRoute && !isAuthBypassRoute && !hasPendingOAuthCallback;
+
+  useEffect(() => () => {
+    if (authRetryTimeout.current) {
+      window.clearTimeout(authRetryTimeout.current);
+    }
+  }, []);
 
   useEffect(() => {
     const syncViewport = () => {
@@ -129,15 +142,59 @@ function AppShell() {
       setAuthStatus((prev) => ({ ...prev, loading: true }));
 
       try {
+        const scheduleAuthRetry = () => {
+          if (authRetryCount.current >= AUTH_STATUS_RETRY_LIMIT) {
+            return false;
+          }
+
+          authRetryCount.current += 1;
+          authRequestStarted.current = false;
+          if (authRetryTimeout.current) {
+            window.clearTimeout(authRetryTimeout.current);
+          }
+          setAuthStatus({
+            checked: false,
+            loading: true,
+            allowed: false,
+            message: 'Finalizando validacao do login...',
+            email: '',
+            name: ''
+          });
+          authRetryTimeout.current = window.setTimeout(() => {
+            setAuthAttempt((current) => current + 1);
+          }, AUTH_STATUS_RETRY_DELAY_MS);
+          return true;
+        };
+
+        const isHardAuthFailure = (value) => {
+          const normalized = String(value || '').toLowerCase();
+          return (
+            normalized.includes('usuario nao autorizado')
+            || normalized.includes('usuário não autorizado')
+            || normalized.includes('sessao invalida')
+            || normalized.includes('sessão inválida')
+            || normalized.includes('expirada')
+          );
+        };
+
         const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 5000);
         const response = await fetch(apiUrl('/api/auth/status'), { headers, signal: controller.signal });
         window.clearTimeout(timeoutId);
         const data = await response.json();
+        const recentAuthAt = Number(window.localStorage.getItem(RECENT_AUTH_KEY) || '0');
+        const hasRecentAuth = recentAuthAt > 0 && (Date.now() - recentAuthAt) <= RECENT_AUTH_WINDOW_MS;
+        const hardFailure = isHardAuthFailure(data.message);
 
-        if (!data.authorized && authToken) {
+        if (data.authorized) {
+          authRetryCount.current = 0;
+          window.localStorage.removeItem(RECENT_AUTH_KEY);
+        } else if (authToken && hasRecentAuth && !hardFailure && scheduleAuthRetry()) {
+          return;
+        } else if (!data.authorized && authToken && hardFailure) {
           window.localStorage.removeItem(AUTH_TOKEN_KEY);
+          window.localStorage.removeItem(RECENT_AUTH_KEY);
         }
 
         setAuthStatus({
@@ -149,6 +206,29 @@ function AppShell() {
           name: data.name || ''
         });
       } catch (error) {
+        const recentAuthAt = Number(window.localStorage.getItem(RECENT_AUTH_KEY) || '0');
+        const hasRecentAuth = recentAuthAt > 0 && (Date.now() - recentAuthAt) <= RECENT_AUTH_WINDOW_MS;
+
+        if (authToken && hasRecentAuth && authRetryCount.current < AUTH_STATUS_RETRY_LIMIT) {
+          authRetryCount.current += 1;
+          authRequestStarted.current = false;
+          if (authRetryTimeout.current) {
+            window.clearTimeout(authRetryTimeout.current);
+          }
+          setAuthStatus({
+            checked: false,
+            loading: true,
+            allowed: false,
+            message: 'Finalizando validacao do login...',
+            email: '',
+            name: ''
+          });
+          authRetryTimeout.current = window.setTimeout(() => {
+            setAuthAttempt((current) => current + 1);
+          }, AUTH_STATUS_RETRY_DELAY_MS);
+          return;
+        }
+
         setAuthStatus({
           checked: true,
           loading: false,
@@ -163,7 +243,7 @@ function AppShell() {
     }
 
     verifyAccess();
-  }, [requiresAuth, authStatus.checked]);
+  }, [requiresAuth, authStatus.checked, authAttempt]);
 
   if (requiresAuth && (authStatus.loading || !authStatus.checked)) {
     return (
@@ -182,6 +262,7 @@ function AppShell() {
 
   const handleLogout = () => {
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.localStorage.removeItem(RECENT_AUTH_KEY);
     window.localStorage.removeItem('alliance_dark_pending_auth_flow');
     authRequestStarted.current = false;
     setAuthStatus({

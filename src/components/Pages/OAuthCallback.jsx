@@ -6,6 +6,7 @@ const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const PENDING_AUTH_FLOW_KEY = 'alliance_dark_pending_auth_flow';
 const OAUTH_ERROR_KEY = 'alliance_dark_oauth_error';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
+const RECENT_AUTH_KEY = 'alliance_dark_recent_auth_at';
 
 function OAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -61,7 +62,9 @@ function OAuthCallback() {
       }
       setMessage('Validando retorno do Google...');
       let callbackPath = `/api/conexoes/youtube/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-      if (provider === 'instagram') {
+      if (authFlow === 'dashboard') {
+        callbackPath = `/api/auth/google/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+      } else if (provider === 'instagram') {
         callbackPath = `/api/instagram/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       } else if (provider === 'facebook') {
         callbackPath = `/api/facebook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
@@ -87,6 +90,7 @@ function OAuthCallback() {
           if (responseFlow === 'dashboard') {
             if (data?.auth_token) {
               window.localStorage.setItem(AUTH_TOKEN_KEY, data.auth_token);
+              window.localStorage.setItem(RECENT_AUTH_KEY, String(Date.now()));
             }
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
             window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
@@ -99,6 +103,7 @@ function OAuthCallback() {
           if (responseFlow === 'youtube_connection' || provider === 'youtube') {
             if (data?.dashboard_auth_token) {
               window.localStorage.setItem(AUTH_TOKEN_KEY, data.dashboard_auth_token);
+              window.localStorage.setItem(RECENT_AUTH_KEY, String(Date.now()));
             }
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
             window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
@@ -122,6 +127,7 @@ function OAuthCallback() {
           window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
           if (authFlow === 'dashboard') {
             window.localStorage.removeItem(AUTH_TOKEN_KEY);
+            window.localStorage.removeItem(RECENT_AUTH_KEY);
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
             if (err.status === 403) {
               window.location.href = '/acesso-negado';
