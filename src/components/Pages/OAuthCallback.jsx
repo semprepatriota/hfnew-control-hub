@@ -30,10 +30,15 @@ function OAuthCallback() {
     const state = getParam('state');
     const googleError = getParam('error');
     const googleErrorDescription = getParam('error_description');
-    const provider = getParam('provider', 'youtube');
+    const provider = getParam('provider', '');
     const pendingFlow = window.localStorage.getItem(PENDING_AUTH_FLOW_KEY) || '';
-    const authFlow = pendingFlow || provider;
-    const processedFlowKey = provider === 'instagram' || provider === 'facebook' ? provider : 'google';
+    const authFlow = pendingFlow || provider || 'youtube';
+    const socialProvider = ['instagram', 'facebook'].includes(provider)
+      ? provider
+      : ['instagram', 'facebook'].includes(authFlow)
+        ? authFlow
+        : '';
+    const processedFlowKey = socialProvider || (authFlow === 'dashboard' ? 'dashboard' : 'google');
     const processedKey = code && state
       ? `alliance_dark_oauth_processed:${processedFlowKey}:${state}:${code}`
       : '';
@@ -64,9 +69,9 @@ function OAuthCallback() {
       let callbackPath = `/api/conexoes/youtube/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       if (authFlow === 'dashboard') {
         callbackPath = `/api/auth/google/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-      } else if (provider === 'instagram') {
+      } else if (socialProvider === 'instagram') {
         callbackPath = `/api/instagram/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
-      } else if (provider === 'facebook') {
+      } else if (socialProvider === 'facebook') {
         callbackPath = `/api/facebook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       }
 
@@ -100,7 +105,7 @@ function OAuthCallback() {
             return;
           }
 
-          if (responseFlow === 'youtube_connection' || provider === 'youtube') {
+          if (responseFlow === 'youtube_connection' || authFlow === 'youtube') {
             if (data?.dashboard_auth_token) {
               window.localStorage.setItem(AUTH_TOKEN_KEY, data.dashboard_auth_token);
               window.localStorage.setItem(RECENT_AUTH_KEY, String(Date.now()));
@@ -114,6 +119,7 @@ function OAuthCallback() {
           }
 
           // Aguardar 2 segundos antes de redirecionar
+          window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
           window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
           setTimeout(() => {
             window.location.href = '/conexoes';
@@ -138,7 +144,7 @@ function OAuthCallback() {
             }, 1200);
             return;
           }
-          if (provider === 'youtube') {
+          if (authFlow === 'youtube') {
             window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
             setTimeout(() => {
               window.location.href = '/conexoes?oauth_error=1';
