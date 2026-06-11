@@ -41,3 +41,9 @@ export async function importForgeEasyYouTube(projectId, payload) {
     body: JSON.stringify(payload),
   }));
 }
+
+export async function analyzeForgeEasyProject(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/editor/projects/${encodeURIComponent(projectId)}/analyze`), {
+    method: 'POST',
+  }));
+}

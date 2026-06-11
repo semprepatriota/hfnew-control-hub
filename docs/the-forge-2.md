@@ -38,6 +38,13 @@ Implementado nesta fase:
   - dividir clipe no meio;
   - excluir clipe;
   - desfazer/refazer com autosave.
+- Ponte The Forge 2.0 -> Forge Easy Editor:
+  - botao `Analisar com IA` dentro do Easy Editor;
+  - extracao de audio automatica quando ainda nao existir;
+  - transcricao automatica quando ainda nao existir;
+  - analise com LM Studio ou fallback local;
+  - atualizacao de `edit_plan.json`;
+  - exibicao de resumo, capitulos, cortes sugeridos e plano de trailer no Easy Editor.
 
 Ainda nao implementado:
 
@@ -96,6 +103,11 @@ FORGE2_LM_STUDIO_URL=http://127.0.0.1:1234
 FORGE2_WHISPER_MODEL=small
 FORGE2_WHISPER_DEVICE=cpu
 FORGE2_WHISPER_COMPUTE_TYPE=int8
+FORGE2_YTDLP_COOKIES_FILE=
+FORGE2_YTDLP_JS_RUNTIME=
+FORGE2_YTDLP_PROXY=
+FORGE2_YTDLP_GEO_VERIFICATION_PROXY=
+FORGE2_YTDLP_XFF_COUNTRY=
 ```
 
 ## Instalar dependencias
@@ -244,6 +256,43 @@ curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/youtube
   -d "{\"url\":\"https://www.youtube.com/watch?v=VIDEO_ID\",\"confirm_rights\":true}"
 ```
 
+Analisar o projeto pelo Forge Easy Editor:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/analyze
+```
+
+Esse endpoint prepara o projeto para edicao assistida:
+
+```txt
+video principal
+  -> audio
+  -> transcricao
+  -> analise LM Studio/fallback
+  -> edit_plan.json
+  -> painel do Forge Easy Editor
+```
+
+Se o YouTube retornar `Sign in to confirm you're not a bot`, configure um arquivo `cookies.txt` exportado do navegador da conta autorizada:
+
+```env
+FORGE2_YTDLP_COOKIES_FILE=/root/ALLIANCE-DARK/backend/storage/forge/youtube_cookies.txt
+```
+
+Se o `yt-dlp` pedir runtime JavaScript, instale/configure um runtime suportado e informe:
+
+```env
+FORGE2_YTDLP_JS_RUNTIME=deno
+```
+
+Se o YouTube bloquear por pais/regiao, use um video sem restricao regional ou configure um proxy/VPN autorizado em um pais permitido:
+
+```env
+FORGE2_YTDLP_PROXY=http://usuario:senha@host:porta
+FORGE2_YTDLP_GEO_VERIFICATION_PROXY=http://usuario:senha@host:porta
+FORGE2_YTDLP_XFF_COUNTRY=BR
+```
+
 Atualizar timeline pelo editor:
 
 ```bash
@@ -264,6 +313,8 @@ curl -X PUT http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/timeline
 - Importacao por YouTube exige confirmacao de direito/autorizacao antes de baixar.
 - `yt-dlp` e executado via `python -m yt_dlp`, sem `shell=True`.
 - O download do YouTube aceita apenas dominios oficiais do YouTube.
+- Cookies do YouTube ficam em arquivo local na VPS e nao devem ser commitados no Git.
+- Proxy do YouTube deve ficar somente no `.env` da VPS e nao deve ser commitado no Git.
 - LM Studio deve ficar apenas local.
 - O modelo nao pode retornar nem executar comandos de terminal.
 - O JSON retornado pela IA e normalizado e validado pelo backend antes de salvar.

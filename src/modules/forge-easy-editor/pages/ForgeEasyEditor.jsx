@@ -25,6 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 import { listForge2Projects } from '../../the-forge/services/forge2Api';
 import {
+  analyzeForgeEasyProject,
   getForgeEasyEditor,
   importForgeEasyYouTube,
   initializeForgeEasyEditor,
@@ -66,6 +67,10 @@ function clipStyle(clip, duration) {
   };
 }
 
+function limitItems(items, limit = 4) {
+  return Array.isArray(items) ? items.slice(0, limit) : [];
+}
+
 function ForgeEasyEditor() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
@@ -82,6 +87,7 @@ function ForgeEasyEditor() {
 
   const project = payload?.project || null;
   const editor = payload?.editor || null;
+  const editPlan = payload?.edit_plan || {};
   const timeline = localTimeline || editor?.timeline || null;
   const duration = timeline?.duration || project?.source_video?.duration || 0;
   const selectedClipData = selectedClip && timeline
@@ -209,6 +215,17 @@ function ForgeEasyEditor() {
     });
   };
 
+  const handleAnalyze = async () => {
+    if (!projectId) return;
+    await runAction('analyze', async () => {
+      const data = await analyzeForgeEasyProject(projectId);
+      setPayload(data);
+      setLocalTimeline(data.editor?.timeline || null);
+      setSelectedClip(null);
+      setMessage('Analise concluida. Resumo, capitulos e trailer foram atualizados.');
+    });
+  };
+
   const handleNumericClipChange = (field, value) => {
     const nextValue = Number(value);
     if (!Number.isFinite(nextValue)) return;
@@ -316,6 +333,77 @@ function ForgeEasyEditor() {
           <button type="button" onClick={() => moveSelectedClip(1)} disabled={Boolean(busy)}>Mover +1s</button>
         </div>
       </div>
+    );
+  };
+
+  const renderAnalysisPanel = () => {
+    const chapters = limitItems(editPlan.chapters);
+    const cuts = limitItems(editPlan.cuts);
+    const trailerBeats = limitItems(editPlan.trailer_plan?.beats);
+    const hasPlan = Boolean(editPlan.summary || chapters.length || cuts.length || trailerBeats.length);
+
+    return (
+      <section className="easy-analysis-panel">
+        <div className="easy-analysis-header">
+          <div>
+            <span>Analise inteligente</span>
+            <h2>Resumo, capitulos e trailer</h2>
+          </div>
+          <button type="button" onClick={handleAnalyze} disabled={!projectId || !project?.source_video || Boolean(busy)}>
+            <Sparkles size={16} />
+            Analisar com IA
+          </button>
+        </div>
+
+        {!project?.source_video && (
+          <p className="easy-analysis-empty">Adicione um video ao projeto antes de iniciar a analise.</p>
+        )}
+
+        {project?.source_video && !hasPlan && (
+          <p className="easy-analysis-empty">Clique em Analisar com IA para gerar resumo, capitulos, cortes e plano de trailer.</p>
+        )}
+
+        {hasPlan && (
+          <div className="easy-analysis-grid">
+            <article>
+              <h3>Resumo</h3>
+              <p>{editPlan.summary || 'Resumo ainda nao gerado.'}</p>
+              <small>{editPlan.analysis?.source ? `Fonte: ${editPlan.analysis.source}` : 'Plano salvo em edit_plan.json'}</small>
+            </article>
+
+            <article>
+              <h3>Capitulos</h3>
+              {chapters.map((item, index) => (
+                <div key={item.id || index} className="easy-analysis-item">
+                  <strong>{item.title || `Capitulo ${index + 1}`}</strong>
+                  <span>{formatDuration(item.start)} - {formatDuration(item.end)}</span>
+                </div>
+              ))}
+            </article>
+
+            <article>
+              <h3>Cortes sugeridos</h3>
+              {cuts.map((item, index) => (
+                <div key={item.id || index} className="easy-analysis-item">
+                  <strong>{item.title || `Corte ${index + 1}`}</strong>
+                  <span>{formatDuration(item.start)} - {formatDuration(item.end)}</span>
+                </div>
+              ))}
+            </article>
+
+            <article>
+              <h3>Trailer</h3>
+              <p>{editPlan.trailer_plan?.hook || 'Gancho ainda nao definido.'}</p>
+              {trailerBeats.map((item, index) => (
+                <div key={item.id || index} className="easy-analysis-item">
+                  <strong>{item.description || `Momento ${index + 1}`}</strong>
+                  <span>{formatDuration(item.start)} - {formatDuration(item.end)}</span>
+                </div>
+              ))}
+            </article>
+          </div>
+        )}
+      </section>
     );
   };
 
@@ -429,7 +517,7 @@ function ForgeEasyEditor() {
         <button type="button" onClick={splitSelectedClip} disabled={!selectedClipData || Boolean(busy)}><Scissors size={16} /> Dividir</button>
         <button type="button" onClick={deleteSelectedClip} disabled={!selectedClipData || Boolean(busy)}><Trash2 size={16} /> Excluir</button>
         <button type="button" disabled><Subtitles size={16} /> Legenda</button>
-        <button type="button" disabled><Sparkles size={16} /> IA</button>
+        <button type="button" onClick={handleAnalyze} disabled={!projectId || !project?.source_video || Boolean(busy)}><Sparkles size={16} /> IA</button>
         <button type="button" disabled><Clapperboard size={16} /> Trailer</button>
         {projectId && (
           <Link className="easy-tool-link" to={`/the-forge?project=${encodeURIComponent(projectId)}`}>
@@ -438,6 +526,8 @@ function ForgeEasyEditor() {
           </Link>
         )}
       </section>
+
+      {renderAnalysisPanel()}
 
       <section className="easy-editor-timeline">
         {(timeline?.tracks || []).map((track) => {
