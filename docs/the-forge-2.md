@@ -27,6 +27,17 @@ Implementado nesta fase:
 - estado do editor salvo em `editor_state.json`;
 - autosave versionado em `logs/autosave-000000.json`;
 - endpoints isolados em `/api/forge2/editor`.
+- Forge Easy Editor Fase 2:
+  - campo para importar video diretamente por URL do YouTube;
+  - confirmacao obrigatoria de direito/autorizacao antes da importacao;
+  - download isolado dentro de `storage/forge/projects/{project_id}/source`;
+  - atualizacao automatica do video principal do projeto;
+  - selecao de clipes na timeline;
+  - edicao simples de nome, inicio, fim, origem inicio e origem fim;
+  - mover clipe em passos de 1 segundo;
+  - dividir clipe no meio;
+  - excluir clipe;
+  - desfazer/refazer com autosave.
 
 Ainda nao implementado:
 
@@ -99,6 +110,7 @@ Dependencia nova:
 
 ```txt
 faster-whisper>=1.1.1
+yt-dlp>=2024.12.13
 ```
 
 Tambem precisa ter `ffmpeg` e `ffprobe` disponiveis no sistema ou configurados por:
@@ -224,6 +236,22 @@ Consultar estado do editor:
 curl http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID
 ```
 
+Importar video do YouTube para o projeto:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/youtube-import \
+  -H "Content-Type: application/json" \
+  -d "{\"url\":\"https://www.youtube.com/watch?v=VIDEO_ID\",\"confirm_rights\":true}"
+```
+
+Atualizar timeline pelo editor:
+
+```bash
+curl -X PUT http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/timeline \
+  -H "Content-Type: application/json" \
+  -d @editor_timeline.json
+```
+
 ## Seguranca
 
 - Nao usa `shell=True`.
@@ -233,6 +261,9 @@ curl http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID
 - Upload bloqueia path traversal.
 - Extensoes de video sao validadas.
 - Tamanho maximo de upload e configuravel.
+- Importacao por YouTube exige confirmacao de direito/autorizacao antes de baixar.
+- `yt-dlp` e executado via `python -m yt_dlp`, sem `shell=True`.
+- O download do YouTube aceita apenas dominios oficiais do YouTube.
 - LM Studio deve ficar apenas local.
 - O modelo nao pode retornar nem executar comandos de terminal.
 - O JSON retornado pela IA e normalizado e validado pelo backend antes de salvar.

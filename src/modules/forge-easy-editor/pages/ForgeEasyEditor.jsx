@@ -3,6 +3,8 @@ import {
   ChevronLeft,
   CircleDot,
   Clapperboard,
+  Download,
+  ExternalLink,
   Film,
   Image,
   Loader,
@@ -15,6 +17,7 @@ import {
   Scissors,
   Sparkles,
   Subtitles,
+  Trash2,
   Undo2,
   UserRound,
   Volume2,
@@ -23,6 +26,7 @@ import { Link } from 'react-router-dom';
 import { listForge2Projects } from '../../the-forge/services/forge2Api';
 import {
   getForgeEasyEditor,
+  importForgeEasyYouTube,
   initializeForgeEasyEditor,
   saveForgeEasyTimeline,
 } from '../services/forgeEasyEditorApi';
@@ -48,6 +52,10 @@ function formatDuration(seconds = 0) {
     : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function cloneTimeline(timeline) {
+  return JSON.parse(JSON.stringify(timeline || { duration: 0, cursor: 0, zoom: 1, tracks: [] }));
+}
+
 function clipStyle(clip, duration) {
   const total = Math.max(Number(duration) || 1, 1);
   const start = Math.max(0, Number(clip.start) || 0);
@@ -62,14 +70,25 @@ function ForgeEasyEditor() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
   const [payload, setPayload] = useState(null);
+  const [localTimeline, setLocalTimeline] = useState(null);
+  const [selectedClip, setSelectedClip] = useState(null);
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [confirmRights, setConfirmRights] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
   const project = payload?.project || null;
   const editor = payload?.editor || null;
-  const timeline = editor?.timeline || null;
+  const timeline = localTimeline || editor?.timeline || null;
   const duration = timeline?.duration || project?.source_video?.duration || 0;
+  const selectedClipData = selectedClip && timeline
+    ? timeline.tracks
+      .find((track) => track.id === selectedClip.trackId)
+      ?.clips.find((clip) => clip.id === selectedClip.clipId)
+    : null;
 
   const runAction = async (label, action) => {
     setBusy(label);
@@ -85,6 +104,16 @@ function ForgeEasyEditor() {
     }
   };
 
+  const loadEditor = async (nextProjectId) => {
+    if (!nextProjectId) return;
+    const data = await getForgeEasyEditor(nextProjectId);
+    setPayload(data);
+    setLocalTimeline(data.editor?.timeline || null);
+    setSelectedClip(null);
+    setUndoStack([]);
+    setRedoStack([]);
+  };
+
   const loadProjects = async () => {
     const data = await listForge2Projects();
     const nextProjects = data.projects || [];
@@ -95,15 +124,46 @@ function ForgeEasyEditor() {
     }
   };
 
-  const loadEditor = async (nextProjectId) => {
-    if (!nextProjectId) return;
-    const data = await getForgeEasyEditor(nextProjectId);
-    setPayload(data);
-  };
-
   useEffect(() => {
     runAction('initial-load', loadProjects);
   }, []);
+
+  const persistTimeline = async (nextTimeline, successMessage = 'Autosave concluido.') => {
+    if (!projectId || !nextTimeline) return null;
+    const data = await saveForgeEasyTimeline(projectId, {
+      timeline: nextTimeline,
+      mode: editor?.mode || 'assistido',
+      preset: editor?.preset || 'documentario',
+    });
+    setPayload(data);
+    setLocalTimeline(data.editor?.timeline || nextTimeline);
+    setMessage(successMessage);
+    return data;
+  };
+
+  const applyTimelineChange = async (updater, successMessage) => {
+    if (!timeline) return;
+    const previous = cloneTimeline(timeline);
+    const next = updater(cloneTimeline(timeline));
+    setUndoStack((current) => [...current.slice(-19), previous]);
+    setRedoStack([]);
+    setLocalTimeline(next);
+    await runAction('timeline-change', () => persistTimeline(next, successMessage));
+  };
+
+  const updateSelectedClip = async (updates) => {
+    if (!selectedClipData) return;
+    await applyTimelineChange((draft) => {
+      const track = draft.tracks.find((item) => item.id === selectedClip.trackId);
+      const clip = track?.clips.find((item) => item.id === selectedClip.clipId);
+      if (!clip) return draft;
+      Object.assign(clip, updates);
+      if (Number(clip.end) <= Number(clip.start)) {
+        clip.end = Number(clip.start) + 1;
+      }
+      return draft;
+    }, 'Clipe atualizado.');
+  };
 
   const handleProjectChange = async (event) => {
     const nextProjectId = event.target.value;
@@ -116,21 +176,147 @@ function ForgeEasyEditor() {
     await runAction('initialize', async () => {
       const data = await initializeForgeEasyEditor(projectId);
       setPayload(data);
+      setLocalTimeline(data.editor?.timeline || null);
+      setSelectedClip(null);
+      setUndoStack([]);
+      setRedoStack([]);
       setMessage('Timeline inicial criada.');
     });
   };
 
   const handleAutosave = async () => {
     if (!projectId || !timeline) return;
-    await runAction('autosave', async () => {
-      const data = await saveForgeEasyTimeline(projectId, {
-        timeline,
-        mode: editor?.mode || 'assistido',
-        preset: editor?.preset || 'documentario',
+    await runAction('autosave', () => persistTimeline(timeline));
+  };
+
+  const handleImportYouTube = async () => {
+    if (!projectId || !youtubeUrl.trim()) {
+      setError('Selecione um projeto e informe a URL do YouTube.');
+      return;
+    }
+    await runAction('youtube-import', async () => {
+      const data = await importForgeEasyYouTube(projectId, {
+        url: youtubeUrl.trim(),
+        confirm_rights: confirmRights,
       });
       setPayload(data);
-      setMessage('Autosave concluido.');
+      setLocalTimeline(data.editor?.timeline || null);
+      setSelectedClip(null);
+      setYoutubeUrl('');
+      setConfirmRights(false);
+      await loadProjects();
+      setMessage('Video importado do YouTube e timeline atualizada.');
     });
+  };
+
+  const handleNumericClipChange = (field, value) => {
+    const nextValue = Number(value);
+    if (!Number.isFinite(nextValue)) return;
+    updateSelectedClip({ [field]: Number(Math.max(0, nextValue).toFixed(2)) });
+  };
+
+  const moveSelectedClip = async (delta) => {
+    if (!selectedClipData) return;
+    const length = Math.max(1, selectedClipData.end - selectedClipData.start);
+    const nextStart = Math.max(0, Math.min(Math.max(0, duration - length), selectedClipData.start + delta));
+    await updateSelectedClip({
+      start: Number(nextStart.toFixed(2)),
+      end: Number((nextStart + length).toFixed(2)),
+    });
+  };
+
+  const splitSelectedClip = async () => {
+    if (!selectedClipData) return;
+    const midpoint = Number(((selectedClipData.start + selectedClipData.end) / 2).toFixed(2));
+    if (midpoint <= selectedClipData.start || midpoint >= selectedClipData.end) return;
+    await applyTimelineChange((draft) => {
+      const track = draft.tracks.find((item) => item.id === selectedClip.trackId);
+      if (!track) return draft;
+      const index = track.clips.findIndex((item) => item.id === selectedClip.clipId);
+      if (index < 0) return draft;
+      const clip = track.clips[index];
+      const left = { ...clip, id: `${clip.id}_a_${Date.now()}`, end: midpoint };
+      const right = { ...clip, id: `${clip.id}_b_${Date.now()}`, start: midpoint };
+      track.clips.splice(index, 1, left, right);
+      setSelectedClip({ trackId: track.id, clipId: left.id });
+      return draft;
+    }, 'Clipe dividido.');
+  };
+
+  const deleteSelectedClip = async () => {
+    if (!selectedClipData) return;
+    await applyTimelineChange((draft) => {
+      const track = draft.tracks.find((item) => item.id === selectedClip.trackId);
+      if (!track) return draft;
+      track.clips = track.clips.filter((clip) => clip.id !== selectedClip.clipId);
+      setSelectedClip(null);
+      return draft;
+    }, 'Clipe excluido.');
+  };
+
+  const restoreTimeline = async (sourceStack, setSourceStack, setTargetStack, successMessage) => {
+    if (!sourceStack.length || !timeline) return;
+    const previous = sourceStack[sourceStack.length - 1];
+    setSourceStack((current) => current.slice(0, -1));
+    setTargetStack((current) => [...current.slice(-19), cloneTimeline(timeline)]);
+    setLocalTimeline(previous);
+    setSelectedClip(null);
+    await runAction('history', () => persistTimeline(previous, successMessage));
+  };
+
+  const handleCursorChange = async (value) => {
+    const nextCursor = Number(value);
+    if (!Number.isFinite(nextCursor) || !timeline) return;
+    await applyTimelineChange((draft) => {
+      draft.cursor = Number(Math.max(0, Math.min(duration || 0, nextCursor)).toFixed(2));
+      return draft;
+    }, 'Cursor atualizado.');
+  };
+
+  const renderClipProperties = () => {
+    if (!selectedClipData) {
+      return (
+        <dl>
+          <dt>Modo</dt>
+          <dd>{editor?.mode || 'assistido'}</dd>
+          <dt>Preset</dt>
+          <dd>{editor?.preset || 'documentario'}</dd>
+          <dt>Autosave</dt>
+          <dd>v{editor?.autosave_version || 0}</dd>
+          <dt>Duração</dt>
+          <dd>{formatDuration(duration)}</dd>
+        </dl>
+      );
+    }
+
+    return (
+      <div className="easy-clip-properties">
+        <label>
+          Nome
+          <input value={selectedClipData.name || ''} onChange={(event) => updateSelectedClip({ name: event.target.value })} />
+        </label>
+        <label>
+          Inicio
+          <input type="number" min="0" step="0.1" value={selectedClipData.start} onChange={(event) => handleNumericClipChange('start', event.target.value)} />
+        </label>
+        <label>
+          Fim
+          <input type="number" min="0" step="0.1" value={selectedClipData.end} onChange={(event) => handleNumericClipChange('end', event.target.value)} />
+        </label>
+        <label>
+          Origem inicio
+          <input type="number" min="0" step="0.1" value={selectedClipData.source_start || 0} onChange={(event) => handleNumericClipChange('source_start', event.target.value)} />
+        </label>
+        <label>
+          Origem fim
+          <input type="number" min="0" step="0.1" value={selectedClipData.source_end || 0} onChange={(event) => handleNumericClipChange('source_end', event.target.value)} />
+        </label>
+        <div className="easy-property-actions">
+          <button type="button" onClick={() => moveSelectedClip(-1)} disabled={Boolean(busy)}>Mover -1s</button>
+          <button type="button" onClick={() => moveSelectedClip(1)} disabled={Boolean(busy)}>Mover +1s</button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -161,14 +347,30 @@ function ForgeEasyEditor() {
             <Save size={16} />
             Salvar
           </button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => restoreTimeline(undoStack, setUndoStack, setRedoStack, 'Desfeito.')} disabled={!undoStack.length || Boolean(busy)}>
             <Undo2 size={16} />
           </button>
-          <button type="button" disabled>
+          <button type="button" onClick={() => restoreTimeline(redoStack, setRedoStack, setUndoStack, 'Refeito.')} disabled={!redoStack.length || Boolean(busy)}>
             <Redo2 size={16} />
           </button>
         </div>
       </header>
+
+      <section className="easy-youtube-import">
+        <div>
+          <Download size={18} />
+          <strong>Importar video do YouTube</strong>
+        </div>
+        <input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+        <label>
+          <input type="checkbox" checked={confirmRights} onChange={(event) => setConfirmRights(event.target.checked)} />
+          Tenho direito ou autorizacao para usar este video
+        </label>
+        <button type="button" onClick={handleImportYouTube} disabled={!projectId || !youtubeUrl.trim() || !confirmRights || Boolean(busy)}>
+          <Download size={16} />
+          Puxar video
+        </button>
+      </section>
 
       <section className="easy-editor-shell">
         <aside className="easy-editor-library">
@@ -210,33 +412,31 @@ function ForgeEasyEditor() {
             <button type="button" disabled><Play size={16} /></button>
             <button type="button" disabled><Pause size={16} /></button>
             <span>{formatDuration(timeline?.cursor || 0)} / {formatDuration(duration)}</span>
-            <input type="range" min="0" max={Math.max(1, duration)} value={timeline?.cursor || 0} readOnly />
+            <input type="range" min="0" max={Math.max(1, duration)} value={timeline?.cursor || 0} onChange={(event) => handleCursorChange(event.target.value)} />
           </div>
         </main>
 
         <aside className="easy-editor-properties">
           <div className="easy-panel-title">
             <Sparkles size={17} />
-            <span>Propriedades</span>
+            <span>{selectedClipData ? 'Clipe selecionado' : 'Propriedades'}</span>
           </div>
-          <dl>
-            <dt>Modo</dt>
-            <dd>{editor?.mode || 'assistido'}</dd>
-            <dt>Preset</dt>
-            <dd>{editor?.preset || 'documentario'}</dd>
-            <dt>Autosave</dt>
-            <dd>v{editor?.autosave_version || 0}</dd>
-            <dt>Duração</dt>
-            <dd>{formatDuration(duration)}</dd>
-          </dl>
+          {renderClipProperties()}
         </aside>
       </section>
 
       <section className="easy-editor-tools">
-        <button type="button" disabled><Scissors size={16} /> Cortar</button>
+        <button type="button" onClick={splitSelectedClip} disabled={!selectedClipData || Boolean(busy)}><Scissors size={16} /> Dividir</button>
+        <button type="button" onClick={deleteSelectedClip} disabled={!selectedClipData || Boolean(busy)}><Trash2 size={16} /> Excluir</button>
         <button type="button" disabled><Subtitles size={16} /> Legenda</button>
         <button type="button" disabled><Sparkles size={16} /> IA</button>
         <button type="button" disabled><Clapperboard size={16} /> Trailer</button>
+        {projectId && (
+          <Link className="easy-tool-link" to={`/the-forge?project=${encodeURIComponent(projectId)}`}>
+            <ExternalLink size={16} />
+            Projeto
+          </Link>
+        )}
       </section>
 
       <section className="easy-editor-timeline">
@@ -251,7 +451,13 @@ function ForgeEasyEditor() {
               </div>
               <div className="easy-track-lane">
                 {track.clips.map((clip) => (
-                  <button key={clip.id} type="button" className="easy-clip" style={clipStyle(clip, duration)}>
+                  <button
+                    key={clip.id}
+                    type="button"
+                    className={`easy-clip ${selectedClip?.clipId === clip.id ? 'selected' : ''}`}
+                    style={clipStyle(clip, duration)}
+                    onClick={() => setSelectedClip({ trackId: track.id, clipId: clip.id })}
+                  >
                     <span>{clip.name || clip.id}</span>
                   </button>
                 ))}

@@ -11,7 +11,8 @@
 .easy-editor-topbar,
 .easy-editor-shell,
 .easy-editor-tools,
-.easy-editor-timeline {
+.easy-editor-timeline,
+.easy-youtube-import {
   border: 1px solid rgba(0, 255, 65, 0.18);
   border-radius: 8px;
   background: rgba(13, 15, 18, 0.94);
@@ -86,9 +87,69 @@
 
 .easy-editor-actions button:disabled,
 .easy-editor-tools button:disabled,
-.easy-player-controls button:disabled {
+.easy-player-controls button:disabled,
+.easy-youtube-import button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.easy-youtube-import {
+  display: grid;
+  grid-template-columns: minmax(190px, auto) minmax(260px, 1fr) minmax(220px, auto) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.easy-youtube-import > div,
+.easy-youtube-import label,
+.easy-youtube-import button,
+.easy-tool-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.easy-youtube-import > div {
+  color: #00ff41;
+}
+
+.easy-youtube-import input[type="text"],
+.easy-youtube-import input:not([type]),
+.easy-clip-properties input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  padding: 0 10px;
+}
+
+.easy-youtube-import label {
+  color: rgba(246, 248, 251, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.easy-youtube-import input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #00ff41;
+}
+
+.easy-youtube-import button,
+.easy-tool-link {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 255, 65, 0.32);
+  border-radius: 6px;
+  background: rgba(0, 255, 65, 0.1);
+  color: #00ff41;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .easy-editor-shell {
@@ -214,6 +275,26 @@
   overflow-wrap: anywhere;
 }
 
+.easy-clip-properties {
+  display: grid;
+  gap: 10px;
+}
+
+.easy-clip-properties label {
+  display: grid;
+  gap: 5px;
+  color: rgba(246, 248, 251, 0.64);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.easy-property-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .easy-editor-tools {
   display: flex;
   gap: 8px;
@@ -268,6 +349,14 @@
   color: #fff;
   font-size: 12px;
   font-weight: 800;
+  cursor: pointer;
+}
+
+.easy-clip.selected {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 0 16px rgba(0, 255, 65, 0.3);
 }
 
 .easy-editor-toast {
@@ -313,7 +402,8 @@
   }
 
   .easy-editor-topbar,
-  .easy-editor-shell {
+  .easy-editor-shell,
+  .easy-youtube-import {
     grid-template-columns: 1fr;
   }
 
@@ -324,7 +414,8 @@
 
   .easy-editor-actions,
   .easy-editor-actions select,
-  .easy-editor-actions button {
+  .easy-editor-actions button,
+  .easy-youtube-import button {
     width: 100%;
   }
 

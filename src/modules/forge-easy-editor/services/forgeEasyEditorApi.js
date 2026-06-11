@@ -33,3 +33,11 @@ export async function saveForgeEasyTimeline(projectId, payload) {
     body: JSON.stringify(payload),
   }));
 }
+
+export async function importForgeEasyYouTube(projectId, payload) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/editor/projects/${encodeURIComponent(projectId)}/youtube-import`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }));
+}
