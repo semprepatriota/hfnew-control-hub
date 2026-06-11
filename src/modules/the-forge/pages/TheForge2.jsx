@@ -1,19 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Check,
   CheckCircle2,
   Clapperboard,
   FileVideo,
+  Film,
+  ImagePlus,
   Loader,
   Mic,
   Play,
   Plus,
   RefreshCw,
   Save,
+  Scissors,
   Subtitles,
   Upload,
+  UserRound,
   Wand2,
+  X,
 } from 'lucide-react';
 import {
+  analyzeForge2Project,
   createForge2Project,
   extractForge2Audio,
   forge2FileUrl,
@@ -24,6 +31,7 @@ import {
   getLMStudioStatus,
   listForge2Projects,
   saveForge2Transcript,
+  setForge2PlanItemApproval,
   transcribeForge2Project,
   uploadForge2Source,
 } from '../services/forge2Api';
@@ -34,6 +42,8 @@ const STEP_LABELS = {
   source_uploaded: 'Vídeo enviado',
   audio_extracted: 'Áudio extraído',
   transcribed: 'Transcrição pronta',
+  analyzing: 'Analisando',
+  plan_ready: 'Plano pronto',
   captioned: 'SRT gerado',
   preview_ready: 'Prévia pronta',
   error: 'Erro',
@@ -58,6 +68,54 @@ function formatDuration(seconds = 0) {
   const m = Math.floor((safe % 3600) / 60);
   const s = safe % 60;
   return h ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+}
+
+function formatTimestamp(seconds = 0) {
+  if (!Number.isFinite(Number(seconds))) return '00:00';
+  const safe = Math.max(0, Math.round(Number(seconds)));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
+  return h
+    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function PlanList({ title, icon: Icon, items, section, empty, onDecision, busy }) {
+  return (
+    <div className="forge2-plan-list">
+      <div className="forge2-plan-list-header">
+        <Icon size={18} />
+        <h3>{title}</h3>
+        <span>{items?.length || 0}</span>
+      </div>
+      {items?.length ? items.map((item, index) => (
+        <article key={item.id || index} className={`forge2-plan-item ${item.approved ? 'approved' : ''}`}>
+          <div>
+            <strong>{item.title || item.prompt || item.script || `Item ${index + 1}`}</strong>
+            <span>
+              {item.timestamp !== undefined
+                ? formatTimestamp(item.timestamp)
+                : `${formatTimestamp(item.start)} - ${formatTimestamp(item.end)}`}
+            </span>
+          </div>
+          <p>{item.summary || item.reason || item.description || item.prompt || item.script || 'Sem descrição.'}</p>
+          <div className="forge2-plan-actions">
+            <button type="button" onClick={() => onDecision(section, item.id || String(index), true)} disabled={busy}>
+              <Check size={15} />
+              Aprovar
+            </button>
+            <button type="button" onClick={() => onDecision(section, item.id || String(index), false)} disabled={busy}>
+              <X size={15} />
+              Rejeitar
+            </button>
+          </div>
+        </article>
+      )) : (
+        <div className="forge2-plan-empty">{empty}</div>
+      )}
+    </div>
+  );
 }
 
 function TheForge2() {
@@ -86,6 +144,7 @@ function TheForge2() {
     'source_uploaded',
     'audio_extracted',
     'transcribed',
+    'plan_ready',
     'captioned',
     'preview_ready',
   ], []);
@@ -213,6 +272,30 @@ function TheForge2() {
         },
       }));
       setMessage('Transcrição revisada e salva.');
+    });
+  };
+
+  const handleAnalyzePlan = async () => {
+    if (!canUseProject || !transcriptText) {
+      setError('Gere ou salve uma transcrição antes de analisar o vídeo.');
+      return;
+    }
+    await runAction('analyze', async () => {
+      const data = await analyzeForge2Project(project.id);
+      setProjectData(data);
+      await refreshProjects();
+      setMessage(data.edit_plan?.analysis?.source === 'lm_studio'
+        ? 'Plano de edição gerado pelo LM Studio.'
+        : 'Plano de edição gerado com fallback local.');
+    });
+  };
+
+  const handlePlanDecision = async (section, itemId, approved) => {
+    if (!canUseProject) return;
+    await runAction('plan-decision', async () => {
+      const data = await setForge2PlanItemApproval(project.id, section, itemId, approved);
+      setProjectData(data);
+      setMessage(approved ? 'Sugestão aprovada.' : 'Sugestão rejeitada.');
     });
   };
 
@@ -348,6 +431,10 @@ function TheForge2() {
               <Wand2 size={18} />
               Transcrever
             </button>
+            <button type="button" onClick={handleAnalyzePlan} disabled={!transcriptText || Boolean(busyAction)}>
+              <Film size={18} />
+              Analisar plano
+            </button>
             <button type="button" onClick={handleGenerateSrt} disabled={!transcriptText || Boolean(busyAction)}>
               <Subtitles size={18} />
               Gerar SRT
@@ -372,6 +459,86 @@ function TheForge2() {
               onChange={(event) => setTranscriptText(event.target.value)}
               placeholder="A transcrição aparecerá aqui após executar faster-whisper."
             />
+          </section>
+
+          <section className="forge2-panel forge2-plan-board">
+            <div className="forge2-panel-header">
+              <div>
+                <h2>Plano de edição</h2>
+                <span className="forge2-panel-subtitle">
+                  IA local para resumo, capítulos, cortes, mídia, avatar e trailer.
+                </span>
+              </div>
+              <button type="button" onClick={handleAnalyzePlan} disabled={!transcriptText || Boolean(busyAction)}>
+                <Wand2 size={16} />
+                Analisar novamente
+              </button>
+            </div>
+
+            <div className="forge2-summary-box">
+              <strong>Resumo</strong>
+              <p>{editPlan.summary || 'Execute a análise para gerar o plano do vídeo longo.'}</p>
+              {editPlan.analysis?.source && (
+                <small>
+                  Origem: {editPlan.analysis.source === 'lm_studio' ? 'LM Studio' : 'Fallback local'} · {editPlan.analysis.detail}
+                </small>
+              )}
+            </div>
+
+            <div className="forge2-plan-grid">
+              <PlanList
+                title="Capítulos"
+                icon={Clapperboard}
+                items={editPlan.chapters || []}
+                section="chapters"
+                empty="Nenhum capítulo gerado ainda."
+                onDecision={handlePlanDecision}
+                busy={Boolean(busyAction)}
+              />
+              <PlanList
+                title="Cortes"
+                icon={Scissors}
+                items={editPlan.cuts || []}
+                section="cuts"
+                empty="Nenhum corte sugerido ainda."
+                onDecision={handlePlanDecision}
+                busy={Boolean(busyAction)}
+              />
+              <PlanList
+                title="Mídias"
+                icon={ImagePlus}
+                items={editPlan.media_insertions || []}
+                section="media_insertions"
+                empty="Nenhum ponto de mídia sugerido ainda."
+                onDecision={handlePlanDecision}
+                busy={Boolean(busyAction)}
+              />
+              <PlanList
+                title="Avatar"
+                icon={UserRound}
+                items={editPlan.avatar_segments || []}
+                section="avatar_segments"
+                empty="Nenhum trecho de avatar sugerido ainda."
+                onDecision={handlePlanDecision}
+                busy={Boolean(busyAction)}
+              />
+            </div>
+
+            <div className="forge2-trailer-box">
+              <div>
+                <Film size={18} />
+                <strong>{editPlan.trailer_plan?.title || 'Trailer automático'}</strong>
+                <span>{editPlan.trailer_plan?.estimated_duration ? `${editPlan.trailer_plan.estimated_duration}s` : 'pendente'}</span>
+              </div>
+              <p>{editPlan.trailer_plan?.hook || 'O roteiro do trailer aparecerá após a análise.'}</p>
+              <div className="forge2-trailer-beats">
+                {(editPlan.trailer_plan?.beats || []).map((beat, index) => (
+                  <span key={beat.id || index}>
+                    {formatTimestamp(beat.start)} - {formatTimestamp(beat.end)} · {beat.description}
+                  </span>
+                ))}
+              </div>
+            </div>
           </section>
 
           <section className="forge2-two-columns">
@@ -420,8 +587,8 @@ function TheForge2() {
             <span>Avatar: {editPlan.avatar_segments?.length || 0}</span>
           </div>
           <div className="forge2-phase-note">
-            <strong>Fase 1</strong>
-            <p>Upload, FFprobe, áudio, transcrição, SRT e prévia. Timeline, avatar e trailer ficam para a próxima fase.</p>
+            <strong>Editor privado</strong>
+            <p>Upload, transcrição, SRT, prévia e plano de edição revisável. Timeline avançada e render final completo ficam isolados para a próxima etapa.</p>
           </div>
         </aside>
       </section>

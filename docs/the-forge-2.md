@@ -16,7 +16,12 @@ Implementado nesta fase:
 - revisao manual da transcricao;
 - geracao de SRT;
 - criacao de previa simples com legendas;
-- status da conexao com LM Studio.
+- status da conexao com LM Studio;
+- analise do video com LM Studio quando disponivel;
+- fallback local para gerar plano basico quando LM Studio estiver offline;
+- geracao de resumo, capitulos, cortes, pontos de midia, avatar e trailer em `edit_plan.json`;
+- revisao visual do plano no frontend;
+- aprovacao/rejeicao de itens do plano.
 
 Ainda nao implementado:
 
@@ -40,6 +45,7 @@ backend/services/forge/ffmpeg_service.py
 backend/services/forge/transcription_service.py
 backend/services/forge/caption_service.py
 backend/services/forge/lm_studio_service.py
+backend/services/forge/analysis_service.py
 backend/services/forge/render_service.py
 backend/services/forge/trailer_service.py
 backend/services/forge/avatar_service.py
@@ -177,6 +183,20 @@ Gerar SRT:
 curl -X POST http://127.0.0.1:9000/api/forge2/projects/PROJECT_ID/captions/srt
 ```
 
+Analisar com LM Studio ou fallback local:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/projects/PROJECT_ID/analyze
+```
+
+Aprovar ou rejeitar um item do plano:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/projects/PROJECT_ID/plan/cuts/cut_1/approval \
+  -H "Content-Type: application/json" \
+  -d "{\"approved\":true,\"note\":\"Usar no corte curto\"}"
+```
+
 Gerar previa:
 
 ```bash
@@ -194,3 +214,4 @@ curl -X POST http://127.0.0.1:9000/api/forge2/projects/PROJECT_ID/preview
 - Tamanho maximo de upload e configuravel.
 - LM Studio deve ficar apenas local.
 - O modelo nao pode retornar nem executar comandos de terminal.
+- O JSON retornado pela IA e normalizado e validado pelo backend antes de salvar.

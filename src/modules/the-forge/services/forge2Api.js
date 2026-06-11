@@ -67,6 +67,20 @@ export async function saveForge2Transcript(projectId, text) {
   }));
 }
 
+export async function analyzeForge2Project(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/analyze`), {
+    method: 'POST',
+  }));
+}
+
+export async function setForge2PlanItemApproval(projectId, section, itemId, approved, note = '') {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/plan/${encodeURIComponent(section)}/${encodeURIComponent(itemId)}/approval`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ approved, note }),
+  }));
+}
+
 export async function generateForge2Srt(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/captions/srt`), {
     method: 'POST',
