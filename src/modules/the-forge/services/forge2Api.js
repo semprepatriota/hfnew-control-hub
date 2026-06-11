@@ -1,0 +1,84 @@
+import { apiUrl } from '../../../config/api';
+
+async function parseResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  const payload = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const detail = typeof payload === 'object' ? payload.detail : payload;
+    throw new Error(detail || 'Falha na operação do The Forge 2.0');
+  }
+
+  return payload;
+}
+
+export async function getForge2Health() {
+  return parseResponse(await fetch(apiUrl('/api/forge2/health'), { cache: 'no-store' }));
+}
+
+export async function getLMStudioStatus() {
+  return parseResponse(await fetch(apiUrl('/api/forge2/lm-studio/status'), { cache: 'no-store' }));
+}
+
+export async function listForge2Projects() {
+  return parseResponse(await fetch(apiUrl('/api/forge2/projects'), { cache: 'no-store' }));
+}
+
+export async function createForge2Project(payload) {
+  return parseResponse(await fetch(apiUrl('/api/forge2/projects'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }));
+}
+
+export async function getForge2Project(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}`), { cache: 'no-store' }));
+}
+
+export async function uploadForge2Source(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/upload-source`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function extractForge2Audio(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/extract-audio`), {
+    method: 'POST',
+  }));
+}
+
+export async function transcribeForge2Project(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/transcribe`), {
+    method: 'POST',
+  }));
+}
+
+export async function saveForge2Transcript(projectId, text) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/transcript`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  }));
+}
+
+export async function generateForge2Srt(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/captions/srt`), {
+    method: 'POST',
+  }));
+}
+
+export async function generateForge2Preview(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/preview`), {
+    method: 'POST',
+  }));
+}
+
+export function forge2FileUrl(path) {
+  return apiUrl(path);
+}

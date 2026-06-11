@@ -5,6 +5,7 @@ import {
   Zap,
   Brain,
   Hammer,
+  Clapperboard,
   Lock,
   CalendarClock,
   Activity,
@@ -58,48 +59,55 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 5,
+      label: 'The Forge 2.0',
+      path: '/the-forge',
+      icon: Clapperboard,
+      color: 'neon-gold'
+    },
+    {
+      id: 6,
       label: 'Agenda',
       path: '/agenda',
       icon: CalendarClock,
       color: 'neon-blue'
     },
     {
-      id: 6,
+      id: 7,
       label: 'Monitoramento de Cota',
       path: '/monitoramento-cota',
       icon: Activity,
       color: 'neon-blue'
     },
     {
-      id: 7,
+      id: 8,
       label: 'Agentes',
       path: '/agentes',
       icon: Bot,
       color: 'neon-green'
     },
     {
-      id: 8,
+      id: 9,
       label: 'Leads',
       path: '/leads',
       icon: Users,
       color: 'neon-gold'
     },
     {
-      id: 9,
+      id: 10,
       label: 'Instagram',
       path: '/instagram',
       icon: Instagram,
       color: 'neon-red'
     },
     {
-      id: 10,
+      id: 11,
       label: 'Facebook',
       path: '/facebook',
       icon: Facebook,
       color: 'neon-blue'
     },
     {
-      id: 11,
+      id: 12,
       label: 'The Vault',
       path: '/vault',
       icon: Lock,

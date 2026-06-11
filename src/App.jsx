@@ -6,6 +6,7 @@ import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
 import Intel from './components/Pages/Intel';
 import Forge from './components/Pages/Forge';
+import TheForge2 from './modules/the-forge/pages/TheForge2';
 import Vault from './components/Pages/Vault';
 import Schedule from './components/Pages/Schedule';
 import QuotaMonitor from './components/Pages/QuotaMonitor';
@@ -308,6 +309,7 @@ function AppShell() {
           <Route path="/conexoes" element={<Conexoes />} />
           <Route path="/intel" element={<Intel />} />
           <Route path="/forge" element={<Forge />} />
+          <Route path="/the-forge" element={<TheForge2 />} />
           <Route path="/agenda" element={<Schedule />} />
           <Route path="/monitoramento-cota" element={<QuotaMonitor />} />
           <Route path="/agentes" element={<Agents />} />
