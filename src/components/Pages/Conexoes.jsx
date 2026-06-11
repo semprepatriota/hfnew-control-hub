@@ -57,6 +57,7 @@ function Conexoes() {
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [instagramStatus, setInstagramStatus] = useState(null);
   const [facebookStatus, setFacebookStatus] = useState(null);
+  const [metaDiagnostics, setMetaDiagnostics] = useState({ instagram: null, facebook: null });
   const [integrationSettings, setIntegrationSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,11 +93,20 @@ function Conexoes() {
       setError('');
     }
     try {
-      const [youtubeResult, instagramResult, facebookResult, integrationsResult] = await Promise.allSettled([
+      const [
+        youtubeResult,
+        instagramResult,
+        facebookResult,
+        integrationsResult,
+        instagramDiagnosticsResult,
+        facebookDiagnosticsResult,
+      ] = await Promise.allSettled([
         fetch(apiUrl(`/api/conexoes/youtube/status${forceRefresh ? '?refresh=1' : ''}`), { headers: getAuthHeaders(), cache: 'no-store' }),
         fetch(apiUrl('/api/instagram/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
         fetch(apiUrl('/api/facebook/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
         fetch(apiUrl('/api/integrations/settings'), { headers: getAuthHeaders(), cache: 'no-store' }),
+        fetch(apiUrl('/api/instagram/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
+        fetch(apiUrl('/api/facebook/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
       ]);
 
       const refreshFailures = [];
@@ -146,6 +156,18 @@ function Conexoes() {
       } else {
         throw integrationsResult.reason;
       }
+
+      const instagramDiagnostics = instagramDiagnosticsResult.status === 'fulfilled' && instagramDiagnosticsResult.value.ok
+        ? await readResponseData(instagramDiagnosticsResult.value)
+        : instagramData?.diagnostic
+          ? { last_diagnostic: instagramData.diagnostic }
+          : null;
+      const facebookDiagnostics = facebookDiagnosticsResult.status === 'fulfilled' && facebookDiagnosticsResult.value.ok
+        ? await readResponseData(facebookDiagnosticsResult.value)
+        : facebookData?.diagnostic
+          ? { last_diagnostic: facebookData.diagnostic }
+          : null;
+      setMetaDiagnostics({ instagram: instagramDiagnostics, facebook: facebookDiagnostics });
 
       if (refreshFailures.length > 0) {
         console.warn('Atualizacao parcial das conexoes:', refreshFailures.join(', '));
@@ -446,6 +468,60 @@ function Conexoes() {
     </button>
   );
 
+  const renderMetaDiagnostic = (provider) => {
+    const diagnostic = metaDiagnostics[provider];
+    const status = provider === 'instagram' ? instagramStatus : facebookStatus;
+    const last = diagnostic?.last_diagnostic || status?.diagnostic;
+    const title = provider === 'instagram' ? 'Diagnóstico Instagram' : 'Diagnóstico Facebook';
+    const requiredShape = diagnostic?.required_account_shape || (
+      provider === 'instagram'
+        ? 'Instagram Profissional vinculado a uma Página Facebook administrada pelo usuário Meta.'
+        : 'Conta Meta que administra pelo menos uma Página Facebook autorizada no login.'
+    );
+
+    if (!diagnostic && !last) {
+      return (
+        <div className="meta-diagnostic">
+          <div className="meta-diagnostic__header">
+            <strong>{title}</strong>
+            <span>Sem erro registrado</span>
+          </div>
+          <p>{requiredShape}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="meta-diagnostic">
+        <div className="meta-diagnostic__header">
+          <strong>{title}</strong>
+          <span>{diagnostic?.configured ? 'Configurado' : 'Configuração pendente'}</span>
+        </div>
+        <div className="meta-diagnostic__grid">
+          <span>App ID</span>
+          <code>{diagnostic?.app_id || last?.app_id || 'ausente'}</code>
+          <span>Redirect</span>
+          <code>{diagnostic?.redirect_uri || last?.instagram_redirect_uri || last?.facebook_redirect_uri || 'ausente'}</code>
+          <span>Fluxo</span>
+          <code>{diagnostic?.current_flow || last?.stage || 'facebook_oauth'}</code>
+        </div>
+        {Array.isArray(diagnostic?.scopes) && diagnostic.scopes.length > 0 && (
+          <p className="meta-diagnostic__scopes">{diagnostic.scopes.join(', ')}</p>
+        )}
+        {last?.detail && (
+          <div className="meta-diagnostic__error">
+            <AlertCircle size={15} />
+            <span>{last.detail}</span>
+          </div>
+        )}
+        {last?.extra?.pages_found !== undefined && (
+          <p>Paginas retornadas pela Meta: {last.extra.pages_found}</p>
+        )}
+        <p>{requiredShape}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="page-container conexoes-page">
       <div className="page-header conexoes-header">
@@ -597,6 +673,8 @@ function Conexoes() {
 
                 {!hasInstagram && <div className="description"><p>Conecte perfis profissionais do Instagram para posts, Reels e carrossel.</p></div>}
 
+                {renderMetaDiagnostic('instagram')}
+
                 <div className="connection-actions">
                   <button onClick={() => handleConnect('instagram')} disabled={connecting === 'instagram' || instagramStatus?.requires_config} className="connect-button instagram-connect">
                     {connecting === 'instagram' ? <><Loader size={16} className="spinner" />Conectando...</> : <><Plus size={16} />{hasInstagram ? 'Adicionar outro perfil' : 'Conectar com Meta'}</>}
@@ -671,6 +749,8 @@ function Conexoes() {
                 )}
 
                 {!hasFacebook && <div className="description"><p>Conecte paginas do Facebook para posts, imagens, videos e carrossel.</p></div>}
+
+                {renderMetaDiagnostic('facebook')}
 
                 <div className="connection-actions">
                   <button onClick={() => handleConnect('facebook')} disabled={connecting === 'facebook' || facebookStatus?.requires_config} className="connect-button facebook-connect">
