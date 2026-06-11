@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Check,
   CheckCircle2,
@@ -339,6 +340,9 @@ function TheForge2() {
           <span>API</span>
           <strong>{apiHealth?.status === 'operational' ? 'Online' : 'Verificando'}</strong>
           <small>{apiHealth?.phase || 'fase 1'}</small>
+          <Link className="forge2-editor-link" to="/the-forge/editor">
+            Abrir Forge Easy Editor
+          </Link>
         </div>
       </header>
 

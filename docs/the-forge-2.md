@@ -22,6 +22,11 @@ Implementado nesta fase:
 - geracao de resumo, capitulos, cortes, pontos de midia, avatar e trailer em `edit_plan.json`;
 - revisao visual do plano no frontend;
 - aprovacao/rejeicao de itens do plano.
+- Forge Easy Editor em `/the-forge/editor`;
+- timeline simplificada com faixas de video, B-roll, avatar, textos, legendas, musica e SFX;
+- estado do editor salvo em `editor_state.json`;
+- autosave versionado em `logs/autosave-000000.json`;
+- endpoints isolados em `/api/forge2/editor`.
 
 Ainda nao implementado:
 
@@ -38,8 +43,11 @@ Arquivos principais:
 
 ```txt
 backend/routes/forge2.py
+backend/routes/forge_editor.py
 backend/models/forge_models.py
 backend/services/forge/project_service.py
+backend/services/forge/storage_service.py
+backend/services/forge/editor_service.py
 backend/services/forge/media_service.py
 backend/services/forge/ffmpeg_service.py
 backend/services/forge/transcription_service.py
@@ -128,6 +136,7 @@ A rota do modulo fica em:
 
 ```txt
 /the-forge
+/the-forge/editor
 ```
 
 ## Iniciar LM Studio
@@ -201,6 +210,18 @@ Gerar previa:
 
 ```bash
 curl -X POST http://127.0.0.1:9000/api/forge2/projects/PROJECT_ID/preview
+```
+
+Inicializar o Forge Easy Editor:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/initialize
+```
+
+Consultar estado do editor:
+
+```bash
+curl http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID
 ```
 
 ## Seguranca
