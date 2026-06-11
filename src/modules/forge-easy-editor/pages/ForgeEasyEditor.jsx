@@ -19,6 +19,7 @@ import {
   Subtitles,
   Trash2,
   Undo2,
+  Upload,
   UserRound,
   Volume2,
 } from 'lucide-react';
@@ -30,6 +31,7 @@ import {
   importForgeEasyYouTube,
   initializeForgeEasyEditor,
   saveForgeEasyTimeline,
+  uploadForgeEasySource,
 } from '../services/forgeEasyEditorApi';
 import '../styles/forge-easy-editor.css';
 
@@ -81,6 +83,7 @@ function ForgeEasyEditor() {
   const [redoStack, setRedoStack] = useState([]);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [confirmRights, setConfirmRights] = useState(false);
+  const [localVideoFile, setLocalVideoFile] = useState(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -212,6 +215,22 @@ function ForgeEasyEditor() {
       setConfirmRights(false);
       await loadProjects();
       setMessage('Video importado do YouTube e timeline atualizada.');
+    });
+  };
+
+  const handleUploadLocalVideo = async () => {
+    if (!projectId || !localVideoFile) {
+      setError('Selecione um projeto e um arquivo de video.');
+      return;
+    }
+    await runAction('local-upload', async () => {
+      const data = await uploadForgeEasySource(projectId, localVideoFile);
+      setPayload(data);
+      setLocalTimeline(data.editor?.timeline || null);
+      setSelectedClip(null);
+      setLocalVideoFile(null);
+      await loadProjects();
+      setMessage('Video enviado para o projeto e timeline atualizada.');
     });
   };
 
@@ -444,20 +463,38 @@ function ForgeEasyEditor() {
         </div>
       </header>
 
-      <section className="easy-youtube-import">
-        <div>
+      <section className="easy-import-panel">
+        <div className="easy-import-title">
           <Download size={18} />
-          <strong>Importar video do YouTube</strong>
+          <strong>Importar video</strong>
         </div>
-        <input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
-        <label>
-          <input type="checkbox" checked={confirmRights} onChange={(event) => setConfirmRights(event.target.checked)} />
-          Tenho direito ou autorizacao para usar este video
-        </label>
-        <button type="button" onClick={handleImportYouTube} disabled={!projectId || !youtubeUrl.trim() || !confirmRights || Boolean(busy)}>
-          <Download size={16} />
-          Puxar video
-        </button>
+
+        <div className="easy-local-upload">
+          <label>
+            Arquivo do computador
+            <input
+              type="file"
+              accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm,video/x-msvideo"
+              onChange={(event) => setLocalVideoFile(event.target.files?.[0] || null)}
+            />
+          </label>
+          <button type="button" onClick={handleUploadLocalVideo} disabled={!projectId || !localVideoFile || Boolean(busy)}>
+            <Upload size={16} />
+            Enviar video
+          </button>
+        </div>
+
+        <div className="easy-youtube-import">
+          <input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+          <label>
+            <input type="checkbox" checked={confirmRights} onChange={(event) => setConfirmRights(event.target.checked)} />
+            Tenho direito ou autorizacao para usar este video
+          </label>
+          <button type="button" onClick={handleImportYouTube} disabled={!projectId || !youtubeUrl.trim() || !confirmRights || Boolean(busy)}>
+            <Download size={16} />
+            Puxar video
+          </button>
+        </div>
       </section>
 
       <section className="easy-editor-shell">

@@ -12,7 +12,7 @@
 .easy-editor-shell,
 .easy-editor-tools,
 .easy-editor-timeline,
-.easy-youtube-import,
+.easy-import-panel,
 .easy-analysis-panel {
   border: 1px solid rgba(0, 255, 65, 0.18);
   border-radius: 8px;
@@ -89,36 +89,54 @@
 .easy-editor-actions button:disabled,
 .easy-editor-tools button:disabled,
 .easy-player-controls button:disabled,
-.easy-youtube-import button:disabled,
+.easy-import-panel button:disabled,
 .easy-analysis-header button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.easy-youtube-import {
+.easy-import-panel {
   display: grid;
-  grid-template-columns: minmax(190px, auto) minmax(260px, 1fr) minmax(220px, auto) auto;
+  grid-template-columns: minmax(150px, auto) minmax(280px, 0.75fr) minmax(360px, 1.25fr);
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;
   padding: 12px 14px;
 }
 
-.easy-youtube-import > div,
-.easy-youtube-import label,
-.easy-youtube-import button,
+.easy-import-title,
+.easy-local-upload,
+.easy-youtube-import,
+.easy-import-panel label,
+.easy-import-panel button,
 .easy-tool-link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.easy-youtube-import > div {
+.easy-import-title {
   color: #00ff41;
 }
 
-.easy-youtube-import input[type="text"],
-.easy-youtube-import input:not([type]),
+.easy-local-upload,
+.easy-youtube-import {
+  min-width: 0;
+}
+
+.easy-local-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.easy-youtube-import {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(190px, auto) auto;
+}
+
+.easy-import-panel input[type="text"],
+.easy-import-panel input:not([type]),
+.easy-local-upload input[type="file"],
 .easy-clip-properties input {
   width: 100%;
   min-height: 38px;
@@ -129,19 +147,28 @@
   padding: 0 10px;
 }
 
-.easy-youtube-import label {
+.easy-import-panel label {
   color: rgba(246, 248, 251, 0.72);
   font-size: 12px;
   font-weight: 800;
 }
 
-.easy-youtube-import input[type="checkbox"] {
+.easy-local-upload label {
+  display: grid;
+  gap: 4px;
+}
+
+.easy-local-upload input[type="file"] {
+  padding: 8px 10px;
+}
+
+.easy-import-panel input[type="checkbox"] {
   width: 16px;
   height: 16px;
   accent-color: #00ff41;
 }
 
-.easy-youtube-import button,
+.easy-import-panel button,
 .easy-tool-link,
 .easy-analysis-header button {
   min-height: 38px;
@@ -493,6 +520,8 @@
 
   .easy-editor-topbar,
   .easy-editor-shell,
+  .easy-import-panel,
+  .easy-local-upload,
   .easy-youtube-import {
     grid-template-columns: 1fr;
   }
@@ -519,7 +548,7 @@
   .easy-editor-actions,
   .easy-editor-actions select,
   .easy-editor-actions button,
-  .easy-youtube-import button {
+  .easy-import-panel button {
     width: 100%;
   }
 

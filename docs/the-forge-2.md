@@ -28,6 +28,7 @@ Implementado nesta fase:
 - autosave versionado em `logs/autosave-000000.json`;
 - endpoints isolados em `/api/forge2/editor`.
 - Forge Easy Editor Fase 2:
+  - upload de video local diretamente dentro do Easy Editor;
   - campo para importar video diretamente por URL do YouTube;
   - confirmacao obrigatoria de direito/autorizacao antes da importacao;
   - download isolado dentro de `storage/forge/projects/{project_id}/source`;
@@ -254,6 +255,13 @@ Importar video do YouTube para o projeto:
 curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/youtube-import \
   -H "Content-Type: application/json" \
   -d "{\"url\":\"https://www.youtube.com/watch?v=VIDEO_ID\",\"confirm_rights\":true}"
+```
+
+Enviar video local pelo Forge Easy Editor:
+
+```bash
+curl -X POST http://127.0.0.1:9000/api/forge2/editor/projects/PROJECT_ID/upload-source \
+  -F "file=@/caminho/video.mp4"
 ```
 
 Analisar o projeto pelo Forge Easy Editor:

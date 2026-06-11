@@ -42,6 +42,15 @@ export async function importForgeEasyYouTube(projectId, payload) {
   }));
 }
 
+export async function uploadForgeEasySource(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge2/editor/projects/${encodeURIComponent(projectId)}/upload-source`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
 export async function analyzeForgeEasyProject(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/editor/projects/${encodeURIComponent(projectId)}/analyze`), {
     method: 'POST',
