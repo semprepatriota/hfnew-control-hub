@@ -47,6 +47,12 @@ function ForgeEditor() {
   const [socialImageUrl, setSocialImageUrl] = useState('');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [selectedAudio, setSelectedAudio] = useState(null);
+  const [effectLibrary, setEffectLibrary] = useState(null);
+  const [effectsEnabled, setEffectsEnabled] = useState(true);
+  const [effectsMode, setEffectsMode] = useState('assisted');
+  const [effectsPreset, setEffectsPreset] = useState('documentary');
+  const [transitionFrequency, setTransitionFrequency] = useState('balanced');
+  const [effectPreviewOpen, setEffectPreviewOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [downloadingSocialImage, setDownloadingSocialImage] = useState(false);
   const [downloadingVideoId, setDownloadingVideoId] = useState(null);
@@ -95,6 +101,29 @@ function ForgeEditor() {
     { value: '27', label: '27 - Education' },
     { value: '28', label: '28 - Science & Technology' },
     { value: '29', label: '29 - Nonprofits & Activism' },
+  ];
+
+  const effectModeOptions = [
+    { value: 'manual', label: 'Manual' },
+    { value: 'assisted', label: 'Assistido' },
+    { value: 'automatic', label: 'Automático' },
+  ];
+
+  const effectPresetOptions = [
+    { value: 'documentary', label: 'Documentário' },
+    { value: 'news', label: 'Notícias' },
+    { value: 'suspense', label: 'Suspense' },
+    { value: 'dynamic', label: 'Dinâmico' },
+    { value: 'educational', label: 'Educacional' },
+    { value: 'trailer', label: 'Trailer' },
+    { value: 'custom', label: 'Personalizado' },
+  ];
+
+  const transitionFrequencyOptions = [
+    { value: 'minimal', label: 'Mínima' },
+    { value: 'balanced', label: 'Equilibrada' },
+    { value: 'dynamic', label: 'Dinâmica' },
+    { value: 'custom', label: 'Personalizada' },
   ];
 
   const localVideoFormats = [
@@ -171,6 +200,29 @@ function ForgeEditor() {
       localStorage.removeItem('forge_selected_image');
     }
   }, [loadLocalAudios, loadLocalVideos]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadEffectLibrary = async () => {
+      try {
+        const response = await fetch(apiUrl('/api/forge/effects/library'), { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) {
+          setEffectLibrary(data);
+        }
+      } catch (err) {
+        console.warn('Não foi possível carregar a biblioteca de efeitos do Forge:', err);
+      }
+    };
+
+    loadEffectLibrary();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const syncActiveLibraryChannel = async () => {
@@ -344,6 +396,11 @@ function ForgeEditor() {
       setSocialImageUrl(draft.socialImageUrl || '');
       setSelectedVideo(draft.selectedVideo || null);
       setSelectedAudio(draft.selectedAudio || null);
+      setEffectsEnabled(draft.effectsEnabled ?? true);
+      setEffectsMode(draft.effectsMode || 'assisted');
+      setEffectsPreset(draft.effectsPreset || 'documentary');
+      setTransitionFrequency(draft.transitionFrequency || 'balanced');
+      setEffectPreviewOpen(Boolean(draft.effectPreviewOpen));
       setRenderResult(draft.renderResult || null);
       setMetadataTitle(draft.metadataTitle || '');
       setMetadataDescription(draft.metadataDescription || '');
@@ -374,6 +431,10 @@ function ForgeEditor() {
       selectedImageUploadPaths.length ||
       selectedVideo ||
       selectedAudio ||
+      effectsEnabled !== true ||
+      effectsMode !== 'assisted' ||
+      effectsPreset !== 'documentary' ||
+      transitionFrequency !== 'balanced' ||
       renderResult ||
       metadataTitle ||
       metadataDescription ||
@@ -406,6 +467,11 @@ function ForgeEditor() {
       socialImageUrl,
       selectedVideo,
       selectedAudio,
+      effectsEnabled,
+      effectsMode,
+      effectsPreset,
+      transitionFrequency,
+      effectPreviewOpen,
       renderResult,
       metadataTitle,
       metadataDescription,
@@ -420,6 +486,10 @@ function ForgeEditor() {
   }, [
     backgroundMode,
     bottomRatio,
+    effectPreviewOpen,
+    effectsEnabled,
+    effectsMode,
+    effectsPreset,
     getDraftKey,
     imageCropX,
     imageCropY,
@@ -444,6 +514,7 @@ function ForgeEditor() {
     slideshowStyle,
     socialImageUrl,
     topRatio,
+    transitionFrequency,
     videoFit,
   ]);
 
@@ -904,6 +975,26 @@ function ForgeEditor() {
   const activePreviewImage = screenshotPath || selectedImagePaths[0] || '';
   const hasPreviewImage = Boolean(activePreviewImage);
   const hasSingleVideoPreview = !slideshowMode && Boolean(selectedVideo);
+  const availableSfxCount = (effectLibrary?.sound_effects || []).filter((item) => item.asset_present).length;
+
+  const buildForgeEditPlan = () => ({
+    enabled: effectsEnabled,
+    mode: effectsMode,
+    style_preset: effectsPreset,
+    transition_frequency: transitionFrequency,
+    transitions: [],
+    visual_effects: [],
+    sound_effects: [],
+    audio_ducking: {
+      enabled: true,
+      music_normal_volume: 0.45,
+      music_speech_volume: 0.18,
+      fade_in: 0.25,
+      fade_out: 0.35,
+      sensitivity: 0.5,
+      max_sfx_volume: 0.3,
+    },
+  });
 
   const reorderSlideshowImage = (index, direction) => {
     setSelectedImagePaths((prev) => {
@@ -1018,7 +1109,8 @@ function ForgeEditor() {
         video_fit: videoFit,
         slideshow_seconds_per_image: 3,
         slideshow_intro_seconds: 1.5,
-        slideshow_style: slideshowStyle
+        slideshow_style: slideshowStyle,
+        edit_plan: buildForgeEditPlan()
       };
 
       const response = await fetch(apiUrl('/api/forge/render'), {
@@ -1497,6 +1589,94 @@ function ForgeEditor() {
                 Biblioteca Local
               </button>
             </div>
+          </div>
+
+          <div className="control-section forge-effects-section">
+            <div className="forge-effects-header">
+              <h3>✨ Efeitos 2.0</h3>
+              <label className="forge-effect-switch">
+                <input
+                  type="checkbox"
+                  checked={effectsEnabled}
+                  onChange={(event) => setEffectsEnabled(event.target.checked)}
+                />
+                <span>{effectsEnabled ? 'Ativo' : 'Desligado'}</span>
+              </label>
+            </div>
+
+            <div className="forge-effects-grid">
+              <label className="metadata-field">
+                <span>Modo</span>
+                <select
+                  value={effectsMode}
+                  onChange={(event) => setEffectsMode(event.target.value)}
+                  disabled={!effectsEnabled}
+                >
+                  {effectModeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="metadata-field">
+                <span>Estilo</span>
+                <select
+                  value={effectsPreset}
+                  onChange={(event) => setEffectsPreset(event.target.value)}
+                  disabled={!effectsEnabled}
+                >
+                  {effectPresetOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="metadata-field">
+                <span>Transições</span>
+                <select
+                  value={transitionFrequency}
+                  onChange={(event) => setTransitionFrequency(event.target.value)}
+                  disabled={!effectsEnabled}
+                >
+                  {transitionFrequencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="forge-effects-summary">
+              <span>{effectLibrary?.transitions?.length || 0} transições</span>
+              <span>{effectLibrary?.visual_effects?.length || 0} efeitos visuais</span>
+              <span>{availableSfxCount}/{effectLibrary?.sound_effects?.length || 0} SFX locais</span>
+              <span>Ducking ativo</span>
+            </div>
+
+            <button
+              type="button"
+              className="forge-effect-preview-toggle"
+              onClick={() => setEffectPreviewOpen((current) => !current)}
+              disabled={!effectLibrary}
+            >
+              {effectPreviewOpen ? 'Ocultar biblioteca' : 'Ver biblioteca inicial'}
+            </button>
+
+            {effectPreviewOpen && effectLibrary && (
+              <div className="forge-effects-library">
+                <div>
+                  <strong>Transições</strong>
+                  <p>{effectLibrary.transitions.map((item) => item.name).join(', ')}</p>
+                </div>
+                <div>
+                  <strong>Profundidade</strong>
+                  <p>{effectLibrary.visual_effects.map((item) => item.name).join(', ')}</p>
+                </div>
+                <div>
+                  <strong>Sons</strong>
+                  <p>{effectLibrary.sound_effects.map((item) => `${item.name}${item.asset_present ? '' : ' (arquivo pendente)'}`).join(', ')}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 3: Video Selection */}

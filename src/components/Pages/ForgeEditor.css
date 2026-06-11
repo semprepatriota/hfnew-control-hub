@@ -1914,6 +1914,112 @@
   box-shadow: 0 0 15px rgba(255, 0, 0, 0.2);
 }
 
+.forge-effects-section {
+  border-color: rgba(0, 102, 255, 0.28);
+  background: linear-gradient(180deg, rgba(0, 102, 255, 0.08), rgba(0, 0, 0, 0.28));
+}
+
+.forge-effects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.forge-effects-header h3 {
+  margin: 0;
+}
+
+.forge-effect-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.forge-effect-switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: #00FF41;
+}
+
+.forge-effects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.forge-effects-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.forge-effects-summary span {
+  padding: 9px 10px;
+  background: rgba(7, 7, 8, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.forge-effect-preview-toggle {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 102, 255, 0.45);
+  border-radius: 6px;
+  background: rgba(0, 102, 255, 0.12);
+  color: #8db8ff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.forge-effect-preview-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.forge-effects-library {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.forge-effects-library div {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.forge-effects-library strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.forge-effects-library p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* ============================================================================
    RESPONSIVIDADE
    ============================================================================ */
@@ -1955,6 +2061,11 @@
   }
 
   .mode-toggle {
+    grid-template-columns: 1fr;
+  }
+
+  .forge-effects-grid,
+  .forge-effects-summary {
     grid-template-columns: 1fr;
   }
 
@@ -2021,5 +2132,10 @@
   .social-image-button,
   .remove-button-simple {
     width: 100%;
+  }
+
+  .forge-effects-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
