@@ -13,6 +13,7 @@ import Schedule from './components/Pages/Schedule';
 import QuotaMonitor from './components/Pages/QuotaMonitor';
 import Agents from './components/Pages/Agents';
 import Leads from './components/Pages/Leads';
+import WhatsAppHub from './modules/whatsapp/pages/WhatsAppHub';
 import OAuthCallback from './components/Pages/OAuthCallback';
 import InstagramPublisher from './components/Pages/InstagramPublisher';
 import FacebookPublisher from './components/Pages/FacebookPublisher';
@@ -316,6 +317,7 @@ function AppShell() {
           <Route path="/monitoramento-cota" element={<QuotaMonitor />} />
           <Route path="/agentes" element={<Agents />} />
           <Route path="/leads" element={<Leads />} />
+          <Route path="/whatsapp" element={<WhatsAppHub />} />
           <Route path="/instagram" element={<InstagramPublisher />} />
           <Route path="/facebook" element={<FacebookPublisher />} />
           <Route path="/vault" element={<Vault />} />

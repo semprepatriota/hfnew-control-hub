@@ -12,6 +12,7 @@ import {
   Activity,
   Bot,
   Users,
+  MessageCircle,
   ChevronRight,
   Facebook,
   Instagram,
@@ -102,20 +103,27 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 11,
+      label: 'WHATSAPP HUB',
+      path: '/whatsapp',
+      icon: MessageCircle,
+      color: 'neon-green'
+    },
+    {
+      id: 12,
       label: 'Instagram',
       path: '/instagram',
       icon: Instagram,
       color: 'neon-red'
     },
     {
-      id: 12,
+      id: 13,
       label: 'Facebook',
       path: '/facebook',
       icon: Facebook,
       color: 'neon-blue'
     },
     {
-      id: 13,
+      id: 14,
       label: 'The Vault',
       path: '/vault',
       icon: Lock,
