@@ -11,10 +11,50 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export function normalizeErrorMessage(value) {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || 'Erro desconhecido';
+  }
+
+  if (Array.isArray(value)) {
+    const messages = value
+      .map((item) => normalizeErrorMessage(item))
+      .filter(Boolean);
+    return messages.length ? messages.join(' | ') : 'Erro desconhecido';
+  }
+
+  if (value && typeof value === 'object') {
+    if (typeof value.detail !== 'undefined') {
+      return normalizeErrorMessage(value.detail);
+    }
+
+    if (typeof value.message !== 'undefined') {
+      return normalizeErrorMessage(value.message);
+    }
+
+    if (typeof value.error !== 'undefined') {
+      return normalizeErrorMessage(value.error);
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return 'Erro desconhecido';
+    }
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return 'Erro desconhecido';
+}
+
 async function parseJson(response, fallbackMessage) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || data.message || fallbackMessage);
+    throw new Error(normalizeErrorMessage(data.detail || data.message || data.error || fallbackMessage));
   }
   return data;
 }

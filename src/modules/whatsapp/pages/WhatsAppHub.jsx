@@ -26,6 +26,7 @@ import {
   fetchWhatsAppFunnels,
   fetchWhatsAppHubData,
   generateWhatsAppFunnel,
+  normalizeErrorMessage,
   saveWhatsAppFlowCanvas,
   saveWhatsAppSettings,
   sendWhatsAppDraftMessage,
@@ -99,6 +100,7 @@ function WhatsAppHub() {
   const [draggingNodeId, setDraggingNodeId] = useState('');
   const [edgeForm, setEdgeForm] = useState({ source: '', target: '', label: 'proximo passo' });
   const [newNodeType, setNewNodeType] = useState('mensagem');
+  const readError = (err) => normalizeErrorMessage(err?.detail || err?.message || err);
 
   const loadOperationalData = async () => {
     const [conversationData, funnelData] = await Promise.all([
@@ -129,7 +131,7 @@ function WhatsAppHub() {
       });
       await loadOperationalData();
     } catch (err) {
-      setError(err.message);
+      setError(readError(err));
     } finally {
       setLoading(false);
     }
@@ -157,7 +159,7 @@ function WhatsAppHub() {
         setSelectedConversation(data.conversation || null);
         setMessages(data.messages || []);
       } catch (err) {
-        setError(err.message);
+        setError(readError(err));
       }
     }
 
@@ -300,7 +302,7 @@ function WhatsAppHub() {
       setCanvasData(response.canvas);
       setNotice('Canvas salvo.');
     } catch (err) {
-      setError(err.message);
+      setError(readError(err));
     } finally {
       setSaving(false);
     }
@@ -335,7 +337,7 @@ function WhatsAppHub() {
       setNotice('Configuracao salva.');
       await loadModule();
     } catch (err) {
-      setError(err.message);
+      setError(readError(err));
     } finally {
       setSaving(false);
     }
@@ -363,7 +365,7 @@ function WhatsAppHub() {
       setSelectedNodeId(response.plan.nodes?.[0]?.id || '');
       setNotice(response.plan.warning || 'Funil criado e aplicado no canvas.');
     } catch (err) {
-      setError(err.message);
+      setError(readError(err));
     } finally {
       setGenerating(false);
     }
@@ -389,7 +391,7 @@ function WhatsAppHub() {
       setReplyText('');
       setNotice('Resposta salva no rascunho da conversa.');
     } catch (err) {
-      setError(err.message);
+      setError(readError(err));
     } finally {
       setSending(false);
     }
