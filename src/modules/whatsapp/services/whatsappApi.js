@@ -51,6 +51,19 @@ export async function saveWhatsAppSettings(payload) {
   return parseJson(response, 'Erro ao salvar configuracao do WhatsApp Hub');
 }
 
+export async function saveWhatsAppFlowCanvas(payload) {
+  const response = await fetch(apiUrl('/api/whatsapp/flow-canvas'), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson(response, 'Erro ao salvar canvas do WhatsApp Hub');
+}
+
 export async function fetchWhatsAppConversations() {
   const response = await fetch(apiUrl('/api/whatsapp/conversations'), {
     headers: getAuthHeaders(),
