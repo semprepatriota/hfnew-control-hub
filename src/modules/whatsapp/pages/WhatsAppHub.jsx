@@ -46,9 +46,10 @@ const defaultFunnelForm = {
   topic: '',
   product: '',
   audience: '',
-  goal: 'converter lead em conversa qualificada',
+  goal: 'qualificar e levar para atendimento humano',
   tone: 'direto, consultivo e persuasivo',
   steps: 5,
+  provider: 'chatgpt',
 };
 
 const tabs = [
@@ -353,7 +354,14 @@ function WhatsAppHub() {
       const response = await generateWhatsAppFunnel(funnelForm);
       setGeneratedPlan(response.plan);
       setFunnels((current) => [response.plan, ...current.filter((item) => item.id !== response.plan.id)]);
-      setNotice('Funil criado como rascunho supervisionado.');
+      setCanvasData((current) => ({
+        ...(current || { notes: '' }),
+        nodes: response.plan.nodes || [],
+        edges: response.plan.edges || [],
+        notes: `Funil aplicado: ${response.plan.topic}`,
+      }));
+      setSelectedNodeId(response.plan.nodes?.[0]?.id || '');
+      setNotice(response.plan.warning || 'Funil criado e aplicado no canvas.');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -548,45 +556,67 @@ function WhatsAppHub() {
       ) : null}
 
       {activeTab === 'flows' ? (
-        <section className="whatsapp-hub-grid whatsapp-hub-grid--bottom">
-          <article className="content-section whatsapp-panel">
+        <section className="whatsapp-manychat-workspace">
+          <article className="content-section whatsapp-panel whatsapp-ai-command">
             <div className="whatsapp-panel__header">
               <div>
-                <h2>Agente construtor de funis</h2>
-                <p>Gera um rascunho estruturado para revisao antes de qualquer automacao.</p>
+                <h2>Construtor inteligente</h2>
+                <p>Descreva o funil. O sistema monta os blocos no canvas para voce editar.</p>
               </div>
+              <button type="button" className="btn-primary" onClick={handleGenerateFunnel} disabled={generating}>
+                <Sparkles size={16} />
+                {generating ? 'Gerando...' : 'Gerar e montar'}
+              </button>
             </div>
-            <div className="whatsapp-form-grid">
-              <label className="whatsapp-field whatsapp-field--full">
-                <span>Assunto do funil</span>
+
+            <div className="whatsapp-ai-grid">
+              <label className="whatsapp-field">
+                <span>Gerar com</span>
+                <select name="provider" value={funnelForm.provider} onChange={handleFunnelChange}>
+                  <option value="chatgpt">ChatGPT</option>
+                  <option value="local">Gerador local</option>
+                </select>
+              </label>
+
+              <label className="whatsapp-field whatsapp-ai-grid__topic">
+                <span>Assunto principal</span>
                 <input name="topic" value={funnelForm.topic} onChange={handleFunnelChange} placeholder="Ex: venda de consultoria, suporte premium, recuperacao de lead" />
               </label>
+
               <label className="whatsapp-field">
-                <span>Produto ou oferta</span>
+                <span>Produto / oferta</span>
                 <input name="product" value={funnelForm.product} onChange={handleFunnelChange} placeholder="Nome do produto" />
               </label>
+
               <label className="whatsapp-field">
                 <span>Publico</span>
                 <input name="audience" value={funnelForm.audience} onChange={handleFunnelChange} placeholder="Quem vai receber" />
               </label>
-              <label className="whatsapp-field">
-                <span>Objetivo</span>
-                <input name="goal" value={funnelForm.goal} onChange={handleFunnelChange} />
+
+              <label className="whatsapp-field whatsapp-ai-grid__goal">
+                <span>Resultado desejado</span>
+                <select name="goal" value={funnelForm.goal} onChange={handleFunnelChange}>
+                  <option value="qualificar e levar para atendimento humano">Qualificar e levar para humano</option>
+                  <option value="vender uma oferta pelo WhatsApp">Vender uma oferta</option>
+                  <option value="recuperar lead parado">Recuperar lead parado</option>
+                  <option value="tirar duvidas e enviar link">Tirar duvidas e enviar link</option>
+                  <option value="agendar diagnostico ou reuniao">Agendar diagnostico/reuniao</option>
+                </select>
               </label>
+
               <label className="whatsapp-field">
                 <span>Etapas</span>
                 <input type="number" min="3" max="10" name="steps" value={funnelForm.steps} onChange={handleFunnelChange} />
               </label>
             </div>
-            <button type="button" className="btn-primary" onClick={handleGenerateFunnel} disabled={generating}>
-              <Sparkles size={16} />
-              {generating ? 'Gerando...' : 'Gerar funil'}
-            </button>
 
             {generatedPlan ? (
               <div className="whatsapp-generated-plan">
                 <div className="whatsapp-generated-plan__header">
-                  <strong>{generatedPlan.topic}</strong>
+                  <div>
+                    <strong>{generatedPlan.topic}</strong>
+                    <span>{generatedPlan.provider === 'chatgpt' ? 'Gerado com ChatGPT' : 'Gerado localmente'}</span>
+                  </div>
                   <button type="button" className="refresh-button" onClick={applyGeneratedPlanToCanvas}>
                     Aplicar no canvas
                   </button>
@@ -601,7 +631,7 @@ function WhatsAppHub() {
             ) : null}
           </article>
 
-          <article className="content-section whatsapp-panel">
+          <article className="content-section whatsapp-panel whatsapp-flow-shell">
             <div className="whatsapp-panel__header">
               <div>
                 <h2>Canvas construtor de fluxo</h2>
