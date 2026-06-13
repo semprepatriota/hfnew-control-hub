@@ -14,6 +14,31 @@ function OAuthCallback() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    if (window.location.search) {
+      window.sessionStorage.setItem(OAUTH_CALLBACK_URL_KEY, window.location.href);
+    }
+
+    const redirectAfterProcessed = (flow) => {
+      const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
+      if (flow === 'dashboard' && authToken) {
+        setMessage('Sessão já validada. Redirecionando...');
+        window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+        window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
+        window.setTimeout(() => {
+          window.location.href = '/painel';
+        }, 600);
+        return true;
+      }
+
+      setMessage('Retorno já processado. Voltando ao painel...');
+      window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+      window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
+      window.setTimeout(() => {
+        window.location.href = flow === 'dashboard' ? '/painel' : '/conexoes';
+      }, 600);
+      return true;
+    };
+
     const storedCallbackUrl = window.sessionStorage.getItem(OAUTH_CALLBACK_URL_KEY) || '';
     let fallbackParams = null;
 
@@ -44,6 +69,7 @@ function OAuthCallback() {
       : '';
 
     if (processedKey && window.sessionStorage.getItem(processedKey)) {
+      redirectAfterProcessed(authFlow);
       return;
     }
 
@@ -75,10 +101,15 @@ function OAuthCallback() {
         callbackPath = `/api/facebook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       }
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
       fetch(apiUrl(callbackPath), {
         method: 'POST'
+        ,signal: controller.signal
       })
         .then(async (res) => {
+          window.clearTimeout(timeoutId);
           const data = await res.json();
           if (!res.ok) {
             const error = new Error(data?.detail || 'Erro no callback');
@@ -126,6 +157,9 @@ function OAuthCallback() {
           }, 2000);
         })
         .catch(err => {
+          if (err?.name === 'AbortError') {
+            err = new Error('Tempo limite ao concluir o callback OAuth');
+          }
           console.error('Erro no callback:', err);
           const detail = err?.data?.detail || err?.message || 'Erro desconhecido no callback OAuth';
           setErrorMessage(detail);
