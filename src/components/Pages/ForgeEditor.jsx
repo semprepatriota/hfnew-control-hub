@@ -36,6 +36,8 @@ function ForgeEditor() {
   const [imageCropY, setImageCropY] = useState(10);
   const [videoFit, setVideoFit] = useState('contain');
   const [backgroundMode, setBackgroundMode] = useState('avatar'); // 'avatar' ou 'local'
+  const [layoutPreset, setLayoutPreset] = useState('classic7030');
+  const [headlineText, setHeadlineText] = useState('Sua Esperança Renasce');
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
@@ -148,6 +150,23 @@ function ForgeEditor() {
       ratio: 50,
     },
   ];
+
+  const applyLayoutPreset = (preset) => {
+    setLayoutPreset(preset);
+
+    if (preset === 'postHeadlineAvatar') {
+      setBackgroundMode('avatar');
+      setTopRatio(56);
+      setBottomRatio(37);
+      setVideoFit('cover');
+      ratioLockRef.current = { top: 56, bottom: 37 };
+      return;
+    }
+
+    setTopRatio(70);
+    setBottomRatio(30);
+    ratioLockRef.current = { top: 70, bottom: 30 };
+  };
 
   const loadLocalVideos = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
     const requestId = ++libraryRequestRef.current;
@@ -408,6 +427,8 @@ function ForgeEditor() {
       setImageCropY(draft.imageCropY ?? 10);
       setVideoFit(draft.videoFit || 'contain');
       setBackgroundMode(draft.backgroundMode === 'local' ? 'local' : 'avatar');
+      setLayoutPreset(draft.layoutPreset || 'classic7030');
+      setHeadlineText(draft.headlineText || 'Sua Esperança Renasce');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -478,6 +499,8 @@ function ForgeEditor() {
       imageCropY,
       videoFit,
       backgroundMode,
+      layoutPreset,
+      headlineText,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
@@ -513,6 +536,8 @@ function ForgeEditor() {
     imageCropX,
     imageCropY,
     imageFit,
+    headlineText,
+    layoutPreset,
     metadataCategory,
     metadataDescription,
     metadataHashtags,
@@ -1131,11 +1156,15 @@ function ForgeEditor() {
         background_video: selectedVideo?.path || selectedVideo?.filename || selectedVideo?.url || '',
         background_audio: selectedAudio?.filename || '',
         image_paths: slideshowMode ? imagePaths : [],
-        top_ratio: topRatio / 100,
-        bottom_ratio: bottomRatio / 100,
-        render_mode: slideshowMode
+        top_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.56 : topRatio / 100,
+        bottom_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.37 : bottomRatio / 100,
+        render_mode: layoutPreset === 'postHeadlineAvatar'
+          ? 'post_headline_avatar'
+          : slideshowMode
           ? 'slideshow'
           : (bottomRatio === 0 && selectedVideo ? 'post_overlay' : (bottomRatio === 0 || !selectedVideo ? 'image_only' : 'stack')),
+        layout_preset: layoutPreset,
+        headline_text: headlineText,
         post_scale: postScale / 100,
         post_y: postY / 100,
         image_fit: imageFit,
@@ -1600,6 +1629,47 @@ function ForgeEditor() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="control-section">
+            <h3>🎛️ Formato do Vídeo</h3>
+            <div className="mode-toggle forge-layout-toggle">
+              <button
+                type="button"
+                onClick={() => applyLayoutPreset('classic7030')}
+                className={`mode-button ${layoutPreset === 'classic7030' ? 'active' : ''}`}
+              >
+                <span className="icon">▥</span>
+                70/30 clássico
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLayoutPreset('postHeadlineAvatar')}
+                className={`mode-button ${layoutPreset === 'postHeadlineAvatar' ? 'active' : ''}`}
+              >
+                <span className="icon">▤</span>
+                Post + Headline + Avatar
+              </button>
+            </div>
+
+            {layoutPreset === 'postHeadlineAvatar' && (
+              <div className="headline-preset-panel">
+                <label>
+                  Headline central
+                  <input
+                    type="text"
+                    value={headlineText}
+                    onChange={(event) => setHeadlineText(event.target.value)}
+                    placeholder="Ex: Sua Esperança Renasce"
+                    maxLength={64}
+                    className="input-field"
+                  />
+                </label>
+                <div className="headline-layout-note">
+                  Usa imagem no topo, faixa de destaque no meio e avatar embaixo. O 70/30 continua separado.
+                </div>
               </div>
             )}
           </div>
@@ -2252,8 +2322,17 @@ function ForgeEditor() {
                   Proporção vertical
                 </label>
                 <div className="ratio-readout">
-                  <strong>{topRatio}% imagem</strong>
-                  <span>{bottomRatio}% vídeo</span>
+                  {layoutPreset === 'postHeadlineAvatar' ? (
+                    <>
+                      <strong>56% imagem</strong>
+                      <span>7% headline / 37% avatar</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{topRatio}% imagem</strong>
+                      <span>{bottomRatio}% vídeo</span>
+                    </>
+                  )}
                 </div>
                 <div className="range-control">
                   <input
@@ -2264,6 +2343,7 @@ function ForgeEditor() {
                     value={topRatio}
                     onInput={(e) => handleRatioChange(e.target.value)}
                     onChange={(e) => handleRatioChange(e.target.value)}
+                    disabled={layoutPreset === 'postHeadlineAvatar'}
                     className="slider ratio-slider"
                     aria-label="Ajustar proporção vertical"
                   />
@@ -2410,7 +2490,36 @@ function ForgeEditor() {
 
             <div className="preview-container">
               <div className="preview-frame">
-                {hasPreviewImage && bottomRatio === 0 && selectedVideo ? (
+                {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideo ? (
+                  <div className="post-headline-avatar-preview">
+                    <div className="pha-post">
+                      <img
+                        src={activePreviewImage}
+                        alt="Imagem do post"
+                        style={{
+                          objectFit: imageFit,
+                          objectPosition: `50% ${verticalCenterPercent}%`,
+                        }}
+                      />
+                      <span className="label">Imagem (56%)</span>
+                    </div>
+                    <div className="pha-headline">
+                      <strong>{headlineText || 'Headline'}</strong>
+                    </div>
+                    <div className="pha-avatar">
+                      {getSelectedVideoSource(selectedVideo) ? (
+                        <video
+                          src={getSelectedVideoSource(selectedVideo)}
+                          className="video-preview"
+                          style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                        />
+                      ) : selectedVideo?.thumbnail ? (
+                        <img src={selectedVideo.thumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
+                      ) : null}
+                      <span className="label">Avatar (37%)</span>
+                    </div>
+                  </div>
+                ) : hasPreviewImage && bottomRatio === 0 && selectedVideo ? (
                     <div className="post-overlay-preview">
                     {getSelectedVideoSource(selectedVideo) ? (
                       <video
