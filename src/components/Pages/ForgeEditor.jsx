@@ -42,6 +42,9 @@ function ForgeEditor() {
   const [headlineFontScale, setHeadlineFontScale] = useState(100);
   const [headlinePalette, setHeadlinePalette] = useState('purpleGold');
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
+  const [avatarSpeechText, setAvatarSpeechText] = useState('');
+  const [generatingAvatarSpeech, setGeneratingAvatarSpeech] = useState(false);
+  const [avatarGeneratorStatus, setAvatarGeneratorStatus] = useState(null);
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
@@ -223,6 +226,17 @@ function ForgeEditor() {
     }
   }, [libraryChannelId]);
 
+  const loadAvatarGeneratorStatus = useCallback(async () => {
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-generator/status'), { cache: 'no-store' });
+      if (response.ok) {
+        setAvatarGeneratorStatus(await response.json());
+      }
+    } catch (err) {
+      console.error('Erro ao carregar status do gerador de avatar:', err);
+    }
+  }, []);
+
   const loadLocalAudios = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
     const requestId = ++audioLibraryRequestRef.current;
     try {
@@ -252,12 +266,13 @@ function ForgeEditor() {
     loadLocalVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
     loadAvatarVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
     loadLocalAudios(localStorage.getItem('alliance_forge_library_channel_id') || '');
+    loadAvatarGeneratorStatus();
     const capturedImage = localStorage.getItem('forge_selected_image');
     if (capturedImage) {
       setScreenshotPath(capturedImage);
       localStorage.removeItem('forge_selected_image');
     }
-  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
+  }, [loadAvatarGeneratorStatus, loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     let active = true;
@@ -455,6 +470,7 @@ function ForgeEditor() {
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
       setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
+      setAvatarSpeechText(draft.avatarSpeechText || '');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -498,6 +514,7 @@ function ForgeEditor() {
       selectedImageUploadPaths.length ||
       selectedVideo ||
       selectedAudio ||
+      avatarSpeechText ||
       effectsEnabled !== true ||
       effectsMode !== 'assisted' ||
       effectsPreset !== 'documentary' ||
@@ -530,6 +547,7 @@ function ForgeEditor() {
       headlineRatio,
       headlineFontScale,
       headlinePalette,
+      avatarSpeechText,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
@@ -565,6 +583,7 @@ function ForgeEditor() {
     imageCropX,
     imageCropY,
     imageFit,
+    avatarSpeechText,
     headlineText,
     headlineRatio,
     headlineFontScale,
@@ -798,8 +817,8 @@ function ForgeEditor() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('video/')) {
-      setError('Por favor, selecione um arquivo de vídeo válido');
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      setError('Por favor, selecione uma imagem ou vídeo de avatar válido');
       return;
     }
 
@@ -829,6 +848,7 @@ function ForgeEditor() {
       setSelectedVideo({
         filename: data.filename,
         path: data.filepath,
+        media_type: data.media_type || (file.type.startsWith('image/') ? 'image' : 'video'),
         url: apiUrl(data.video_url || `/api/forge/play-video/${data.filename}`),
         thumbnail: apiUrl(data.preview_url || ''),
         display_name: data.display_name || '',
@@ -1282,6 +1302,65 @@ function ForgeEditor() {
       setError(err.message);
     } finally {
       setGeneratingHeadline(false);
+    }
+  };
+
+  const handleGenerateAvatarSpeech = async () => {
+    if (!hasPreviewImage) {
+      setError('Selecione uma imagem antes de gerar a fala do avatar');
+      return;
+    }
+
+    const imagePath = getUploadedImageName();
+    if (!imagePath) {
+      setError('Imagem ainda não está pronta para gerar fala do avatar');
+      return;
+    }
+
+    setGeneratingAvatarSpeech(true);
+    setError('');
+    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-generator/speech'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          screenshot_path: imagePath,
+          headline_text: headlineText,
+          current_script: avatarSpeechText,
+          channel_id: channelId,
+          generate_voice: true
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao gerar fala do avatar');
+      }
+
+      setAvatarSpeechText(data.script || avatarSpeechText);
+      if (data.audio_filename) {
+        const nextAudio = {
+          filename: data.audio_filename,
+          channel_id: channelId || null,
+          url: apiUrl(data.audio_url || `/api/forge/play-audio/${data.audio_filename}`),
+        };
+        setSelectedAudio(nextAudio);
+        loadLocalAudios(channelId);
+      }
+      if (data.config) {
+        setAvatarGeneratorStatus(data.config);
+      }
+      if (data.error) {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingAvatarSpeech(false);
     }
   };
 
@@ -1810,6 +1889,38 @@ function ForgeEditor() {
                     </button>
                   ))}
                 </div>
+                <div className="avatar-speech-panel">
+                  <div className="avatar-speech-header">
+                    <strong>Fala do avatar</strong>
+                    <span className={avatarGeneratorStatus?.configured ? 'status-ok' : 'status-warn'}>
+                      {avatarGeneratorStatus?.configured ? 'Google/Vertex conectado' : 'Google/Vertex não configurado'}
+                    </span>
+                  </div>
+                  <textarea
+                    value={avatarSpeechText}
+                    onChange={(event) => setAvatarSpeechText(event.target.value)}
+                    placeholder="A fala do avatar aparece aqui. Você pode gerar com Vertex/Google ou escrever manualmente."
+                    rows={4}
+                  />
+                  <button
+                    type="button"
+                    className="headline-generate-button"
+                    onClick={handleGenerateAvatarSpeech}
+                    disabled={generatingAvatarSpeech || !hasPreviewImage}
+                  >
+                    {generatingAvatarSpeech ? (
+                      <>
+                        <Loader size={14} className="spinner" />
+                        Gerando fala e voz...
+                      </>
+                    ) : (
+                      'Gerar fala + voz do avatar'
+                    )}
+                  </button>
+                  <small>
+                    O áudio gerado fica selecionado na Biblioteca de Áudios e será usado na renderização.
+                  </small>
+                </div>
                 <div className="headline-layout-note">
                   Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
                 </div>
@@ -1846,11 +1957,11 @@ function ForgeEditor() {
                 <h3>🧑 Biblioteca Avatar</h3>
 
                 <div className="video-upload-section">
-                  <div className="video-limit-note">{buildVideoDurationLimitMessage('O Forge')}</div>
+                  <div className="video-limit-note">Envie imagem de perfil do avatar. Vídeos antigos continuam compatíveis.</div>
                   <label className="upload-video-label">
                     <input
                       type="file"
-                      accept="video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv"
+                      accept="image/*,.jpg,.jpeg,.png,.webp,video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv"
                       onChange={handleAvatarVideoUpload}
                       disabled={uploadingAvatarVideo}
                       className="file-input"
@@ -1865,7 +1976,7 @@ function ForgeEditor() {
                         <>
                           <Upload size={32} />
                           <p>Enviar avatar</p>
-                          <span className="upload-hint">Vídeos dos personagens para reuso</span>
+                          <span className="upload-hint">Imagem de perfil do personagem</span>
                         </>
                       )}
                     </div>
@@ -1881,18 +1992,26 @@ function ForgeEditor() {
                       title={video.filename}
                     >
                       <div className="local-video-preview-wrap">
-                        <video
-                          src={getSelectedVideoSource(video)}
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          className="local-video-preview"
-                          onMouseEnter={playLocalPreview}
-                          onMouseLeave={resetLocalPreview}
-                        />
+                        {video.media_type === 'image' ? (
+                          <img
+                            src={getSelectedVideoSource(video)}
+                            alt={video.display_name || 'Avatar'}
+                            className="local-video-preview"
+                          />
+                        ) : (
+                          <video
+                            src={getSelectedVideoSource(video)}
+                            muted
+                            loop
+                            playsInline
+                            preload="metadata"
+                            className="local-video-preview"
+                            onMouseEnter={playLocalPreview}
+                            onMouseLeave={resetLocalPreview}
+                          />
+                        )}
                         <div className="local-video-overlay">
-                          <span className="local-video-duration">{video.duration.toFixed(1)}s</span>
+                          <span className="local-video-duration">{video.media_type === 'image' ? 'IMG' : `${video.duration.toFixed(1)}s`}</span>
                           <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
                             {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
                           </span>
@@ -1953,14 +2072,22 @@ function ForgeEditor() {
 
                 {selectedVideo && backgroundMode === 'avatar' && (
                   <div className="video-selected-preview-small">
-                    <video
-                      src={getSelectedVideoSource(selectedVideo)}
-                      controls
-                      className="video-thumb"
-                    />
+                    {selectedVideo.media_type === 'image' ? (
+                      <img
+                        src={getSelectedVideoSource(selectedVideo)}
+                        alt="Avatar selecionado"
+                        className="video-thumb"
+                      />
+                    ) : (
+                      <video
+                        src={getSelectedVideoSource(selectedVideo)}
+                        controls
+                        className="video-thumb"
+                      />
+                    )}
                     <span className="selected-video-name">✓ Avatar: {selectedVideo.display_name || shortVideoName(selectedVideo.filename)}</span>
                     <span className={`selected-video-ratio ${selectedVideo.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
-                      {selectedVideo.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
+                      {selectedVideo.media_type === 'image' ? 'IMAGEM' : (selectedVideo.aspect_ratio === '9:16' ? '9:16' : 'OUTRO')}
                     </span>
 
                     <div className="local-format-panel">
@@ -2662,7 +2789,13 @@ function ForgeEditor() {
                       </strong>
                     </div>
                     <div className="pha-avatar">
-                      {getSelectedVideoSource(selectedVideo) ? (
+                      {selectedVideo.media_type === 'image' && getSelectedVideoSource(selectedVideo) ? (
+                        <img
+                          src={getSelectedVideoSource(selectedVideo)}
+                          alt="Avatar"
+                          style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                        />
+                      ) : getSelectedVideoSource(selectedVideo) ? (
                         <video
                           src={getSelectedVideoSource(selectedVideo)}
                           className="video-preview"
