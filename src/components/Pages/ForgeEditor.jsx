@@ -44,6 +44,8 @@ function ForgeEditor() {
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [avatarSpeechText, setAvatarSpeechText] = useState('');
   const [avatarSpeechDurationModel, setAvatarSpeechDurationModel] = useState('30s');
+  const [avatarSpeechStyle, setAvatarSpeechStyle] = useState('humor_bizarro');
+  const [avatarVoiceProfile, setAvatarVoiceProfile] = useState('');
   const [avatarSpeechTimingNote, setAvatarSpeechTimingNote] = useState('');
   const [generatingAvatarSpeech, setGeneratingAvatarSpeech] = useState(false);
   const [avatarGeneratorStatus, setAvatarGeneratorStatus] = useState(null);
@@ -185,6 +187,9 @@ function ForgeEditor() {
   ];
 
   const activeHeadlinePalette = headlinePalettes.find((palette) => palette.id === headlinePalette) || headlinePalettes[0];
+  const availableAvatarSpeechStyles = avatarGeneratorStatus?.speech_styles || [];
+  const availableAvatarVoiceProfiles = avatarGeneratorStatus?.voice_profiles || [];
+  const activeAvatarVoiceProfile = availableAvatarVoiceProfiles.find((item) => item.id === avatarVoiceProfile) || null;
 
   const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
     const safeTop = Math.min(72, Math.max(38, Number(nextTop) || 54));
@@ -249,12 +254,19 @@ function ForgeEditor() {
     try {
       const response = await fetch(apiUrl('/api/forge/avatar-generator/status'), { cache: 'no-store' });
       if (response.ok) {
-        setAvatarGeneratorStatus(await response.json());
+        const data = await response.json();
+        setAvatarGeneratorStatus(data);
+        if ((!avatarSpeechStyle || !data.speech_styles?.some((item) => item.id === avatarSpeechStyle)) && data.speech_styles?.length) {
+          setAvatarSpeechStyle(data.speech_styles[0].id);
+        }
+        if ((!avatarVoiceProfile || !data.voice_profiles?.some((item) => item.id === avatarVoiceProfile)) && data.voice_profiles?.length) {
+          setAvatarVoiceProfile(data.voice_profiles[0].id);
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar status do gerador de avatar:', err);
     }
-  }, []);
+  }, [avatarSpeechStyle, avatarVoiceProfile]);
 
   const loadAvatarEngineRegistry = useCallback(async () => {
     setLoadingAvatarEngineRegistry(true);
@@ -507,6 +519,8 @@ function ForgeEditor() {
       setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
       setAvatarSpeechText(draft.avatarSpeechText || '');
       setAvatarSpeechDurationModel(['6s', '10s', '15s', '30s', '60s'].includes(draft.avatarSpeechDurationModel) ? draft.avatarSpeechDurationModel : '30s');
+      setAvatarSpeechStyle(draft.avatarSpeechStyle || 'humor_bizarro');
+      setAvatarVoiceProfile(draft.avatarVoiceProfile || '');
       setAvatarSpeechTimingNote(draft.avatarSpeechTimingNote || '');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
@@ -553,6 +567,8 @@ function ForgeEditor() {
       selectedAudio ||
       avatarSpeechText ||
       avatarSpeechDurationModel !== '30s' ||
+      avatarSpeechStyle !== 'humor_bizarro' ||
+      avatarVoiceProfile ||
       avatarSpeechTimingNote ||
       effectsEnabled !== true ||
       effectsMode !== 'assisted' ||
@@ -588,6 +604,8 @@ function ForgeEditor() {
       headlinePalette,
       avatarSpeechText,
       avatarSpeechDurationModel,
+      avatarSpeechStyle,
+      avatarVoiceProfile,
       avatarSpeechTimingNote,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
@@ -626,6 +644,8 @@ function ForgeEditor() {
     imageFit,
     avatarSpeechText,
     avatarSpeechDurationModel,
+    avatarSpeechStyle,
+    avatarVoiceProfile,
     avatarSpeechTimingNote,
     headlineText,
     headlineRatio,
@@ -1375,6 +1395,8 @@ function ForgeEditor() {
           headline_text: headlineText,
           current_script: avatarSpeechText,
           duration_model: avatarSpeechDurationModel,
+          speech_style: avatarSpeechStyle,
+          voice_profile: avatarVoiceProfile,
           channel_id: channelId,
           generate_voice: true
         }),
@@ -1387,6 +1409,12 @@ function ForgeEditor() {
 
       setAvatarSpeechText(data.script || avatarSpeechText);
       setAvatarSpeechTimingNote(data.timing_note || '');
+      if (data.speech_style) {
+        setAvatarSpeechStyle(data.speech_style);
+      }
+      if (data.voice_profile) {
+        setAvatarVoiceProfile(data.voice_profile);
+      }
       if (data.audio_filename) {
         const nextAudio = {
           filename: data.audio_filename,
@@ -2238,6 +2266,34 @@ function ForgeEditor() {
                       60 segundos
                     </button>
                   </div>
+                  <div className="avatar-speech-select-grid">
+                    <label>
+                      Estilo da fala
+                      <select
+                        value={avatarSpeechStyle}
+                        onChange={(event) => setAvatarSpeechStyle(event.target.value)}
+                      >
+                        {availableAvatarSpeechStyles.length > 0 ? availableAvatarSpeechStyles.map((style) => (
+                          <option key={style.id} value={style.id}>{style.label}</option>
+                        )) : (
+                          <option value="humor_bizarro">Humor bizarro</option>
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      Voz
+                      <select
+                        value={avatarVoiceProfile}
+                        onChange={(event) => setAvatarVoiceProfile(event.target.value)}
+                      >
+                        {availableAvatarVoiceProfiles.length > 0 ? availableAvatarVoiceProfiles.map((voice) => (
+                          <option key={voice.id} value={voice.id}>{voice.label}</option>
+                        )) : (
+                          <option value="">Voz atual do servidor</option>
+                        )}
+                      </select>
+                    </label>
+                  </div>
                   <textarea
                     value={avatarSpeechText}
                     onChange={(event) => setAvatarSpeechText(event.target.value)}
@@ -2246,6 +2302,11 @@ function ForgeEditor() {
                   />
                   {avatarSpeechTimingNote && (
                     <div className="avatar-speech-timing-note">{avatarSpeechTimingNote}</div>
+                  )}
+                  {activeAvatarVoiceProfile && (
+                    <small>
+                      Voz ativa: {activeAvatarVoiceProfile.label} ({activeAvatarVoiceProfile.provider}).
+                    </small>
                   )}
                   <button
                     type="button"

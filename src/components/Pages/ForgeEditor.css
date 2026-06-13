@@ -450,6 +450,31 @@
   gap: 8px;
 }
 
+.avatar-speech-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.avatar-speech-select-grid label {
+  display: grid;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.avatar-speech-select-grid select {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.44);
+  color: #f5f5f5;
+  padding: 8px 10px;
+  font: inherit;
+}
+
 .avatar-speech-duration-button {
   min-height: 36px;
   padding: 8px 10px;
@@ -486,6 +511,10 @@
 @media (max-width: 980px) {
   .avatar-speech-duration-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .avatar-speech-select-grid {
+    grid-template-columns: 1fr;
   }
 }
 
