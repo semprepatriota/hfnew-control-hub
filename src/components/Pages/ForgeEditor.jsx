@@ -38,6 +38,7 @@ function ForgeEditor() {
   const [backgroundMode, setBackgroundMode] = useState('avatar'); // 'avatar' ou 'local'
   const [layoutPreset, setLayoutPreset] = useState('classic7030');
   const [headlineText, setHeadlineText] = useState('Sua Esperança Renasce');
+  const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
@@ -156,10 +157,10 @@ function ForgeEditor() {
 
     if (preset === 'postHeadlineAvatar') {
       setBackgroundMode('avatar');
-      setTopRatio(56);
-      setBottomRatio(37);
+      setTopRatio(54);
+      setBottomRatio(36);
       setVideoFit('cover');
-      ratioLockRef.current = { top: 56, bottom: 37 };
+      ratioLockRef.current = { top: 54, bottom: 36 };
       return;
     }
 
@@ -1156,8 +1157,8 @@ function ForgeEditor() {
         background_video: selectedVideo?.path || selectedVideo?.filename || selectedVideo?.url || '',
         background_audio: selectedAudio?.filename || '',
         image_paths: slideshowMode ? imagePaths : [],
-        top_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.56 : topRatio / 100,
-        bottom_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.37 : bottomRatio / 100,
+        top_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.54 : topRatio / 100,
+        bottom_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.36 : bottomRatio / 100,
         render_mode: layoutPreset === 'postHeadlineAvatar'
           ? 'post_headline_avatar'
           : slideshowMode
@@ -1206,6 +1207,47 @@ function ForgeEditor() {
       setTopRatio(ratioSnapshot.top);
       setBottomRatio(ratioSnapshot.bottom);
       setRendering(false);
+    }
+  };
+
+  const handleGenerateHeadline = async () => {
+    if (!hasPreviewImage) {
+      setError('Selecione uma imagem antes de gerar a headline');
+      return;
+    }
+
+    const imagePath = getUploadedImageName();
+    if (!imagePath) {
+      setError('Imagem ainda não está pronta para gerar headline');
+      return;
+    }
+
+    setGeneratingHeadline(true);
+    setError('');
+
+    try {
+      const response = await fetch(apiUrl('/api/forge/generate-headline'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          screenshot_path: imagePath,
+          current_headline: headlineText,
+          style: 'hook_cta'
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao gerar headline com ChatGPT');
+      }
+
+      setHeadlineText(data.headline || headlineText);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingHeadline(false);
     }
   };
 
@@ -1663,12 +1705,30 @@ function ForgeEditor() {
                     value={headlineText}
                     onChange={(event) => setHeadlineText(event.target.value)}
                     placeholder="Ex: Sua Esperança Renasce"
-                    maxLength={64}
+                    maxLength={58}
                     className="input-field"
                   />
                 </label>
+                <button
+                  type="button"
+                  className="headline-generate-button"
+                  onClick={handleGenerateHeadline}
+                  disabled={generatingHeadline || !hasPreviewImage}
+                >
+                  {generatingHeadline ? (
+                    <>
+                      <Loader size={15} className="spinner" />
+                      Gerando com ChatGPT
+                    </>
+                  ) : (
+                    <>
+                      <Search size={15} />
+                      Gerar hook + CTA com ChatGPT
+                    </>
+                  )}
+                </button>
                 <div className="headline-layout-note">
-                  Usa imagem no topo, faixa de destaque no meio e avatar embaixo. O 70/30 continua separado.
+                  Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
                 </div>
               </div>
             )}
@@ -2324,8 +2384,8 @@ function ForgeEditor() {
                 <div className="ratio-readout">
                   {layoutPreset === 'postHeadlineAvatar' ? (
                     <>
-                      <strong>56% imagem</strong>
-                      <span>7% headline / 37% avatar</span>
+                      <strong>54% imagem</strong>
+                      <span>10% headline / 36% avatar</span>
                     </>
                   ) : (
                     <>
@@ -2501,7 +2561,7 @@ function ForgeEditor() {
                           objectPosition: `50% ${verticalCenterPercent}%`,
                         }}
                       />
-                      <span className="label">Imagem (56%)</span>
+                      <span className="label">Imagem (54%)</span>
                     </div>
                     <div className="pha-headline">
                       <strong>{headlineText || 'Headline'}</strong>
@@ -2516,7 +2576,7 @@ function ForgeEditor() {
                       ) : selectedVideo?.thumbnail ? (
                         <img src={selectedVideo.thumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
                       ) : null}
-                      <span className="label">Avatar (37%)</span>
+                      <span className="label">Avatar (36%)</span>
                     </div>
                   </div>
                 ) : hasPreviewImage && bottomRatio === 0 && selectedVideo ? (
