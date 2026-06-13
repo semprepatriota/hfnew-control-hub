@@ -249,6 +249,97 @@
   gap: 16px;
 }
 
+.whatsapp-number-grid,
+.whatsapp-number-settings__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.whatsapp-number-card,
+.whatsapp-number-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 65, 0.16);
+  background: rgba(11, 16, 26, 0.86);
+}
+
+.whatsapp-number-card.active,
+.whatsapp-number-editor.active {
+  border-color: rgba(0, 255, 65, 0.42);
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.12);
+}
+
+.whatsapp-number-card__top,
+.whatsapp-number-editor__header,
+.whatsapp-number-editor__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.whatsapp-number-card__top > div,
+.whatsapp-number-editor__header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.whatsapp-number-card__top strong,
+.whatsapp-number-editor__header strong,
+.whatsapp-overview-active strong {
+  color: #f5f8ff;
+}
+
+.whatsapp-number-card__top span,
+.whatsapp-number-editor__header span,
+.whatsapp-overview-active span {
+  color: #9cadc2;
+  font-size: 12px;
+}
+
+.whatsapp-number-card__top em {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 255, 65, 0.08);
+  color: #7dff9d;
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.whatsapp-number-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #cad4e4;
+  font-size: 12px;
+}
+
+.whatsapp-number-card__status,
+.whatsapp-overview-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 188, 255, 0.12);
+  background: rgba(7, 10, 16, 0.82);
+  color: #b9c8da;
+  font-size: 12px;
+}
+
+.whatsapp-number-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .whatsapp-agent-card,
 .whatsapp-scope-card,
 .whatsapp-canvas-node {
@@ -727,6 +818,8 @@
   .whatsapp-flow-builder,
   .whatsapp-ai-grid,
   .whatsapp-agent-grid,
+  .whatsapp-number-grid,
+  .whatsapp-number-settings__list,
   .whatsapp-form-grid,
   .whatsapp-canvas-lanes,
   .whatsapp-scope-grid {
@@ -764,7 +857,10 @@
   }
 
   .whatsapp-flow-toolbar,
-  .whatsapp-generated-plan__header {
+  .whatsapp-generated-plan__header,
+  .whatsapp-number-card__top,
+  .whatsapp-number-editor__header,
+  .whatsapp-number-editor__actions {
     flex-direction: column;
     align-items: stretch;
   }

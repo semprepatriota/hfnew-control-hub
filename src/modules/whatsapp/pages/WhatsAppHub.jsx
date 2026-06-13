@@ -36,11 +36,11 @@ import './WhatsAppHub.css';
 
 const defaultForm = {
   workspace_name: '',
-  business_account_id: '',
-  phone_number_id: '',
   verify_token: '',
   webhook_path: '',
   auto_reply_enabled: false,
+  active_number_id: '',
+  numbers: [],
 };
 
 const defaultFunnelForm = {
@@ -73,6 +73,52 @@ function StatCard({ icon: Icon, label, value, tone = 'green' }) {
       </div>
     </article>
   );
+}
+
+function createEmptyNumber() {
+  return {
+    id: `wa_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+    label: '',
+    display_number: '',
+    business_account_id: '',
+    phone_number_id: '',
+  };
+}
+
+function normalizeSettingsData(settings) {
+  const data = settings || {};
+  const numbers = Array.isArray(data.numbers) && data.numbers.length
+    ? data.numbers.map((item) => ({
+      id: item.id || `wa_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+      label: item.label || '',
+      display_number: item.display_number || '',
+      business_account_id: item.business_account_id || '',
+      phone_number_id: item.phone_number_id || '',
+      connected: Boolean(item.connected),
+    }))
+    : ((data.business_account_id || data.phone_number_id)
+      ? [{
+        id: 'wa_legacy_main',
+        label: 'Numero principal',
+        display_number: '',
+        business_account_id: data.business_account_id || '',
+        phone_number_id: data.phone_number_id || '',
+        connected: Boolean(data.business_account_id && data.phone_number_id),
+      }]
+      : []);
+
+  const activeNumberId = data.active_number_id && numbers.some((item) => item.id === data.active_number_id)
+    ? data.active_number_id
+    : (numbers[0]?.id || '');
+
+  return {
+    workspace_name: data.workspace_name || '',
+    verify_token: data.verify_token || '',
+    webhook_path: data.webhook_path || '',
+    auto_reply_enabled: Boolean(data.auto_reply_enabled),
+    active_number_id: activeNumberId,
+    numbers,
+  };
 }
 
 function WhatsAppHub() {
@@ -121,14 +167,7 @@ function WhatsAppHub() {
       setStatusData(data.status);
       setHealthData(data.health);
       setCanvasData(data.canvas);
-      setFormData({
-        workspace_name: data.settings.workspace_name || '',
-        business_account_id: data.settings.business_account_id || '',
-        phone_number_id: data.settings.phone_number_id || '',
-        verify_token: data.settings.verify_token || '',
-        webhook_path: data.settings.webhook_path || '',
-        auto_reply_enabled: Boolean(data.settings.auto_reply_enabled),
-      });
+      setFormData(normalizeSettingsData(data.settings));
       await loadOperationalData();
     } catch (err) {
       setError(readError(err));
@@ -178,6 +217,8 @@ function WhatsAppHub() {
 
   const canvasNodes = canvasData?.nodes || [];
   const canvasEdges = canvasData?.edges || [];
+  const configuredNumbers = formData.numbers || [];
+  const activeNumber = configuredNumbers.find((item) => item.id === formData.active_number_id) || configuredNumbers[0] || null;
   const selectedNode = useMemo(
     () => canvasNodes.find((node) => node.id === selectedNodeId) || canvasNodes[0] || null,
     [canvasNodes, selectedNodeId],
@@ -272,6 +313,37 @@ function WhatsAppHub() {
     }));
   };
 
+  const updateNumber = (numberId, patch) => {
+    setFormData((current) => ({
+      ...current,
+      numbers: (current.numbers || []).map((item) => (
+        item.id === numberId ? { ...item, ...patch } : item
+      )),
+    }));
+  };
+
+  const addNumber = () => {
+    const nextNumber = createEmptyNumber();
+    setFormData((current) => ({
+      ...current,
+      active_number_id: current.active_number_id || nextNumber.id,
+      numbers: [...(current.numbers || []), nextNumber],
+    }));
+    setNotice('Novo numero adicionado ao workspace. Preencha os dados e salve.');
+    setError('');
+  };
+
+  const removeNumber = (numberId) => {
+    setFormData((current) => {
+      const nextNumbers = (current.numbers || []).filter((item) => item.id !== numberId);
+      return {
+        ...current,
+        active_number_id: current.active_number_id === numberId ? (nextNumbers[0]?.id || '') : current.active_number_id,
+        numbers: nextNumbers,
+      };
+    });
+  };
+
   const handleCanvasPointerMove = (event) => {
     if (!draggingNodeId || !canvasBoardRef.current) return;
     const bounds = canvasBoardRef.current.getBoundingClientRect();
@@ -326,14 +398,7 @@ function WhatsAppHub() {
     setNotice('');
     try {
       const response = await saveWhatsAppSettings(formData);
-      setFormData({
-        workspace_name: response.settings.workspace_name || '',
-        business_account_id: response.settings.business_account_id || '',
-        phone_number_id: response.settings.phone_number_id || '',
-        verify_token: response.settings.verify_token || '',
-        webhook_path: response.settings.webhook_path || '',
-        auto_reply_enabled: Boolean(response.settings.auto_reply_enabled),
-      });
+      setFormData(normalizeSettingsData(response.settings));
       setNotice('Configuracao salva.');
       await loadModule();
     } catch (err) {
@@ -444,6 +509,59 @@ function WhatsAppHub() {
           </section>
 
           <section className="whatsapp-hub-grid">
+            <article className="content-section whatsapp-panel">
+              <div className="whatsapp-panel__header">
+                <div>
+                  <h2>Numeros conectados</h2>
+                  <p>Workspace com numero ativo e espaco para conectar outros numeros depois.</p>
+                </div>
+                <button
+                  type="button"
+                  className="refresh-button"
+                  onClick={() => {
+                    setActiveTab('settings');
+                    addNumber();
+                  }}
+                >
+                  <Plus size={16} />
+                  Adicionar numero
+                </button>
+              </div>
+              <div className="whatsapp-number-grid">
+                {configuredNumbers.length ? configuredNumbers.map((item) => {
+                  const isActive = item.id === formData.active_number_id;
+                  const isConnected = Boolean(item.business_account_id && item.phone_number_id);
+                  return (
+                    <div key={item.id} className={`whatsapp-number-card ${isActive ? 'active' : ''}`}>
+                      <div className="whatsapp-number-card__top">
+                        <div>
+                          <strong>{item.label || 'Numero sem nome'}</strong>
+                          <span>{item.display_number || 'Sem numero exibido'}</span>
+                        </div>
+                        {isActive ? <em>Ativo</em> : null}
+                      </div>
+                      <div className="whatsapp-number-card__meta">
+                        <span>ID do numero: {item.phone_number_id || 'pendente'}</span>
+                        <span>Business ID: {item.business_account_id || 'pendente'}</span>
+                      </div>
+                      <div className="whatsapp-number-card__status">
+                        <CheckCircle2 size={14} />
+                        <span>{isConnected ? 'Pronto para conexao' : 'Faltam dados'}</span>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="whatsapp-empty-panel">Nenhum numero configurado ainda.</div>
+                )}
+              </div>
+              {activeNumber ? (
+                <div className="whatsapp-overview-active">
+                  <strong>Numero ativo</strong>
+                  <span>{activeNumber.label || 'Numero principal'} · {activeNumber.display_number || activeNumber.phone_number_id || 'sem identificacao'}</span>
+                </div>
+              ) : null}
+            </article>
+
             <article className="content-section whatsapp-panel">
               <div className="whatsapp-panel__header">
                 <div>
@@ -853,14 +971,6 @@ function WhatsAppHub() {
               <input type="text" name="workspace_name" value={formData.workspace_name} onChange={handleChange} placeholder="HF WhatsApp Hub" />
             </label>
             <label className="whatsapp-field">
-              <span>Business Account ID</span>
-              <input type="text" name="business_account_id" value={formData.business_account_id} onChange={handleChange} placeholder="123456789012345" />
-            </label>
-            <label className="whatsapp-field">
-              <span>Phone Number ID</span>
-              <input type="text" name="phone_number_id" value={formData.phone_number_id} onChange={handleChange} placeholder="109876543210987" />
-            </label>
-            <label className="whatsapp-field">
               <span>Verify token do webhook</span>
               <input type="text" name="verify_token" value={formData.verify_token} onChange={handleChange} placeholder="token-de-validacao" />
             </label>
@@ -868,6 +978,62 @@ function WhatsAppHub() {
               <span>Caminho do webhook</span>
               <input type="text" name="webhook_path" value={formData.webhook_path} onChange={handleChange} placeholder="/api/whatsapp/webhook" />
             </label>
+          </div>
+          <div className="whatsapp-number-settings">
+            <div className="whatsapp-panel__header">
+              <div>
+                <h2>Numeros do workspace</h2>
+                <p>Cada numero fica separado. Voce escolhe qual fica ativo no modulo.</p>
+              </div>
+              <button type="button" className="refresh-button" onClick={addNumber}>
+                <Plus size={16} />
+                Adicionar numero
+              </button>
+            </div>
+            <div className="whatsapp-number-settings__list">
+              {configuredNumbers.length ? configuredNumbers.map((item, index) => {
+                const isActive = item.id === formData.active_number_id;
+                return (
+                  <div key={item.id} className={`whatsapp-number-editor ${isActive ? 'active' : ''}`}>
+                    <div className="whatsapp-number-editor__header">
+                      <div>
+                        <strong>{item.label || `Numero ${index + 1}`}</strong>
+                        <span>{isActive ? 'Numero ativo no workspace' : 'Numero secundario'}</span>
+                      </div>
+                      <div className="whatsapp-number-editor__actions">
+                        <button type="button" className="refresh-button" onClick={() => setFormData((current) => ({ ...current, active_number_id: item.id }))}>
+                          Ativar
+                        </button>
+                        <button type="button" className="disconnect-button" onClick={() => removeNumber(item.id)}>
+                          <Trash2 size={16} />
+                          Remover
+                        </button>
+                      </div>
+                    </div>
+                    <div className="whatsapp-form-grid">
+                      <label className="whatsapp-field">
+                        <span>Nome interno</span>
+                        <input type="text" value={item.label} onChange={(event) => updateNumber(item.id, { label: event.target.value })} placeholder="Ex: Suporte principal" />
+                      </label>
+                      <label className="whatsapp-field">
+                        <span>Numero exibido</span>
+                        <input type="text" value={item.display_number} onChange={(event) => updateNumber(item.id, { display_number: event.target.value })} placeholder="+55 11 99999-9999" />
+                      </label>
+                      <label className="whatsapp-field">
+                        <span>Business Account ID</span>
+                        <input type="text" value={item.business_account_id} onChange={(event) => updateNumber(item.id, { business_account_id: event.target.value })} placeholder="123456789012345" />
+                      </label>
+                      <label className="whatsapp-field">
+                        <span>Phone Number ID</span>
+                        <input type="text" value={item.phone_number_id} onChange={(event) => updateNumber(item.id, { phone_number_id: event.target.value })} placeholder="109876543210987" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="whatsapp-empty-panel">Adicione pelo menos um numero para usar o modulo.</div>
+              )}
+            </div>
           </div>
           <label className="whatsapp-toggle">
             <input type="checkbox" name="auto_reply_enabled" checked={formData.auto_reply_enabled} onChange={handleChange} />
@@ -897,6 +1063,7 @@ function WhatsAppHub() {
               <div className="whatsapp-health-row"><span>Business Account ID</span><strong>{healthData?.meta?.business_account_id_present ? 'presente' : 'ausente'}</strong></div>
               <div className="whatsapp-health-row"><span>Phone Number ID</span><strong>{healthData?.meta?.phone_number_id_present ? 'presente' : 'ausente'}</strong></div>
               <div className="whatsapp-health-row"><span>LM Studio</span><strong>{healthData?.lm_studio?.status || 'offline'}</strong></div>
+              <div className="whatsapp-health-row"><span>Numeros no workspace</span><strong>{String(healthData?.numbers?.count || 0)}</strong></div>
             </div>
           </article>
           <article className="content-section whatsapp-panel">
