@@ -158,7 +158,6 @@ function ForgeEditor() {
   const headlinePalettes = [
     { id: 'purpleGold', label: 'Roxo / Ouro', className: 'palette-purple-gold' },
     { id: 'blackGold', label: 'Preto / Ouro', className: 'palette-black-gold' },
-    { id: 'greenBlack', label: 'Verde / Preto', className: 'palette-green-black' },
     { id: 'redBlack', label: 'Vermelho / Preto', className: 'palette-red-black' },
     { id: 'whiteBlack', label: 'Branco / Preto', className: 'palette-white-black' },
   ];
@@ -455,7 +454,7 @@ function ForgeEditor() {
       setHeadlineText(draft.headlineText || 'Sua Esperança Renasce');
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
-      setHeadlinePalette(draft.headlinePalette || 'purpleGold');
+      setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -1200,7 +1199,7 @@ function ForgeEditor() {
         headline_text: headlineText,
         headline_ratio: layoutPreset === 'postHeadlineAvatar' ? headlineRatio / 100 : 0,
         headline_font_scale: headlineFontScale / 100,
-        headline_palette: headlinePalette,
+        headline_palette: activeHeadlinePalette.id,
         post_scale: postScale / 100,
         post_y: postY / 100,
         image_fit: imageFit,
@@ -1803,7 +1802,7 @@ function ForgeEditor() {
                     <button
                       key={palette.id}
                       type="button"
-                      className={`headline-palette-button ${palette.className} ${headlinePalette === palette.id ? 'active' : ''}`}
+                      className={`headline-palette-button ${palette.className} ${activeHeadlinePalette.id === palette.id ? 'active' : ''}`}
                       onClick={() => setHeadlinePalette(palette.id)}
                     >
                       <span />

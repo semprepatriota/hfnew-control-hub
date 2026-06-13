@@ -378,10 +378,6 @@
   background: linear-gradient(90deg, #020202, #ffd84d);
 }
 
-.headline-palette-button.palette-green-black span {
-  background: linear-gradient(90deg, #00ff41, #050505);
-}
-
 .headline-palette-button.palette-red-black span {
   background: linear-gradient(90deg, #ff1d1d, #050505);
 }
@@ -894,15 +890,6 @@
 
 .post-headline-avatar-preview.palette-black-gold .pha-headline strong {
   color: #ffd84d;
-}
-
-.post-headline-avatar-preview.palette-green-black .pha-headline {
-  background: linear-gradient(90deg, #001606, #063115, #001606);
-  border-color: rgba(0, 255, 65, 0.55);
-}
-
-.post-headline-avatar-preview.palette-green-black .pha-headline strong {
-  color: #00ff41;
 }
 
 .post-headline-avatar-preview.palette-red-black .pha-headline {
