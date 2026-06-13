@@ -56,6 +56,7 @@ function ForgeEditor() {
   const [buildingAvatarEnginePlan, setBuildingAvatarEnginePlan] = useState(false);
   const [runningAvatarEngine, setRunningAvatarEngine] = useState(false);
   const [avatarEngineRenderResult, setAvatarEngineRenderResult] = useState(null);
+  const [savingAvatarEngineRender, setSavingAvatarEngineRender] = useState(false);
   const [showHiddenAvatarProviders, setShowHiddenAvatarProviders] = useState(false);
   const [customAvatarProvider, setCustomAvatarProvider] = useState({
     name: '',
@@ -1595,6 +1596,10 @@ function ForgeEditor() {
       setError('Selecione um avatar e um áudio antes de executar o motor');
       return;
     }
+    if (selectedVideo?.media_type !== 'image') {
+      setError('Para gerar o avatar falante, selecione uma imagem de avatar. O vídeo gerado será salvo depois na Biblioteca Avatar.');
+      return;
+    }
 
     setRunningAvatarEngine(true);
     setError('');
@@ -1616,10 +1621,42 @@ function ForgeEditor() {
         throw new Error(data.detail || 'Erro ao executar motor de avatar');
       }
       setAvatarEngineRenderResult(data);
+
+      setSavingAvatarEngineRender(true);
+      const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const saveResponse = await fetch(apiUrl('/api/forge/avatar-engine/save-to-library'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          job_id: data.job_id,
+          filename: data.video_filename,
+          channel_id: channelId,
+          display_name: headlineText ? `Avatar Falando - ${headlineText.slice(0, 42)}` : 'Avatar Falando',
+          category: 'Gerado',
+        }),
+      });
+      const saveData = await saveResponse.json();
+      if (!saveResponse.ok) {
+        throw new Error(saveData.detail || 'O motor gerou o vídeo, mas falhou ao salvar na Biblioteca Avatar');
+      }
+
+      if (saveData?.video) {
+        setSelectedVideo({
+          ...saveData.video,
+          url: apiUrl(saveData.video.video_url || `/api/forge/play-video/${saveData.video.filename}`),
+          thumbnail: apiUrl(saveData.video.preview_url || `/api/forge/play-video/${saveData.video.filename}`),
+        });
+        await loadAvatarVideos(channelId);
+        setBackgroundMode('avatar');
+        setLayoutPreset('postHeadlineAvatar');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setRunningAvatarEngine(false);
+      setSavingAvatarEngineRender(false);
     }
   };
 
@@ -2538,7 +2575,7 @@ function ForgeEditor() {
                           onClick={handleRunAvatarEngine}
                           disabled={runningAvatarEngine || !selectedVideo || !selectedAudio}
                         >
-                          {runningAvatarEngine ? <><Loader size={14} className="spinner" />Executando...</> : 'Executar motor'}
+                          {runningAvatarEngine ? <><Loader size={14} className="spinner" />Gerando avatar...</> : 'Gerar vídeo do avatar'}
                         </button>
                       </div>
                     </div>
@@ -2556,6 +2593,9 @@ function ForgeEditor() {
                     {avatarEngineRenderResult && (
                       <div className="avatar-engine-render-result">
                         <span>Último vídeo gerado por <strong>{avatarEngineRenderResult.provider_name}</strong></span>
+                        {savingAvatarEngineRender && (
+                          <small>Salvando automaticamente na Biblioteca Avatar e preparando para o render final...</small>
+                        )}
                         <video
                           src={apiUrl(avatarEngineRenderResult.video_url)}
                           controls
