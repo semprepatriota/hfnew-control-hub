@@ -38,6 +38,9 @@ function ForgeEditor() {
   const [backgroundMode, setBackgroundMode] = useState('avatar'); // 'avatar' ou 'local'
   const [layoutPreset, setLayoutPreset] = useState('classic7030');
   const [headlineText, setHeadlineText] = useState('Sua Esperança Renasce');
+  const [headlineRatio, setHeadlineRatio] = useState(10);
+  const [headlineFontScale, setHeadlineFontScale] = useState(100);
+  const [headlinePalette, setHeadlinePalette] = useState('purpleGold');
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
@@ -152,15 +155,35 @@ function ForgeEditor() {
     },
   ];
 
+  const headlinePalettes = [
+    { id: 'purpleGold', label: 'Roxo / Ouro', className: 'palette-purple-gold' },
+    { id: 'blackGold', label: 'Preto / Ouro', className: 'palette-black-gold' },
+    { id: 'greenBlack', label: 'Verde / Preto', className: 'palette-green-black' },
+    { id: 'redBlack', label: 'Vermelho / Preto', className: 'palette-red-black' },
+    { id: 'whiteBlack', label: 'Branco / Preto', className: 'palette-white-black' },
+  ];
+
+  const activeHeadlinePalette = headlinePalettes.find((palette) => palette.id === headlinePalette) || headlinePalettes[0];
+
+  const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
+    const safeTop = Math.min(72, Math.max(38, Number(nextTop) || 54));
+    const maxHeadline = Math.min(20, 92 - safeTop);
+    const safeHeadline = Math.min(maxHeadline, Math.max(6, Number(nextHeadline) || 10));
+    const safeBottom = Math.max(8, 100 - safeTop - safeHeadline);
+
+    setTopRatio(safeTop);
+    setHeadlineRatio(safeHeadline);
+    setBottomRatio(safeBottom);
+    ratioLockRef.current = { top: safeTop, bottom: safeBottom };
+  };
+
   const applyLayoutPreset = (preset) => {
     setLayoutPreset(preset);
 
     if (preset === 'postHeadlineAvatar') {
       setBackgroundMode('avatar');
-      setTopRatio(54);
-      setBottomRatio(36);
+      applyPostHeadlineAvatarRatios(topRatio === 70 && bottomRatio === 30 ? 54 : topRatio, headlineRatio);
       setVideoFit('cover');
-      ratioLockRef.current = { top: 54, bottom: 36 };
       return;
     }
 
@@ -430,6 +453,9 @@ function ForgeEditor() {
       setBackgroundMode(draft.backgroundMode === 'local' ? 'local' : 'avatar');
       setLayoutPreset(draft.layoutPreset || 'classic7030');
       setHeadlineText(draft.headlineText || 'Sua Esperança Renasce');
+      setHeadlineRatio(draft.headlineRatio ?? 10);
+      setHeadlineFontScale(draft.headlineFontScale ?? 100);
+      setHeadlinePalette(draft.headlinePalette || 'purpleGold');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -502,6 +528,9 @@ function ForgeEditor() {
       backgroundMode,
       layoutPreset,
       headlineText,
+      headlineRatio,
+      headlineFontScale,
+      headlinePalette,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
@@ -538,6 +567,9 @@ function ForgeEditor() {
     imageCropY,
     imageFit,
     headlineText,
+    headlineRatio,
+    headlineFontScale,
+    headlinePalette,
     layoutPreset,
     metadataCategory,
     metadataDescription,
@@ -1157,8 +1189,8 @@ function ForgeEditor() {
         background_video: selectedVideo?.path || selectedVideo?.filename || selectedVideo?.url || '',
         background_audio: selectedAudio?.filename || '',
         image_paths: slideshowMode ? imagePaths : [],
-        top_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.54 : topRatio / 100,
-        bottom_ratio: layoutPreset === 'postHeadlineAvatar' ? 0.36 : bottomRatio / 100,
+        top_ratio: topRatio / 100,
+        bottom_ratio: bottomRatio / 100,
         render_mode: layoutPreset === 'postHeadlineAvatar'
           ? 'post_headline_avatar'
           : slideshowMode
@@ -1166,6 +1198,9 @@ function ForgeEditor() {
           : (bottomRatio === 0 && selectedVideo ? 'post_overlay' : (bottomRatio === 0 || !selectedVideo ? 'image_only' : 'stack')),
         layout_preset: layoutPreset,
         headline_text: headlineText,
+        headline_ratio: layoutPreset === 'postHeadlineAvatar' ? headlineRatio / 100 : 0,
+        headline_font_scale: headlineFontScale / 100,
+        headline_palette: headlinePalette,
         post_scale: postScale / 100,
         post_y: postY / 100,
         image_fit: imageFit,
@@ -1727,6 +1762,55 @@ function ForgeEditor() {
                     </>
                   )}
                 </button>
+                <div className="headline-adjust-grid">
+                  <label>
+                    Altura da headline {headlineRatio}%
+                    <div className="range-control">
+                      <input
+                        type="range"
+                        min="6"
+                        max="20"
+                        step="1"
+                        value={headlineRatio}
+                        onInput={(event) => applyPostHeadlineAvatarRatios(topRatio, event.target.value)}
+                        onChange={(event) => applyPostHeadlineAvatarRatios(topRatio, event.target.value)}
+                        className="slider"
+                        aria-label="Ajustar altura da headline"
+                      />
+                    </div>
+                  </label>
+
+                  <label>
+                    Tamanho da fonte {headlineFontScale}%
+                    <div className="range-control">
+                      <input
+                        type="range"
+                        min="70"
+                        max="130"
+                        step="5"
+                        value={headlineFontScale}
+                        onInput={(event) => setHeadlineFontScale(parseInt(event.target.value, 10))}
+                        onChange={(event) => setHeadlineFontScale(parseInt(event.target.value, 10))}
+                        className="slider"
+                        aria-label="Ajustar tamanho da fonte da headline"
+                      />
+                    </div>
+                  </label>
+                </div>
+
+                <div className="headline-palette-grid" role="group" aria-label="Paletas da headline">
+                  {headlinePalettes.map((palette) => (
+                    <button
+                      key={palette.id}
+                      type="button"
+                      className={`headline-palette-button ${palette.className} ${headlinePalette === palette.id ? 'active' : ''}`}
+                      onClick={() => setHeadlinePalette(palette.id)}
+                    >
+                      <span />
+                      {palette.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="headline-layout-note">
                   Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
                 </div>
@@ -2384,8 +2468,8 @@ function ForgeEditor() {
                 <div className="ratio-readout">
                   {layoutPreset === 'postHeadlineAvatar' ? (
                     <>
-                      <strong>54% imagem</strong>
-                      <span>10% headline / 36% avatar</span>
+                      <strong>{topRatio}% imagem</strong>
+                      <span>{headlineRatio}% headline / {bottomRatio}% avatar</span>
                     </>
                   ) : (
                     <>
@@ -2397,13 +2481,20 @@ function ForgeEditor() {
                 <div className="range-control">
                   <input
                     type="range"
-                    min="50"
-                    max="100"
+                    min={layoutPreset === 'postHeadlineAvatar' ? '38' : '50'}
+                    max={layoutPreset === 'postHeadlineAvatar' ? String(Math.max(38, 92 - headlineRatio)) : '100'}
                     step="5"
                     value={topRatio}
-                    onInput={(e) => handleRatioChange(e.target.value)}
-                    onChange={(e) => handleRatioChange(e.target.value)}
-                    disabled={layoutPreset === 'postHeadlineAvatar'}
+                    onInput={(e) => (
+                      layoutPreset === 'postHeadlineAvatar'
+                        ? applyPostHeadlineAvatarRatios(e.target.value, headlineRatio)
+                        : handleRatioChange(e.target.value)
+                    )}
+                    onChange={(e) => (
+                      layoutPreset === 'postHeadlineAvatar'
+                        ? applyPostHeadlineAvatarRatios(e.target.value, headlineRatio)
+                        : handleRatioChange(e.target.value)
+                    )}
                     className="slider ratio-slider"
                     aria-label="Ajustar proporção vertical"
                   />
@@ -2551,7 +2642,10 @@ function ForgeEditor() {
             <div className="preview-container">
               <div className="preview-frame">
                 {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideo ? (
-                  <div className="post-headline-avatar-preview">
+                  <div
+                    className={`post-headline-avatar-preview ${activeHeadlinePalette.className}`}
+                    style={{ gridTemplateRows: `${topRatio}fr ${headlineRatio}fr ${bottomRatio}fr` }}
+                  >
                     <div className="pha-post">
                       <img
                         src={activePreviewImage}
@@ -2561,10 +2655,12 @@ function ForgeEditor() {
                           objectPosition: `50% ${verticalCenterPercent}%`,
                         }}
                       />
-                      <span className="label">Imagem (54%)</span>
+                      <span className="label">Imagem ({topRatio}%)</span>
                     </div>
                     <div className="pha-headline">
-                      <strong>{headlineText || 'Headline'}</strong>
+                      <strong style={{ fontSize: `${Math.max(12, 18 * (headlineFontScale / 100))}px` }}>
+                        {headlineText || 'Headline'}
+                      </strong>
                     </div>
                     <div className="pha-avatar">
                       {getSelectedVideoSource(selectedVideo) ? (
@@ -2576,7 +2672,7 @@ function ForgeEditor() {
                       ) : selectedVideo?.thumbnail ? (
                         <img src={selectedVideo.thumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
                       ) : null}
-                      <span className="label">Avatar (36%)</span>
+                      <span className="label">Avatar ({bottomRatio}%)</span>
                     </div>
                   </div>
                 ) : hasPreviewImage && bottomRatio === 0 && selectedVideo ? (
