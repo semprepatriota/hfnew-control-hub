@@ -9,7 +9,6 @@ import {
   Search,
   Upload,
   X,
-  Save,
   Trash2,
   PanelBottom,
   Maximize2,
@@ -36,8 +35,7 @@ function ForgeEditor() {
   const [imageCropX, setImageCropX] = useState(10);
   const [imageCropY, setImageCropY] = useState(10);
   const [videoFit, setVideoFit] = useState('contain');
-  const [backgroundMode, setBackgroundMode] = useState('pexels'); // 'pexels' ou 'local'
-  const [keywords, setKeywords] = useState(''); // Palavras-chave para buscar
+  const [backgroundMode, setBackgroundMode] = useState('avatar'); // 'avatar' ou 'local'
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
@@ -55,22 +53,23 @@ function ForgeEditor() {
   const [effectPreviewOpen, setEffectPreviewOpen] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [downloadingSocialImage, setDownloadingSocialImage] = useState(false);
-  const [downloadingVideoId, setDownloadingVideoId] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingAvatarVideo, setUploadingAvatarVideo] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [deletingVideoFile, setDeletingVideoFile] = useState(null);
+  const [deletingAvatarFile, setDeletingAvatarFile] = useState(null);
   const [deletingAudioFile, setDeletingAudioFile] = useState(null);
   const [croppingImage, setCroppingImage] = useState(false);
   const libraryRequestRef = useRef(0);
+  const avatarLibraryRequestRef = useRef(0);
   const audioLibraryRequestRef = useRef(0);
   const ratioLockRef = useRef({ top: 70, bottom: 30 });
   const restoredDraftKeyRef = useRef('');
 
   // Estados de dados
-  const [pexelsVideos, setPexelsVideos] = useState([]);
+  const [avatarVideos, setAvatarVideos] = useState([]);
   const [localVideos, setLocalVideos] = useState([]);
   const [localAudios, setLocalAudios] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [generatingMetadata, setGeneratingMetadata] = useState(false);
@@ -166,6 +165,22 @@ function ForgeEditor() {
     }
   }, [libraryChannelId]);
 
+  const loadAvatarVideos = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
+    const requestId = ++avatarLibraryRequestRef.current;
+    try {
+      const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
+      const response = await fetch(apiUrl(`/api/forge/avatar-library${query}`), { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        if (requestId === avatarLibraryRequestRef.current && (!data.channel_id || data.channel_id === channelId)) {
+          setAvatarVideos(data.videos || []);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao carregar avatares:', err);
+    }
+  }, [libraryChannelId]);
+
   const loadLocalAudios = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
     const requestId = ++audioLibraryRequestRef.current;
     try {
@@ -193,13 +208,14 @@ function ForgeEditor() {
   // Carregar vídeos locais
   useEffect(() => {
     loadLocalVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
+    loadAvatarVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
     loadLocalAudios(localStorage.getItem('alliance_forge_library_channel_id') || '');
     const capturedImage = localStorage.getItem('forge_selected_image');
     if (capturedImage) {
       setScreenshotPath(capturedImage);
       localStorage.removeItem('forge_selected_image');
     }
-  }, [loadLocalAudios, loadLocalVideos]);
+  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     let active = true;
@@ -231,6 +247,7 @@ function ForgeEditor() {
         setLibraryChannelId(storedChannelId);
         setSelectedVideo(null);
         setSelectedAudio(null);
+        setAvatarVideos([]);
         setLocalVideos([]);
         setLocalAudios([]);
         return;
@@ -249,8 +266,10 @@ function ForgeEditor() {
           setLibraryChannelId(activeChannelId);
           setSelectedVideo(null);
           setSelectedAudio(null);
+          setAvatarVideos([]);
           setLocalVideos([]);
           setLocalAudios([]);
+          loadAvatarVideos(activeChannelId);
           loadLocalVideos(activeChannelId);
           loadLocalAudios(activeChannelId);
         }
@@ -260,7 +279,7 @@ function ForgeEditor() {
     };
 
     syncActiveLibraryChannel();
-  }, [loadLocalAudios, loadLocalVideos]);
+  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     const syncLibraryChannel = () => {
@@ -268,8 +287,10 @@ function ForgeEditor() {
       setLibraryChannelId(nextChannelId);
       setSelectedVideo(null);
       setSelectedAudio(null);
+      setAvatarVideos([]);
       setLocalVideos([]);
       setLocalAudios([]);
+      loadAvatarVideos(nextChannelId);
       loadLocalVideos(nextChannelId);
       loadLocalAudios(nextChannelId);
     };
@@ -281,7 +302,7 @@ function ForgeEditor() {
       window.removeEventListener('storage', syncLibraryChannel);
       window.removeEventListener('alliance:forge-library-channel-changed', syncLibraryChannel);
     };
-  }, [loadLocalAudios, loadLocalVideos]);
+  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     if (!slideshowMode) return;
@@ -386,8 +407,7 @@ function ForgeEditor() {
       setImageCropX(draft.imageCropX ?? 10);
       setImageCropY(draft.imageCropY ?? 10);
       setVideoFit(draft.videoFit || 'contain');
-      setBackgroundMode(draft.backgroundMode || 'pexels');
-      setKeywords(draft.keywords || '');
+      setBackgroundMode(draft.backgroundMode === 'local' ? 'local' : 'avatar');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -458,7 +478,6 @@ function ForgeEditor() {
       imageCropY,
       videoFit,
       backgroundMode,
-      keywords,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
@@ -494,7 +513,6 @@ function ForgeEditor() {
     imageCropX,
     imageCropY,
     imageFit,
-    keywords,
     metadataCategory,
     metadataDescription,
     metadataHashtags,
@@ -665,41 +683,6 @@ function ForgeEditor() {
     }
   };
 
-  const handleDownloadVideo = async (video) => {
-    setDownloadingVideoId(video.id);
-    setError('');
-    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
-
-    try {
-      const response = await fetch(apiUrl('/api/forge/download-video'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          video_url: video.url,
-          video_id: video.id,
-          channel_id: channelId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao baixar vídeo');
-      }
-
-      const data = await response.json();
-      alert(`✅ Vídeo baixado com sucesso!\nSalvo em: ${data.filename}`);
-
-      // Recarregar lista de vídeos locais
-      loadLocalVideos(channelId);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setDownloadingVideoId(null);
-    }
-  };
-
   const handleVideoUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -745,12 +728,61 @@ function ForgeEditor() {
       const data = await response.json();
       alert(`✅ Vídeo enviado com sucesso!\nSalvo em: ${data.filename}`);
 
-      // Recarregar lista de vídeos locais
       loadLocalVideos(channelId);
     } catch (err) {
       setError(err.message);
     } finally {
       setUploadingVideo(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleAvatarVideoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      setError('Por favor, selecione um arquivo de vídeo válido');
+      return;
+    }
+
+    setUploadingAvatarVideo(true);
+    setError('');
+    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (channelId) {
+        formData.append('channel_id', channelId);
+      }
+
+      const response = await fetch(apiUrl('/api/forge/upload-avatar-video'), {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao fazer upload do avatar');
+      }
+
+      const data = await response.json();
+      alert(`✅ Avatar enviado com sucesso!\nSalvo em: ${data.filename}`);
+      setSelectedVideo({
+        filename: data.filename,
+        path: data.filepath,
+        url: apiUrl(data.video_url || `/api/forge/play-video/${data.filename}`),
+        thumbnail: apiUrl(data.preview_url || ''),
+        display_name: data.display_name || '',
+        category: data.category || 'Geral',
+      });
+      loadAvatarVideos(channelId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploadingAvatarVideo(false);
+      event.target.value = '';
     }
   };
 
@@ -845,6 +877,42 @@ function ForgeEditor() {
     }
   };
 
+  const handleDeleteAvatarVideo = async (filename) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm(`Tem certeza que quer deletar este avatar?\n${filename}`)) {
+      return;
+    }
+
+    setDeletingAvatarFile(filename);
+    setError('');
+    const channelId = selectedVideo?.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+
+    try {
+      const response = await fetch(apiUrl('/api/forge/delete-avatar-video'), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filename, channel_id: channelId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao deletar avatar');
+      }
+
+      if (selectedVideo?.filename === filename) {
+        setSelectedVideo(null);
+      }
+
+      loadAvatarVideos(channelId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingAvatarFile(null);
+    }
+  };
+
   const handleDeleteAudio = async (filename) => {
     // eslint-disable-next-line no-restricted-globals
     if (!confirm(`Tem certeza que quer deletar este áudio?\n${filename}`)) {
@@ -878,37 +946,6 @@ function ForgeEditor() {
       setError(err.message);
     } finally {
       setDeletingAudioFile(null);
-    }
-  };
-
-  const handleSearchPexels = async () => {
-    if (!keywords.trim()) {
-      setError('Digite palavras-chave para buscar');
-      return;
-    }
-
-    setSearching(true);
-    setError('');
-
-    try {
-      const response = await fetch(
-        apiUrl(`/api/forge/search-pexels/${encodeURIComponent(keywords)}`)
-      );
-
-      if (!response.ok) {
-        throw new Error('Erro ao buscar vídeos');
-      }
-
-      const data = await response.json();
-      setPexelsVideos(data.videos || []);
-
-      if (data.videos.length === 0) {
-        setError('Nenhum vídeo encontrado com essas palavras-chave');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSearching(false);
     }
   };
 
@@ -1091,9 +1128,7 @@ function ForgeEditor() {
       const renderPayload = {
         screenshot_path: imagePath,
         background_mode: backgroundMode,
-        background_video: backgroundMode === 'local'
-          ? (selectedVideo?.path || selectedVideo?.filename || '')
-          : (selectedVideo?.url || selectedVideo?.filename || ''),
+        background_video: selectedVideo?.path || selectedVideo?.filename || selectedVideo?.url || '',
         background_audio: selectedAudio?.filename || '',
         image_paths: slideshowMode ? imagePaths : [],
         top_ratio: topRatio / 100,
@@ -1575,11 +1610,11 @@ function ForgeEditor() {
 
             <div className="mode-toggle">
               <button
-                onClick={() => setBackgroundMode('pexels')}
-                className={`mode-button ${backgroundMode === 'pexels' ? 'active' : ''}`}
+                onClick={() => setBackgroundMode('avatar')}
+                className={`mode-button ${backgroundMode === 'avatar' ? 'active' : ''}`}
               >
-                <span className="icon">🤖</span>
-                IA Automática (Pexels)
+                <span className="icon">🧑</span>
+                Biblioteca Avatar
               </button>
               <button
                 onClick={() => setBackgroundMode('local')}
@@ -1591,159 +1626,152 @@ function ForgeEditor() {
             </div>
           </div>
 
-          <div className="control-section forge-effects-section">
-            <div className="forge-effects-header">
-              <h3>✨ Efeitos 2.0</h3>
-              <label className="forge-effect-switch">
-                <input
-                  type="checkbox"
-                  checked={effectsEnabled}
-                  onChange={(event) => setEffectsEnabled(event.target.checked)}
-                />
-                <span>{effectsEnabled ? 'Ativo' : 'Desligado'}</span>
-              </label>
-            </div>
-
-            <div className="forge-effects-grid">
-              <label className="metadata-field">
-                <span>Modo</span>
-                <select
-                  value={effectsMode}
-                  onChange={(event) => setEffectsMode(event.target.value)}
-                  disabled={!effectsEnabled}
-                >
-                  {effectModeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="metadata-field">
-                <span>Estilo</span>
-                <select
-                  value={effectsPreset}
-                  onChange={(event) => setEffectsPreset(event.target.value)}
-                  disabled={!effectsEnabled}
-                >
-                  {effectPresetOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="metadata-field">
-                <span>Transições</span>
-                <select
-                  value={transitionFrequency}
-                  onChange={(event) => setTransitionFrequency(event.target.value)}
-                  disabled={!effectsEnabled}
-                >
-                  {transitionFrequencyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="forge-effects-summary">
-              <span>{effectLibrary?.transitions?.length || 0} transições</span>
-              <span>{effectLibrary?.visual_effects?.length || 0} efeitos visuais</span>
-              <span>{availableSfxCount}/{effectLibrary?.sound_effects?.length || 0} SFX locais</span>
-              <span>Ducking ativo</span>
-            </div>
-
-            <button
-              type="button"
-              className="forge-effect-preview-toggle"
-              onClick={() => setEffectPreviewOpen((current) => !current)}
-              disabled={!effectLibrary}
-            >
-              {effectPreviewOpen ? 'Ocultar biblioteca' : 'Ver biblioteca inicial'}
-            </button>
-
-            {effectPreviewOpen && effectLibrary && (
-              <div className="forge-effects-library">
-                <div>
-                  <strong>Transições</strong>
-                  <p>{effectLibrary.transitions.map((item) => item.name).join(', ')}</p>
-                </div>
-                <div>
-                  <strong>Profundidade</strong>
-                  <p>{effectLibrary.visual_effects.map((item) => item.name).join(', ')}</p>
-                </div>
-                <div>
-                  <strong>Sons</strong>
-                  <p>{effectLibrary.sound_effects.map((item) => `${item.name}${item.asset_present ? '' : ' (arquivo pendente)'}`).join(', ')}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Section 3: Video Selection */}
           <div className="control-section">
-            {backgroundMode === 'pexels' ? (
+            {backgroundMode === 'avatar' ? (
               <>
-                <h3>🔍 Buscar Vídeo (Pexels)</h3>
-                <div className="search-group">
-                  <input
-                    type="text"
-                    placeholder="Ex: nature, sunset, abstract..."
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearchPexels()}
-                    className="input-field"
-                    disabled={searching}
-                  />
-                  <button
-                    onClick={handleSearchPexels}
-                    disabled={searching || !keywords.trim()}
-                    className="search-button"
-                  >
-                    {searching ? (
-                      <Loader size={16} className="spinner" />
-                    ) : (
-                      <Search size={16} />
-                    )}
-                    {searching ? 'Buscando...' : 'Buscar'}
-                  </button>
+                <h3>🧑 Biblioteca Avatar</h3>
+
+                <div className="video-upload-section">
+                  <div className="video-limit-note">{buildVideoDurationLimitMessage('O Forge')}</div>
+                  <label className="upload-video-label">
+                    <input
+                      type="file"
+                      accept="video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv"
+                      onChange={handleAvatarVideoUpload}
+                      disabled={uploadingAvatarVideo}
+                      className="file-input"
+                    />
+                    <div className="upload-video-box">
+                      {uploadingAvatarVideo ? (
+                        <>
+                          <Loader size={32} className="spinner" />
+                          <p>Enviando avatar...</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={32} />
+                          <p>Enviar avatar</p>
+                          <span className="upload-hint">Vídeos dos personagens para reuso</span>
+                        </>
+                      )}
+                    </div>
+                  </label>
                 </div>
 
                 <div className="videos-grid-10">
-                  {pexelsVideos.map((video) => (
-                    <div key={video.id} className="video-card-with-checkbox">
-                      <img src={video.thumbnail} alt={video.id} className="video-thumbnail" />
+                  {avatarVideos.map((video) => (
+                    <div
+                      key={video.filename}
+                      className={`video-card-with-checkbox local-video-card ${selectedVideo?.filename === video.filename ? 'selected' : ''}`}
+                      onClick={() => setSelectedVideo(video)}
+                      title={video.filename}
+                    >
+                      <div className="local-video-preview-wrap">
+                        <video
+                          src={getSelectedVideoSource(video)}
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                          className="local-video-preview"
+                          onMouseEnter={playLocalPreview}
+                          onMouseLeave={resetLocalPreview}
+                        />
+                        <div className="local-video-overlay">
+                          <span className="local-video-duration">{video.duration.toFixed(1)}s</span>
+                          <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
+                            {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
+                          </span>
+                          <strong>{video.display_name || shortVideoName(video.filename)}</strong>
+                        </div>
+                        {selectedVideo?.filename === video.filename && (
+                          <div className="local-selected-mark">
+                            <Check size={14} />
+                          </div>
+                        )}
+                        {selectedVideo?.filename === video.filename && (
+                          <button
+                            type="button"
+                            className="local-selected-clear"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedVideo(null);
+                            }}
+                            title="Desmarcar avatar"
+                            aria-label="Desmarcar avatar selecionado"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
                       <div className="checkbox-wrapper">
                         <input
                           type="radio"
                           name="selected-video"
-                          id={`video-${video.id}`}
-                          checked={selectedVideo?.id === video.id}
+                          id={`avatar-video-${video.filename}`}
+                          checked={selectedVideo?.filename === video.filename}
                           onChange={() => setSelectedVideo(video)}
+                          onClick={(event) => event.stopPropagation()}
                           className="video-checkbox"
                         />
-                        <label htmlFor={`video-${video.id}`} className="checkbox-label">
-                          ⏱️ {video.duration}s
+                        <label htmlFor={`avatar-video-${video.filename}`} className="checkbox-label">
+                          Selecionar
                         </label>
                       </div>
                       <button
-                        onClick={() => handleDownloadVideo(video)}
-                        disabled={downloadingVideoId === video.id}
-                        className="download-video-button"
-                        title="Salvar na biblioteca"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteAvatarVideo(video.filename);
+                        }}
+                        disabled={deletingAvatarFile === video.filename}
+                        className="delete-video-button"
+                        title="Deletar avatar"
                       >
-                        {downloadingVideoId === video.id ? (
-                          <>
-                            <Loader size={14} className="spinner" />
-                          </>
+                        {deletingAvatarFile === video.filename ? (
+                          <Loader size={14} className="spinner" />
                         ) : (
-                          <>
-                            <Save size={14} />
-                          </>
+                          <Trash2 size={14} />
                         )}
                       </button>
                     </div>
                   ))}
                 </div>
+
+                {selectedVideo && backgroundMode === 'avatar' && (
+                  <div className="video-selected-preview-small">
+                    <video
+                      src={getSelectedVideoSource(selectedVideo)}
+                      controls
+                      className="video-thumb"
+                    />
+                    <span className="selected-video-name">✓ Avatar: {selectedVideo.display_name || shortVideoName(selectedVideo.filename)}</span>
+                    <span className={`selected-video-ratio ${selectedVideo.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
+                      {selectedVideo.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
+                    </span>
+
+                    <div className="local-format-panel">
+                      {localVideoFormats.map((format) => {
+                        const Icon = format.icon;
+                        const active = topRatio === format.ratio;
+
+                        return (
+                          <button
+                            key={format.id}
+                            type="button"
+                            onClick={() => applyLocalVideoFormat(format.ratio)}
+                            className={`local-format-button ${active ? 'active' : ''}`}
+                            title={`${format.label}: ${format.detail}`}
+                          >
+                            <Icon size={16} />
+                            <span>{format.label}</span>
+                            <small>{format.detail}</small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -2001,7 +2029,7 @@ function ForgeEditor() {
                 {localVideos.length === 0 && (
                   <div className="empty-library">
                     <p>Nenhum vídeo na biblioteca</p>
-                    <span>Envie um vídeo acima ou baixe dos Pexels</span>
+                    <span>Envie um vídeo acima para compor o fundo local</span>
                   </div>
                 )}
               </>
