@@ -1,5 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BarChart3, CalendarClock, Network, ShieldCheck, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart3,
+  CalendarClock,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  Youtube,
+  Instagram,
+  Facebook,
+  MessageCircle,
+  Brain,
+  Bot,
+  KeyRound,
+  Mic,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiUrl } from '../../config/api';
 import './Pages.css';
@@ -8,18 +24,16 @@ import './Dashboard.css';
 function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const checklistKey = 'alliance_dark_meta_checklist';
-  const checklistItems = useMemo(() => ([
-    { id: 'meta_app', label: 'Criar app Meta', detail: 'Abrir o app no Meta for Developers e deixar em modo correto.' },
-    { id: 'facebook_login', label: 'Ativar Facebook Login', detail: 'Habilitar login para gerar token e callback.' },
-    { id: 'instagram_graph', label: 'Ativar Instagram Graph API', detail: 'Usar para publicar e ler dados do Instagram profissional.' },
-    { id: 'valid_redirect', label: 'Cadastrar redirect URI', detail: 'Salvar o callback do painel sem divergencia.' },
-    { id: 'connect_page', label: 'Conectar pagina ao Instagram', detail: 'Vincular a conta profissional a uma pagina Facebook.' },
-    { id: 'pixel_id', label: 'Preencher Pixel ID', detail: 'Registrar o Pixel para rastreio futuro.' },
-    { id: 'ad_account_id', label: 'Preencher Ad Account ID', detail: 'Guardar a conta de anuncios usada pelo projeto.' },
-    { id: 'app_review', label: 'Revisar permissões', detail: 'Separar o que precisa de App Review e o que já pode testar.' },
-  ]), []);
-  const [checklistState, setChecklistState] = useState({});
+  const apiPanels = [
+    { label: 'YouTube Data API', detail: 'Upload, agendamento, status do vídeo e leitura operacional do canal conectado.', icon: Youtube, tone: 'red' },
+    { label: 'Google OAuth', detail: 'Autenticação segura dos usuários e autorização dos canais usados no painel.', icon: KeyRound, tone: 'blue' },
+    { label: 'Instagram Graph', detail: 'Publicação, leitura de perfil profissional e integração com ativos da Meta.', icon: Instagram, tone: 'pink' },
+    { label: 'Facebook Pages', detail: 'Gerenciamento de páginas, posts e ativos conectados para distribuição social.', icon: Facebook, tone: 'blue' },
+    { label: 'WhatsApp Business', detail: 'Webhook, números conectados, automações supervisionadas e atendimento.', icon: MessageCircle, tone: 'green' },
+    { label: 'OpenAI / ChatGPT', detail: 'Geração de títulos, descrições, hooks, headlines e apoio editorial.', icon: Brain, tone: 'gold' },
+    { label: 'LM Studio', detail: 'Inferência local para roteiro, análise textual e apoio privado sem depender da nuvem.', icon: Bot, tone: 'green' },
+    { label: 'Piper / Voz local', detail: 'Síntese local de fala para avatar e narração curta dentro do Forge.', icon: Mic, tone: 'blue' },
+  ];
 
   useEffect(() => {
     fetch(apiUrl('/api/dashboard/stats'))
@@ -30,31 +44,6 @@ function Dashboard() {
       })
       .catch(err => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(checklistKey);
-      if (raw) {
-        setChecklistState(JSON.parse(raw));
-      }
-    } catch (error) {
-      setChecklistState({});
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(checklistKey, JSON.stringify(checklistState));
-  }, [checklistState]);
-
-  const completedCount = checklistItems.filter((item) => checklistState[item.id]).length;
-  const checklistProgress = Math.round((completedCount / checklistItems.length) * 100);
-
-  const toggleChecklistItem = (itemId) => {
-    setChecklistState((current) => ({
-      ...current,
-      [itemId]: !current[itemId],
-    }));
-  };
 
   const statCards = [
     {
@@ -165,48 +154,34 @@ function Dashboard() {
             </div>
           </section>
 
-          <section className="dashboard-checklist">
+          <section className="dashboard-checklist dashboard-api-panel">
             <div className="dashboard-operations-header">
               <div>
-                <h2>Checklist Meta</h2>
-                <p>Use este bloco para marcar a estrutura do Instagram e Facebook sem perder a ordem.</p>
+                <h2>Painel de APIs</h2>
+                <p>Visão separada das integrações principais e do papel específico de cada uma dentro do app.</p>
               </div>
-              <span>{completedCount}/{checklistItems.length} pronto</span>
+              <span>{apiPanels.length} integrações</span>
             </div>
 
-            <div className="dashboard-checklist-progress">
-              <div className="dashboard-checklist-track">
-                <div
-                  className="dashboard-checklist-fill"
-                  style={{ width: `${checklistProgress}%` }}
-                />
-              </div>
-              <strong>{checklistProgress}%</strong>
-            </div>
-
-            <div className="dashboard-checklist-grid">
-              {checklistItems.map((item, index) => {
-                const checked = Boolean(checklistState[item.id]);
+            <div className="dashboard-checklist-grid dashboard-api-grid">
+              {apiPanels.map((item) => {
+                const Icon = item.icon;
                 return (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={`dashboard-checklist-item ${checked ? 'checked' : ''}`}
-                    onClick={() => toggleChecklistItem(item.id)}
+                  <div
+                    key={item.label}
+                    className={`dashboard-checklist-item dashboard-api-item ${item.tone}`}
                   >
-                    <span className="dashboard-checklist-box">
-                      <span className="dashboard-checklist-number">
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
+                    <span className="dashboard-checklist-box dashboard-api-icon">
+                      <Icon size={18} />
                     </span>
                     <div className="dashboard-checklist-copy">
                       <strong>{item.label}</strong>
                       <span>{item.detail}</span>
                     </div>
                     <span className="dashboard-checklist-state">
-                      {checked ? 'Marcado' : 'Pendente'}
+                      Ativa
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

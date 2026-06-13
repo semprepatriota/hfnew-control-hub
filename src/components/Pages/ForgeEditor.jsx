@@ -43,8 +43,26 @@ function ForgeEditor() {
   const [headlinePalette, setHeadlinePalette] = useState('purpleGold');
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [avatarSpeechText, setAvatarSpeechText] = useState('');
+  const [avatarSpeechDurationModel, setAvatarSpeechDurationModel] = useState('30s');
+  const [avatarSpeechTimingNote, setAvatarSpeechTimingNote] = useState('');
   const [generatingAvatarSpeech, setGeneratingAvatarSpeech] = useState(false);
   const [avatarGeneratorStatus, setAvatarGeneratorStatus] = useState(null);
+  const [avatarEngineRegistry, setAvatarEngineRegistry] = useState(null);
+  const [loadingAvatarEngineRegistry, setLoadingAvatarEngineRegistry] = useState(false);
+  const [savingAvatarEngineId, setSavingAvatarEngineId] = useState('');
+  const [loadingAvatarEngineDiagnosticsId, setLoadingAvatarEngineDiagnosticsId] = useState('');
+  const [avatarEngineDiagnostics, setAvatarEngineDiagnostics] = useState({});
+  const [avatarEnginePlan, setAvatarEnginePlan] = useState(null);
+  const [buildingAvatarEnginePlan, setBuildingAvatarEnginePlan] = useState(false);
+  const [runningAvatarEngine, setRunningAvatarEngine] = useState(false);
+  const [avatarEngineRenderResult, setAvatarEngineRenderResult] = useState(null);
+  const [showHiddenAvatarProviders, setShowHiddenAvatarProviders] = useState(false);
+  const [customAvatarProvider, setCustomAvatarProvider] = useState({
+    name: '',
+    repo_url: '',
+    kind: 'avatar_video',
+    summary: '',
+  });
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
@@ -237,6 +255,21 @@ function ForgeEditor() {
     }
   }, []);
 
+  const loadAvatarEngineRegistry = useCallback(async () => {
+    setLoadingAvatarEngineRegistry(true);
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-engine/providers'), { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        setAvatarEngineRegistry(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar motores de avatar:', err);
+    } finally {
+      setLoadingAvatarEngineRegistry(false);
+    }
+  }, []);
+
   const loadLocalAudios = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
     const requestId = ++audioLibraryRequestRef.current;
     try {
@@ -267,12 +300,13 @@ function ForgeEditor() {
     loadAvatarVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
     loadLocalAudios(localStorage.getItem('alliance_forge_library_channel_id') || '');
     loadAvatarGeneratorStatus();
+    loadAvatarEngineRegistry();
     const capturedImage = localStorage.getItem('forge_selected_image');
     if (capturedImage) {
       setScreenshotPath(capturedImage);
       localStorage.removeItem('forge_selected_image');
     }
-  }, [loadAvatarGeneratorStatus, loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
+  }, [loadAvatarEngineRegistry, loadAvatarGeneratorStatus, loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     let active = true;
@@ -471,6 +505,8 @@ function ForgeEditor() {
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
       setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
       setAvatarSpeechText(draft.avatarSpeechText || '');
+      setAvatarSpeechDurationModel(['6s', '10s', '15s', '30s', '60s'].includes(draft.avatarSpeechDurationModel) ? draft.avatarSpeechDurationModel : '30s');
+      setAvatarSpeechTimingNote(draft.avatarSpeechTimingNote || '');
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -515,6 +551,8 @@ function ForgeEditor() {
       selectedVideo ||
       selectedAudio ||
       avatarSpeechText ||
+      avatarSpeechDurationModel !== '30s' ||
+      avatarSpeechTimingNote ||
       effectsEnabled !== true ||
       effectsMode !== 'assisted' ||
       effectsPreset !== 'documentary' ||
@@ -548,6 +586,8 @@ function ForgeEditor() {
       headlineFontScale,
       headlinePalette,
       avatarSpeechText,
+      avatarSpeechDurationModel,
+      avatarSpeechTimingNote,
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
@@ -584,6 +624,8 @@ function ForgeEditor() {
     imageCropY,
     imageFit,
     avatarSpeechText,
+    avatarSpeechDurationModel,
+    avatarSpeechTimingNote,
     headlineText,
     headlineRatio,
     headlineFontScale,
@@ -1331,6 +1373,7 @@ function ForgeEditor() {
           screenshot_path: imagePath,
           headline_text: headlineText,
           current_script: avatarSpeechText,
+          duration_model: avatarSpeechDurationModel,
           channel_id: channelId,
           generate_voice: true
         }),
@@ -1342,6 +1385,7 @@ function ForgeEditor() {
       }
 
       setAvatarSpeechText(data.script || avatarSpeechText);
+      setAvatarSpeechTimingNote(data.timing_note || '');
       if (data.audio_filename) {
         const nextAudio = {
           filename: data.audio_filename,
@@ -1361,6 +1405,221 @@ function ForgeEditor() {
       setError(err.message);
     } finally {
       setGeneratingAvatarSpeech(false);
+    }
+  };
+
+  const updateAvatarEngineProvider = async (providerId, payload) => {
+    setSavingAvatarEngineId(providerId);
+    setError('');
+    try {
+      const response = await fetch(apiUrl(`/api/forge/avatar-engine/providers/${providerId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao atualizar motor de avatar');
+      }
+      setAvatarEngineRegistry(data);
+      loadAvatarGeneratorStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingAvatarEngineId('');
+    }
+  };
+
+  const handleDeleteAvatarEngineProvider = async (provider) => {
+    const actionLabel = provider.custom ? 'excluir' : 'ocultar';
+    if (!confirm(`Tem certeza que deseja ${actionLabel} o provedor ${provider.name}?`)) {
+      return;
+    }
+
+    setSavingAvatarEngineId(provider.id);
+    setError('');
+    try {
+      const response = await fetch(apiUrl(`/api/forge/avatar-engine/providers/${provider.id}`), {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao remover provedor');
+      }
+      setAvatarEngineRegistry(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingAvatarEngineId('');
+    }
+  };
+
+  const handleRestoreAvatarEngineProvider = async (providerId) => {
+    setSavingAvatarEngineId(providerId);
+    setError('');
+    try {
+      const response = await fetch(apiUrl(`/api/forge/avatar-engine/providers/${providerId}/restore`), {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao restaurar provedor');
+      }
+      setAvatarEngineRegistry(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingAvatarEngineId('');
+    }
+  };
+
+  const handleDiagnoseAvatarEngineProvider = async (providerId) => {
+    setLoadingAvatarEngineDiagnosticsId(providerId);
+    setError('');
+    try {
+      const response = await fetch(apiUrl(`/api/forge/avatar-engine/providers/${providerId}/diagnostics`), {
+        cache: 'no-store',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao diagnosticar motor');
+      }
+      setAvatarEngineDiagnostics((current) => ({
+        ...current,
+        [providerId]: data,
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingAvatarEngineDiagnosticsId('');
+    }
+  };
+
+  const handleApplyAvatarEnginePreset = async (provider, presetKey = 'vps') => {
+    const preset = provider?.presets?.[presetKey];
+    if (!preset) {
+      setError('Preset não disponível para este motor');
+      return;
+    }
+
+    await updateAvatarEngineProvider(provider.id, {
+      install_path: preset.install_path || provider.install_path || '',
+      python_bin: preset.python_bin || provider.python_bin || '',
+      entry_script: preset.entry_script || provider.entry_script || '',
+      model_path: preset.model_path || provider.model_path || '',
+      config_path: preset.config_path || provider.config_path || '',
+      notes: preset.notes || provider.notes || '',
+    });
+
+    setAvatarEngineDiagnostics((current) => {
+      const next = { ...current };
+      delete next[provider.id];
+      return next;
+    });
+  };
+
+  const handleCreateCustomAvatarProvider = async () => {
+    if (!customAvatarProvider.name.trim()) {
+      setError('Informe o nome do provedor customizado');
+      return;
+    }
+
+    setSavingAvatarEngineId('custom');
+    setError('');
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-engine/providers/custom'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...customAvatarProvider,
+          capabilities: ['custom', customAvatarProvider.kind],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao criar provedor customizado');
+      }
+      setAvatarEngineRegistry(data);
+      setCustomAvatarProvider({
+        name: '',
+        repo_url: '',
+        kind: 'avatar_video',
+        summary: '',
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingAvatarEngineId('');
+    }
+  };
+
+  const handleBuildAvatarEnginePlan = async () => {
+    if (!selectedVideo?.filename || !selectedAudio?.filename) {
+      setError('Selecione um avatar e um áudio para montar o plano do motor');
+      return;
+    }
+
+    setBuildingAvatarEnginePlan(true);
+    setError('');
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-engine/render-plan'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider_id: avatarEngineRegistry?.preferred_video_provider || '',
+          avatar_filename: selectedVideo.filename,
+          audio_filename: selectedAudio.filename,
+          channel_id: libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao montar plano do motor');
+      }
+      setAvatarEnginePlan(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBuildingAvatarEnginePlan(false);
+    }
+  };
+
+  const handleRunAvatarEngine = async () => {
+    if (!selectedVideo?.filename || !selectedAudio?.filename) {
+      setError('Selecione um avatar e um áudio antes de executar o motor');
+      return;
+    }
+
+    setRunningAvatarEngine(true);
+    setError('');
+    try {
+      const response = await fetch(apiUrl('/api/forge/avatar-engine/render'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider_id: avatarEngineRegistry?.preferred_video_provider || '',
+          avatar_filename: selectedVideo.filename,
+          audio_filename: selectedAudio.filename,
+          channel_id: libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao executar motor de avatar');
+      }
+      setAvatarEngineRenderResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRunningAvatarEngine(false);
     }
   };
 
@@ -1583,6 +1842,15 @@ function ForgeEditor() {
       setScheduling(false);
     }
   };
+
+  const visibleAvatarProviders = (avatarEngineRegistry?.providers || []).filter((provider) => !provider.hidden);
+  const hiddenAvatarProviders = (avatarEngineRegistry?.providers || []).filter((provider) => provider.hidden);
+  const preferredAvatarVideoProvider = (avatarEngineRegistry?.providers || []).find(
+    (provider) => provider.id === avatarEngineRegistry?.preferred_video_provider
+  );
+  const preferredAvatarVoiceProvider = (avatarEngineRegistry?.providers || []).find(
+    (provider) => provider.id === avatarEngineRegistry?.preferred_voice_provider
+  );
 
   return (
     <div className="forge-editor-container">
@@ -1893,15 +2161,55 @@ function ForgeEditor() {
                   <div className="avatar-speech-header">
                     <strong>Fala do avatar</strong>
                     <span className={avatarGeneratorStatus?.configured ? 'status-ok' : 'status-warn'}>
-                      {avatarGeneratorStatus?.configured ? 'Google/Vertex conectado' : 'Google/Vertex não configurado'}
+                      {avatarGeneratorStatus?.configured ? 'Gerador local conectado' : 'Gerador local offline'}
                     </span>
+                  </div>
+                  <div className="avatar-speech-duration-grid">
+                    <button
+                      type="button"
+                      className={`avatar-speech-duration-button ${avatarSpeechDurationModel === '6s' ? 'active' : ''}`}
+                      onClick={() => setAvatarSpeechDurationModel('6s')}
+                    >
+                      6 segundos
+                    </button>
+                    <button
+                      type="button"
+                      className={`avatar-speech-duration-button ${avatarSpeechDurationModel === '10s' ? 'active' : ''}`}
+                      onClick={() => setAvatarSpeechDurationModel('10s')}
+                    >
+                      10 segundos
+                    </button>
+                    <button
+                      type="button"
+                      className={`avatar-speech-duration-button ${avatarSpeechDurationModel === '15s' ? 'active' : ''}`}
+                      onClick={() => setAvatarSpeechDurationModel('15s')}
+                    >
+                      15 segundos
+                    </button>
+                    <button
+                      type="button"
+                      className={`avatar-speech-duration-button ${avatarSpeechDurationModel === '30s' ? 'active' : ''}`}
+                      onClick={() => setAvatarSpeechDurationModel('30s')}
+                    >
+                      30 segundos
+                    </button>
+                    <button
+                      type="button"
+                      className={`avatar-speech-duration-button ${avatarSpeechDurationModel === '60s' ? 'active' : ''}`}
+                      onClick={() => setAvatarSpeechDurationModel('60s')}
+                    >
+                      60 segundos
+                    </button>
                   </div>
                   <textarea
                     value={avatarSpeechText}
                     onChange={(event) => setAvatarSpeechText(event.target.value)}
-                    placeholder="A fala do avatar aparece aqui. Você pode gerar com Vertex/Google ou escrever manualmente."
+                    placeholder="A fala do avatar aparece aqui. Você pode gerar com LM Studio/Piper ou escrever manualmente."
                     rows={4}
                   />
+                  {avatarSpeechTimingNote && (
+                    <div className="avatar-speech-timing-note">{avatarSpeechTimingNote}</div>
+                  )}
                   <button
                     type="button"
                     className="headline-generate-button"
@@ -1918,8 +2226,345 @@ function ForgeEditor() {
                     )}
                   </button>
                   <small>
-                    O áudio gerado fica selecionado na Biblioteca de Áudios e será usado na renderização.
+                    Cada modo controla o tamanho da fala para reduzir corte e repetição. O áudio gerado fica selecionado na Biblioteca de Áudios.
                   </small>
+                </div>
+                <div className="avatar-engine-panel">
+                  <div className="avatar-engine-panel-header">
+                    <div>
+                      <strong>Avatar Engine</strong>
+                      <p>Catálogo isolado com 10 opções grátis e espaço para novos motores.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="headline-generate-button secondary"
+                      onClick={loadAvatarEngineRegistry}
+                      disabled={loadingAvatarEngineRegistry}
+                    >
+                      {loadingAvatarEngineRegistry ? <><Loader size={14} className="spinner" />Atualizando...</> : 'Atualizar catálogo'}
+                    </button>
+                  </div>
+
+                  <div className="avatar-engine-summary">
+                    <span>Vídeo preferido: <strong>{preferredAvatarVideoProvider?.name || 'nenhum'}</strong></span>
+                    <span>Voz preferida: <strong>{preferredAvatarVoiceProvider?.name || 'nenhuma'}</strong></span>
+                    <span>Roteiro atual: <strong>{avatarGeneratorStatus?.active_script_provider || 'fallback'}</strong></span>
+                  </div>
+
+                  <div className="avatar-engine-grid">
+                    {visibleAvatarProviders.map((provider) => (
+                      <div key={provider.id} className={`avatar-engine-card ${provider.preferred_video || provider.preferred_voice ? 'preferred' : ''}`}>
+                        <div className="avatar-engine-card-top">
+                          <div>
+                            <h4>{provider.name}</h4>
+                            <p>{provider.summary}</p>
+                          </div>
+                          <span className={`avatar-engine-status ${provider.installed ? 'ready' : 'pending'}`}>
+                            {provider.installed ? 'Pronto' : 'Pendente'}
+                          </span>
+                        </div>
+
+                        <div className="avatar-engine-badges">
+                          <span>{provider.kind}</span>
+                          <span>{provider.runtime}</span>
+                          <span>{provider.difficulty}</span>
+                        </div>
+
+                        <div className="avatar-engine-capabilities">
+                          {(provider.capabilities || []).slice(0, 4).map((capability) => (
+                            <small key={`${provider.id}-${capability}`}>{capability}</small>
+                          ))}
+                        </div>
+
+                        <div className="avatar-engine-paths">
+                          <input
+                            type="text"
+                            value={provider.install_path || ''}
+                            onChange={(event) => {
+                              const nextProviders = (avatarEngineRegistry?.providers || []).map((item) => (
+                                item.id === provider.id ? { ...item, install_path: event.target.value } : item
+                              ));
+                              setAvatarEngineRegistry((current) => current ? { ...current, providers: nextProviders } : current);
+                            }}
+                            placeholder="Pasta de instalação (opcional)"
+                          />
+                          <input
+                            type="text"
+                            value={provider.python_bin || ''}
+                            onChange={(event) => {
+                              const nextProviders = (avatarEngineRegistry?.providers || []).map((item) => (
+                                item.id === provider.id ? { ...item, python_bin: event.target.value } : item
+                              ));
+                              setAvatarEngineRegistry((current) => current ? { ...current, providers: nextProviders } : current);
+                            }}
+                            placeholder="Python / venv do motor"
+                          />
+                          <input
+                            type="text"
+                            value={provider.entry_script || ''}
+                            onChange={(event) => {
+                              const nextProviders = (avatarEngineRegistry?.providers || []).map((item) => (
+                                item.id === provider.id ? { ...item, entry_script: event.target.value } : item
+                              ));
+                              setAvatarEngineRegistry((current) => current ? { ...current, providers: nextProviders } : current);
+                            }}
+                            placeholder="Script de entrada / API local"
+                          />
+                          <input
+                            type="text"
+                            value={provider.model_path || ''}
+                            onChange={(event) => {
+                              const nextProviders = (avatarEngineRegistry?.providers || []).map((item) => (
+                                item.id === provider.id ? { ...item, model_path: event.target.value } : item
+                              ));
+                              setAvatarEngineRegistry((current) => current ? { ...current, providers: nextProviders } : current);
+                            }}
+                            placeholder="Modelo / checkpoint (quando houver)"
+                          />
+                          <input
+                            type="text"
+                            value={provider.config_path || ''}
+                            onChange={(event) => {
+                              const nextProviders = (avatarEngineRegistry?.providers || []).map((item) => (
+                                item.id === provider.id ? { ...item, config_path: event.target.value } : item
+                              ));
+                              setAvatarEngineRegistry((current) => current ? { ...current, providers: nextProviders } : current);
+                            }}
+                            placeholder="Arquivo .json / config (quando houver)"
+                          />
+                        </div>
+
+                        <div className="avatar-engine-actions">
+                          <button
+                            type="button"
+                            className="engine-action-button"
+                            onClick={() => updateAvatarEngineProvider(provider.id, {
+                              install_path: provider.install_path || '',
+                              python_bin: provider.python_bin || '',
+                              entry_script: provider.entry_script || '',
+                              model_path: provider.model_path || '',
+                              config_path: provider.config_path || '',
+                            })}
+                            disabled={savingAvatarEngineId === provider.id}
+                          >
+                            Salvar
+                          </button>
+                          {provider.presets?.vps && (
+                            <button
+                              type="button"
+                              className="engine-action-button"
+                              onClick={() => handleApplyAvatarEnginePreset(provider, 'vps')}
+                              disabled={savingAvatarEngineId === provider.id}
+                            >
+                              {provider.presets.vps.label || 'Preset VPS'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={`engine-action-button ${provider.enabled ? 'active' : ''}`}
+                            onClick={() => updateAvatarEngineProvider(provider.id, {
+                              enabled: !provider.enabled,
+                              install_path: provider.install_path || '',
+                              python_bin: provider.python_bin || '',
+                              entry_script: provider.entry_script || '',
+                              model_path: provider.model_path || '',
+                              config_path: provider.config_path || '',
+                            })}
+                            disabled={savingAvatarEngineId === provider.id}
+                          >
+                            {provider.enabled ? 'Desativar' : 'Ativar'}
+                          </button>
+                          {provider.supports_video_selection && (
+                            <button
+                              type="button"
+                            className={`engine-action-button ${provider.preferred_video ? 'active' : ''}`}
+                            onClick={() => updateAvatarEngineProvider(provider.id, {
+                              set_as_preferred_video: true,
+                              install_path: provider.install_path || '',
+                              python_bin: provider.python_bin || '',
+                              entry_script: provider.entry_script || '',
+                              model_path: provider.model_path || '',
+                              config_path: provider.config_path || '',
+                            })}
+                            disabled={savingAvatarEngineId === provider.id}
+                          >
+                              {provider.preferred_video ? 'Vídeo principal' : 'Usar no vídeo'}
+                            </button>
+                          )}
+                          {provider.supports_voice_selection && (
+                            <button
+                              type="button"
+                            className={`engine-action-button ${provider.preferred_voice ? 'active' : ''}`}
+                            onClick={() => updateAvatarEngineProvider(provider.id, {
+                              set_as_preferred_voice: true,
+                              install_path: provider.install_path || '',
+                              python_bin: provider.python_bin || '',
+                              entry_script: provider.entry_script || '',
+                              model_path: provider.model_path || '',
+                              config_path: provider.config_path || '',
+                            })}
+                            disabled={savingAvatarEngineId === provider.id}
+                          >
+                              {provider.preferred_voice ? 'Voz principal' : 'Usar na voz'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="engine-action-button"
+                            onClick={() => handleDiagnoseAvatarEngineProvider(provider.id)}
+                            disabled={loadingAvatarEngineDiagnosticsId === provider.id}
+                          >
+                            {loadingAvatarEngineDiagnosticsId === provider.id ? 'Verificando...' : 'Diagnosticar'}
+                          </button>
+                          <button
+                            type="button"
+                            className="engine-action-button"
+                            onClick={() => window.open(provider.repo_url, '_blank', 'noopener,noreferrer')}
+                          >
+                            <Link size={14} />
+                            Repositório
+                          </button>
+                          <button
+                            type="button"
+                            className="engine-action-button danger"
+                            onClick={() => handleDeleteAvatarEngineProvider(provider)}
+                            disabled={savingAvatarEngineId === provider.id}
+                          >
+                            {provider.custom ? 'Excluir' : 'Ocultar'}
+                          </button>
+                        </div>
+
+                        {avatarEngineDiagnostics[provider.id] && (
+                          <div className={`avatar-engine-diagnostic ${avatarEngineDiagnostics[provider.id].ready ? 'ready' : 'pending'}`}>
+                            <strong>{avatarEngineDiagnostics[provider.id].ready ? 'Diagnóstico pronto' : 'Diagnóstico pendente'}</strong>
+                            <p>{avatarEngineDiagnostics[provider.id].next_step}</p>
+                            {avatarEngineDiagnostics[provider.id].missing_items?.length > 0 && (
+                              <small>Faltando: {avatarEngineDiagnostics[provider.id].missing_items.join(', ')}</small>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="avatar-engine-custom-form">
+                    <h4>Novo motor customizado</h4>
+                    <div className="avatar-engine-custom-grid">
+                      <input
+                        type="text"
+                        value={customAvatarProvider.name}
+                        onChange={(event) => setCustomAvatarProvider((current) => ({ ...current, name: event.target.value }))}
+                        placeholder="Nome do motor"
+                      />
+                      <input
+                        type="url"
+                        value={customAvatarProvider.repo_url}
+                        onChange={(event) => setCustomAvatarProvider((current) => ({ ...current, repo_url: event.target.value }))}
+                        placeholder="URL do repositório"
+                      />
+                      <select
+                        value={customAvatarProvider.kind}
+                        onChange={(event) => setCustomAvatarProvider((current) => ({ ...current, kind: event.target.value }))}
+                      >
+                        <option value="avatar_video">Avatar vídeo</option>
+                        <option value="tts">TTS</option>
+                        <option value="voice_clone">Clonagem de voz</option>
+                        <option value="suite">Suite completa</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={customAvatarProvider.summary}
+                        onChange={(event) => setCustomAvatarProvider((current) => ({ ...current, summary: event.target.value }))}
+                        placeholder="Resumo do que ele faz"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="headline-generate-button secondary"
+                      onClick={handleCreateCustomAvatarProvider}
+                      disabled={savingAvatarEngineId === 'custom'}
+                    >
+                      {savingAvatarEngineId === 'custom' ? <><Loader size={14} className="spinner" />Adicionando...</> : 'Adicionar motor'}
+                    </button>
+                  </div>
+
+                  {hiddenAvatarProviders.length > 0 && (
+                    <div className="avatar-engine-hidden-block">
+                      <button
+                        type="button"
+                        className="engine-action-button"
+                        onClick={() => setShowHiddenAvatarProviders((current) => !current)}
+                      >
+                        {showHiddenAvatarProviders ? 'Esconder ocultos' : `Mostrar ocultos (${hiddenAvatarProviders.length})`}
+                      </button>
+                      {showHiddenAvatarProviders && (
+                        <div className="avatar-engine-hidden-list">
+                          {hiddenAvatarProviders.map((provider) => (
+                            <div key={provider.id} className="avatar-engine-hidden-item">
+                              <span>{provider.name}</span>
+                              <button
+                                type="button"
+                                className="engine-action-button"
+                                onClick={() => handleRestoreAvatarEngineProvider(provider.id)}
+                                disabled={savingAvatarEngineId === provider.id}
+                              >
+                                Restaurar
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="avatar-engine-plan">
+                    <div className="avatar-engine-plan-header">
+                      <div>
+                        <strong>Plano do motor principal</strong>
+                        <p>Monta o plano usando o avatar e o áudio já escolhidos no Forge.</p>
+                      </div>
+                      <div className="avatar-engine-plan-actions">
+                        <button
+                          type="button"
+                          className="headline-generate-button secondary"
+                          onClick={handleBuildAvatarEnginePlan}
+                          disabled={buildingAvatarEnginePlan || !selectedVideo || !selectedAudio}
+                        >
+                          {buildingAvatarEnginePlan ? <><Loader size={14} className="spinner" />Montando...</> : 'Montar plano'}
+                        </button>
+                        <button
+                          type="button"
+                          className="headline-generate-button"
+                          onClick={handleRunAvatarEngine}
+                          disabled={runningAvatarEngine || !selectedVideo || !selectedAudio}
+                        >
+                          {runningAvatarEngine ? <><Loader size={14} className="spinner" />Executando...</> : 'Executar motor'}
+                        </button>
+                      </div>
+                    </div>
+                    {avatarEnginePlan && (
+                      <div className="avatar-engine-plan-body">
+                        <span>Motor: <strong>{avatarEnginePlan.provider_name}</strong></span>
+                        <span>Pronto para rodar: <strong>{avatarEnginePlan.runnable ? 'sim' : 'nao'}</strong></span>
+                        <span>Saída prevista: <strong>{avatarEnginePlan.output_path}</strong></span>
+                        <p>{avatarEnginePlan.notes}</p>
+                        {Array.isArray(avatarEnginePlan.command_preview) && avatarEnginePlan.command_preview.length > 0 && (
+                          <code>{avatarEnginePlan.command_preview.join(' ')}</code>
+                        )}
+                      </div>
+                    )}
+                    {avatarEngineRenderResult && (
+                      <div className="avatar-engine-render-result">
+                        <span>Último vídeo gerado por <strong>{avatarEngineRenderResult.provider_name}</strong></span>
+                        <video
+                          src={apiUrl(avatarEngineRenderResult.video_url)}
+                          controls
+                          className="video-thumb"
+                        />
+                        <code>{apiUrl(avatarEngineRenderResult.video_url)}</code>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="headline-layout-note">
                   Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
