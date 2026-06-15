@@ -1999,13 +1999,48 @@ function ForgeEditor() {
     setError('');
 
     try {
-      commitPreviewCropStyle();
+      const { top, bottom } = cropDraftRef.current;
+      const response = await fetch(apiUrl('/api/forge/crop-image'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          screenshot_path: imagePath,
+          top_percent: top,
+          bottom_percent: bottom,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao cortar imagem');
+      }
+
+      const data = await response.json();
+      const nextImageUrl = apiUrl(data.image_url);
+      setScreenshotPath(nextImageUrl);
       setImageFit('cover');
       setRenderResult(null);
+
+      setSelectedImagePaths((prev) => {
+        if (!prev.length) return [nextImageUrl];
+        const next = [...prev];
+        next[0] = nextImageUrl;
+        return next;
+      });
+      setSelectedImageUploadPaths((prev) => {
+        if (!prev.length) return [nextImageUrl];
+        const next = [...prev];
+        next[0] = nextImageUrl;
+        return next;
+      });
+      setImageCropX(top);
+      setImageCropY(bottom);
     } catch (err) {
       setError(err.message);
     } finally {
-      window.setTimeout(() => setCroppingImage(false), 120);
+      setCroppingImage(false);
     }
   };
 
