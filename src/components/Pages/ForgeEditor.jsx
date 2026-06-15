@@ -57,6 +57,7 @@ const moveArrayItem = (items, fromIndex, toIndex) => {
 };
 
 const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
+  previewRootRef,
   hasPreviewImage,
   layoutPreset,
   selectedVideoSource,
@@ -81,7 +82,15 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   const headlineFontSize = `${Math.max(12, 18 * (headlineFontScale / 100))}px`;
 
   return (
-    <div className="preview-container">
+    <div
+      className="preview-container"
+      ref={previewRootRef}
+      style={{
+        '--forge-image-position-y': imageObjectPosition.split(' ')[1],
+        '--forge-guide-top': `${topGuidePercent}%`,
+        '--forge-guide-bottom': `${bottomGuidePercent}%`,
+      }}
+    >
       <div className="preview-frame">
         {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideoSource ? (
           <div
@@ -94,7 +103,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                 alt="Imagem do post"
                 style={{
                   objectFit: imageFit,
-                  objectPosition: imageObjectPosition,
+                  objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
               <span className="label">Imagem ({topRatio}%)</span>
@@ -154,13 +163,13 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                 alt="Screenshot"
                 style={{
                   objectFit: imageFit,
-                  objectPosition: imageObjectPosition,
+                  objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
               {imageFit === 'cover' && (
                 <div className="image-guide-overlay" aria-hidden="true">
-                  <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
-                  <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
+                  <div className="image-guide-line top" />
+                  <div className="image-guide-line bottom" />
                 </div>
               )}
               <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
@@ -267,6 +276,8 @@ function ForgeEditor() {
   const audioLibraryRequestRef = useRef(0);
   const ratioLockRef = useRef({ top: 70, bottom: 30 });
   const restoredDraftKeyRef = useRef('');
+  const previewRootRef = useRef(null);
+  const cropDraftRef = useRef({ top: 10, bottom: 10 });
 
   // Estados de dados
   const [avatarVideos, setAvatarVideos] = useState([]);
@@ -651,6 +662,31 @@ function ForgeEditor() {
     0,
     Math.min(100, (topGuidePercent + (100 - bottomGuidePercent)) / 2)
   );
+
+  const applyPreviewCropStyle = useCallback((topValue, bottomValue) => {
+    const top = Math.max(0, Math.min(40, Number(topValue) || 0));
+    const bottom = Math.max(0, Math.min(40, Number(bottomValue) || 0));
+    const center = Math.max(0, Math.min(100, (top + (100 - bottom)) / 2));
+    cropDraftRef.current = { top, bottom };
+
+    const previewRoot = previewRootRef.current;
+    if (previewRoot) {
+      previewRoot.style.setProperty('--forge-guide-top', `${top}%`);
+      previewRoot.style.setProperty('--forge-guide-bottom', `${bottom}%`);
+      previewRoot.style.setProperty('--forge-image-position-y', `${center}%`);
+    }
+  }, []);
+
+  const commitPreviewCropStyle = useCallback(() => {
+    const { top, bottom } = cropDraftRef.current;
+    setImageCropX(top);
+    setImageCropY(bottom);
+    setRenderResult(null);
+  }, []);
+
+  useEffect(() => {
+    applyPreviewCropStyle(topGuidePercent, bottomGuidePercent);
+  }, [applyPreviewCropStyle, topGuidePercent, bottomGuidePercent]);
 
   useEffect(() => {
     const draftKey = getDraftKey();
@@ -1963,6 +1999,7 @@ function ForgeEditor() {
     setError('');
 
     try {
+      commitPreviewCropStyle();
       setImageFit('cover');
       setRenderResult(null);
     } catch (err) {
@@ -3639,13 +3676,18 @@ function ForgeEditor() {
                         Linha de cima {topGuidePercent}%
                         <div className="range-control">
                           <input
+                            key={`crop-top-${imageCropX}`}
                             type="range"
                             min="0"
                             max="40"
                             step="1"
-                            value={imageCropX}
-                            onInput={(e) => setImageCropX(parseInt(e.target.value, 10))}
-                            onChange={(e) => setImageCropX(parseInt(e.target.value, 10))}
+                            defaultValue={imageCropX}
+                            onInput={(e) => applyPreviewCropStyle(e.target.value, cropDraftRef.current.bottom)}
+                            onPointerUp={commitPreviewCropStyle}
+                            onMouseUp={commitPreviewCropStyle}
+                            onTouchEnd={commitPreviewCropStyle}
+                            onBlur={commitPreviewCropStyle}
+                            onKeyUp={commitPreviewCropStyle}
                             className="slider"
                             aria-label="Ajustar linha de cima"
                           />
@@ -3656,13 +3698,18 @@ function ForgeEditor() {
                         Linha de baixo {bottomGuidePercent}%
                         <div className="range-control">
                           <input
+                            key={`crop-bottom-${imageCropY}`}
                             type="range"
                             min="0"
                             max="40"
                             step="1"
-                            value={imageCropY}
-                            onInput={(e) => setImageCropY(parseInt(e.target.value, 10))}
-                            onChange={(e) => setImageCropY(parseInt(e.target.value, 10))}
+                            defaultValue={imageCropY}
+                            onInput={(e) => applyPreviewCropStyle(cropDraftRef.current.top, e.target.value)}
+                            onPointerUp={commitPreviewCropStyle}
+                            onMouseUp={commitPreviewCropStyle}
+                            onTouchEnd={commitPreviewCropStyle}
+                            onBlur={commitPreviewCropStyle}
+                            onKeyUp={commitPreviewCropStyle}
                             className="slider"
                             aria-label="Ajustar linha de baixo"
                           />
@@ -3753,6 +3800,7 @@ function ForgeEditor() {
             </div>
 
             <ForgeVerticalPreview
+              previewRootRef={previewRootRef}
               hasPreviewImage={hasPreviewImage}
               layoutPreset={layoutPreset}
               selectedVideoSource={selectedVideoSource}

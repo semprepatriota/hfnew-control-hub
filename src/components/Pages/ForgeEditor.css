@@ -1369,11 +1369,11 @@
 }
 
 .image-guide-line.top {
-  top: 0;
+  top: var(--forge-guide-top, 0%);
 }
 
 .image-guide-line.bottom {
-  bottom: 0;
+  bottom: var(--forge-guide-bottom, 0%);
 }
 
 
