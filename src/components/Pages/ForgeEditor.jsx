@@ -56,6 +56,145 @@ const moveArrayItem = (items, fromIndex, toIndex) => {
   return next;
 };
 
+const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
+  hasPreviewImage,
+  layoutPreset,
+  selectedVideoSource,
+  selectedVideoThumbnail,
+  selectedVideoMediaType,
+  activeHeadlineClassName,
+  activePreviewImage,
+  imageFit,
+  verticalCenterPercent,
+  topRatio,
+  headlineRatio,
+  bottomRatio,
+  headlineFontScale,
+  headlineText,
+  videoFit,
+  postScale,
+  postY,
+  topGuidePercent,
+  bottomGuidePercent,
+}) {
+  const imageObjectPosition = `50% ${verticalCenterPercent}%`;
+  const headlineFontSize = `${Math.max(12, 18 * (headlineFontScale / 100))}px`;
+
+  return (
+    <div className="preview-container">
+      <div className="preview-frame">
+        {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideoSource ? (
+          <div
+            className={`post-headline-avatar-preview ${activeHeadlineClassName}`}
+            style={{ gridTemplateRows: `${topRatio}fr ${headlineRatio}fr ${bottomRatio}fr` }}
+          >
+            <div className="pha-post">
+              <img
+                src={activePreviewImage}
+                alt="Imagem do post"
+                style={{
+                  objectFit: imageFit,
+                  objectPosition: imageObjectPosition,
+                }}
+              />
+              <span className="label">Imagem ({topRatio}%)</span>
+            </div>
+            <div className="pha-headline">
+              <strong style={{ fontSize: headlineFontSize }}>
+                {headlineText || 'Headline'}
+              </strong>
+            </div>
+            <div className="pha-avatar">
+              {selectedVideoMediaType === 'image' ? (
+                <img
+                  src={selectedVideoSource}
+                  alt="Avatar"
+                  style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                />
+              ) : selectedVideoSource ? (
+                <video
+                  src={selectedVideoSource}
+                  className="video-preview"
+                  style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                />
+              ) : selectedVideoThumbnail ? (
+                <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
+              ) : null}
+              <span className="label">Avatar ({bottomRatio}%)</span>
+            </div>
+          </div>
+        ) : hasPreviewImage && bottomRatio === 0 && selectedVideoSource ? (
+          <div className="post-overlay-preview">
+            {selectedVideoSource ? (
+              <video
+                src={selectedVideoSource}
+                className="post-background"
+                style={{ width: '100%', height: '100%', objectFit: videoFit }}
+              />
+            ) : selectedVideoThumbnail ? (
+              <img src={selectedVideoThumbnail} alt="Video" className="post-background" style={{ objectFit: videoFit }} />
+            ) : null}
+
+            <img
+              src={activePreviewImage}
+              alt="Post centralizado"
+              className="post-foreground"
+              style={{
+                width: `${postScale}%`,
+                top: `${postY}%`,
+              }}
+            />
+            <span className="label">Post sobre vídeo</span>
+          </div>
+        ) : hasPreviewImage ? (
+          <>
+            <div className="frame-screenshot" style={{ height: `${topRatio}%` }}>
+              <img
+                src={activePreviewImage}
+                alt="Screenshot"
+                style={{
+                  objectFit: imageFit,
+                  objectPosition: imageObjectPosition,
+                }}
+              />
+              {imageFit === 'cover' && (
+                <div className="image-guide-overlay" aria-hidden="true">
+                  <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
+                  <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
+                </div>
+              )}
+              <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
+            </div>
+
+            {bottomRatio > 0 && (
+              <div className="frame-video" style={{ height: `${bottomRatio}%` }}>
+                {selectedVideoSource ? (
+                  <video
+                    src={selectedVideoSource}
+                    className="video-preview"
+                    style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                  />
+                ) : selectedVideoThumbnail ? (
+                  <img src={selectedVideoThumbnail} alt="Video" style={{ objectFit: videoFit }} />
+                ) : (
+                  <div className="video-placeholder-large">
+                    <Play size={48} />
+                  </div>
+                )}
+                <span className="label">Vídeo de Fundo ({bottomRatio}%)</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="preview-empty">
+            <p>{bottomRatio === 0 ? 'Selecione uma imagem para visualizar' : 'Selecione screenshot e vídeo para visualizar'}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 function ForgeEditor() {
   // Estados principales
   const [topRatio, setTopRatio] = useState(70);
@@ -1223,6 +1362,9 @@ function ForgeEditor() {
   const hasPreviewImage = Boolean(activePreviewImage);
   const hasSingleVideoPreview = !slideshowMode && Boolean(selectedVideo);
   const slideshowPreviewSettings = normalizeSlideshowSettingsClient(slideshowImageSettings, selectedImagePaths.length);
+  const selectedVideoSource = selectedVideo ? getSelectedVideoSource(selectedVideo) : '';
+  const selectedVideoThumbnail = selectedVideo?.thumbnail || '';
+  const selectedVideoMediaType = selectedVideo?.media_type || '';
   const availableSfxCount = (effectLibrary?.sound_effects || []).filter((item) => item.asset_present).length;
 
   const buildForgeEditPlan = () => ({
@@ -3610,117 +3752,27 @@ function ForgeEditor() {
                 </div>
             </div>
 
-            <div className="preview-container">
-              <div className="preview-frame">
-                {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideo ? (
-                  <div
-                    className={`post-headline-avatar-preview ${activeHeadlinePalette.className}`}
-                    style={{ gridTemplateRows: `${topRatio}fr ${headlineRatio}fr ${bottomRatio}fr` }}
-                  >
-                    <div className="pha-post">
-                      <img
-                        src={activePreviewImage}
-                        alt="Imagem do post"
-                        style={{
-                          objectFit: imageFit,
-                          objectPosition: `50% ${verticalCenterPercent}%`,
-                        }}
-                      />
-                      <span className="label">Imagem ({topRatio}%)</span>
-                    </div>
-                    <div className="pha-headline">
-                      <strong style={{ fontSize: `${Math.max(12, 18 * (headlineFontScale / 100))}px` }}>
-                        {headlineText || 'Headline'}
-                      </strong>
-                    </div>
-                    <div className="pha-avatar">
-                      {selectedVideo.media_type === 'image' && getSelectedVideoSource(selectedVideo) ? (
-                        <img
-                          src={getSelectedVideoSource(selectedVideo)}
-                          alt="Avatar"
-                          style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                        />
-                      ) : getSelectedVideoSource(selectedVideo) ? (
-                        <video
-                          src={getSelectedVideoSource(selectedVideo)}
-                          className="video-preview"
-                          style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                        />
-                      ) : selectedVideo?.thumbnail ? (
-                        <img src={selectedVideo.thumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
-                      ) : null}
-                      <span className="label">Avatar ({bottomRatio}%)</span>
-                    </div>
-                  </div>
-                ) : hasPreviewImage && bottomRatio === 0 && selectedVideo ? (
-                    <div className="post-overlay-preview">
-                    {getSelectedVideoSource(selectedVideo) ? (
-                      <video
-                        src={getSelectedVideoSource(selectedVideo)}
-                        className="post-background"
-                        style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                      />
-                    ) : selectedVideo?.thumbnail ? (
-                      <img src={selectedVideo.thumbnail} alt="Video" className="post-background" style={{ objectFit: videoFit }} />
-                    ) : null}
-
-                    <img
-                      src={screenshotPath}
-                      alt="Post centralizado"
-                      className="post-foreground"
-                      style={{
-                        width: `${postScale}%`,
-                        top: `${postY}%`,
-                      }}
-                    />
-                    <span className="label">Post sobre vídeo</span>
-                  </div>
-                ) : hasPreviewImage ? (
-                    <>
-                    <div className="frame-screenshot" style={{ height: `${topRatio}%` }}>
-                      <img
-                        src={activePreviewImage}
-                        alt="Screenshot"
-                        style={{
-                          objectFit: imageFit,
-                          objectPosition: `50% ${verticalCenterPercent}%`,
-                        }}
-                      />
-                      {imageFit === 'cover' && (
-                        <div className="image-guide-overlay" aria-hidden="true">
-                          <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
-                          <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
-                        </div>
-                      )}
-                      <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
-                    </div>
-
-                    {bottomRatio > 0 && selectedVideo && (
-                      <div className="frame-video" style={{ height: `${bottomRatio}%` }}>
-                        {getSelectedVideoSource(selectedVideo) ? (
-                          <video
-                            src={getSelectedVideoSource(selectedVideo)}
-                            className="video-preview"
-                            style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                          />
-                        ) : selectedVideo?.thumbnail ? (
-                          <img src={selectedVideo.thumbnail} alt="Video" style={{ objectFit: videoFit }} />
-                        ) : (
-                          <div className="video-placeholder-large">
-                            <Play size={48} />
-                          </div>
-                        )}
-                        <span className="label">Vídeo de Fundo ({bottomRatio}%)</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="preview-empty">
-                    <p>{bottomRatio === 0 ? 'Selecione uma imagem para visualizar' : 'Selecione screenshot e vídeo para visualizar'}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ForgeVerticalPreview
+              hasPreviewImage={hasPreviewImage}
+              layoutPreset={layoutPreset}
+              selectedVideoSource={selectedVideoSource}
+              selectedVideoThumbnail={selectedVideoThumbnail}
+              selectedVideoMediaType={selectedVideoMediaType}
+              activeHeadlineClassName={activeHeadlinePalette.className}
+              activePreviewImage={activePreviewImage}
+              imageFit={imageFit}
+              verticalCenterPercent={verticalCenterPercent}
+              topRatio={topRatio}
+              headlineRatio={headlineRatio}
+              bottomRatio={bottomRatio}
+              headlineFontScale={headlineFontScale}
+              headlineText={headlineText}
+              videoFit={videoFit}
+              postScale={postScale}
+              postY={postY}
+              topGuidePercent={topGuidePercent}
+              bottomGuidePercent={bottomGuidePercent}
+            />
           </div>
 
         </div>
