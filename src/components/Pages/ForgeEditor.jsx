@@ -240,6 +240,8 @@ function ForgeEditor() {
   const [avatarEngineRenderResult, setAvatarEngineRenderResult] = useState(null);
   const [savingAvatarEngineRender, setSavingAvatarEngineRender] = useState(false);
   const [showHiddenAvatarProviders, setShowHiddenAvatarProviders] = useState(false);
+  const [avatarSpeechCollapsed, setAvatarSpeechCollapsed] = useState(true);
+  const [avatarEngineCollapsed, setAvatarEngineCollapsed] = useState(true);
   const [customAvatarProvider, setCustomAvatarProvider] = useState({
     name: '',
     repo_url: '',
@@ -731,6 +733,8 @@ function ForgeEditor() {
       setAvatarSpeechStyle(draft.avatarSpeechStyle || 'humor_bizarro');
       setAvatarVoiceProfile(draft.avatarVoiceProfile || '');
       setAvatarSpeechTimingNote(draft.avatarSpeechTimingNote || '');
+      setAvatarSpeechCollapsed(draft.avatarSpeechCollapsed ?? true);
+      setAvatarEngineCollapsed(draft.avatarEngineCollapsed ?? true);
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
@@ -785,6 +789,8 @@ function ForgeEditor() {
       avatarSpeechStyle !== 'humor_bizarro' ||
       avatarVoiceProfile ||
       avatarSpeechTimingNote ||
+      avatarSpeechCollapsed !== true ||
+      avatarEngineCollapsed !== true ||
       effectsEnabled !== true ||
       effectsMode !== 'assisted' ||
       effectsPreset !== 'documentary' ||
@@ -824,6 +830,8 @@ function ForgeEditor() {
         avatarSpeechStyle,
         avatarVoiceProfile,
         avatarSpeechTimingNote,
+        avatarSpeechCollapsed,
+        avatarEngineCollapsed,
         screenshotPath: safeScreenshotPath,
         selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
         selectedImageUploadPaths,
@@ -871,6 +879,8 @@ function ForgeEditor() {
     avatarSpeechStyle,
     avatarVoiceProfile,
     avatarSpeechTimingNote,
+    avatarSpeechCollapsed,
+    avatarEngineCollapsed,
       headlineText,
       headlineRatio,
       headlineFontScale,
@@ -2533,13 +2543,28 @@ function ForgeEditor() {
                 </div>
                 {layoutPreset === 'postHeadlineAvatar' && (
                   <>
-                <div className="avatar-speech-panel">
+                <div className={`avatar-speech-panel collapsible-avatar-panel ${avatarSpeechCollapsed ? 'collapsed' : ''}`}>
                   <div className="avatar-speech-header">
                     <strong>Fala do avatar</strong>
-                    <span className={avatarGeneratorStatus?.configured ? 'status-ok' : 'status-warn'}>
-                      {avatarGeneratorStatus?.configured ? 'Gerador local conectado' : 'Gerador local offline'}
-                    </span>
+                    <div className="avatar-panel-header-actions">
+                      <span className={avatarGeneratorStatus?.configured ? 'status-ok' : 'status-warn'}>
+                        {avatarGeneratorStatus?.configured ? 'Gerador local conectado' : 'Gerador local offline'}
+                      </span>
+                      <button
+                        type="button"
+                        className="avatar-collapse-button"
+                        onClick={() => setAvatarSpeechCollapsed((current) => !current)}
+                      >
+                        {avatarSpeechCollapsed ? 'Abrir' : 'Minimizar'}
+                      </button>
+                    </div>
                   </div>
+                  {avatarSpeechCollapsed ? (
+                    <small className="avatar-collapsed-summary">
+                      Fala, duração e voz do avatar estão minimizadas.
+                    </small>
+                  ) : (
+                    <>
                   <div className="avatar-speech-duration-grid">
                     <button
                       type="button"
@@ -2637,23 +2662,42 @@ function ForgeEditor() {
                   <small>
                     Cada modo controla o tamanho da fala para reduzir corte e repetição. O áudio gerado fica selecionado na Biblioteca de Áudios.
                   </small>
+                    </>
+                  )}
                 </div>
-                <div className="avatar-engine-panel">
+                <div className={`avatar-engine-panel collapsible-avatar-panel ${avatarEngineCollapsed ? 'collapsed' : ''}`}>
                   <div className="avatar-engine-panel-header">
                     <div>
                       <strong>Avatar Engine</strong>
                       <p>Catálogo isolado com 10 opções grátis e espaço para novos motores.</p>
                     </div>
-                    <button
-                      type="button"
-                      className="headline-generate-button secondary"
-                      onClick={loadAvatarEngineRegistry}
-                      disabled={loadingAvatarEngineRegistry}
-                    >
-                      {loadingAvatarEngineRegistry ? <><Loader size={14} className="spinner" />Atualizando...</> : 'Atualizar catálogo'}
-                    </button>
+                    <div className="avatar-panel-header-actions">
+                      {!avatarEngineCollapsed && (
+                        <button
+                          type="button"
+                          className="headline-generate-button secondary"
+                          onClick={loadAvatarEngineRegistry}
+                          disabled={loadingAvatarEngineRegistry}
+                        >
+                          {loadingAvatarEngineRegistry ? <><Loader size={14} className="spinner" />Atualizando...</> : 'Atualizar catálogo'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="avatar-collapse-button"
+                        onClick={() => setAvatarEngineCollapsed((current) => !current)}
+                      >
+                        {avatarEngineCollapsed ? 'Abrir' : 'Minimizar'}
+                      </button>
+                    </div>
                   </div>
 
+                  {avatarEngineCollapsed ? (
+                    <small className="avatar-collapsed-summary">
+                      Motores de avatar, diagnóstico e provedores estão minimizados.
+                    </small>
+                  ) : (
+                    <>
                   <div className="avatar-engine-summary">
                     <span>Vídeo preferido: <strong>{preferredAvatarVideoProvider?.name || 'nenhum'}</strong></span>
                     <span>Voz preferida: <strong>{preferredAvatarVoiceProvider?.name || 'nenhuma'}</strong></span>
@@ -2977,6 +3021,8 @@ function ForgeEditor() {
                       </div>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
                 <div className="headline-layout-note">
                   Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
