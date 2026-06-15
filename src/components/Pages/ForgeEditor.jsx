@@ -72,6 +72,7 @@ function ForgeEditor() {
   const [headlineRatio, setHeadlineRatio] = useState(10);
   const [headlineFontScale, setHeadlineFontScale] = useState(100);
   const [headlinePalette, setHeadlinePalette] = useState('purpleGold');
+  const [slideshowHeadlinePosition, setSlideshowHeadlinePosition] = useState('none');
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [avatarSpeechText, setAvatarSpeechText] = useState('');
   const [avatarSpeechDurationModel, setAvatarSpeechDurationModel] = useState('30s');
@@ -549,6 +550,7 @@ function ForgeEditor() {
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
       setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
+      setSlideshowHeadlinePosition(['none', 'top', 'middle', 'bottom'].includes(draft.slideshowHeadlinePosition) ? draft.slideshowHeadlinePosition : 'none');
       setAvatarSpeechText(draft.avatarSpeechText || '');
       setAvatarSpeechDurationModel(['6s', '10s', '15s', '30s', '60s'].includes(draft.avatarSpeechDurationModel) ? draft.avatarSpeechDurationModel : '30s');
       setAvatarSpeechStyle(draft.avatarSpeechStyle || 'humor_bizarro');
@@ -640,6 +642,7 @@ function ForgeEditor() {
       headlineRatio,
       headlineFontScale,
       headlinePalette,
+      slideshowHeadlinePosition,
       avatarSpeechText,
       avatarSpeechDurationModel,
       avatarSpeechStyle,
@@ -689,10 +692,11 @@ function ForgeEditor() {
     avatarSpeechStyle,
     avatarVoiceProfile,
     avatarSpeechTimingNote,
-    headlineText,
-    headlineRatio,
-    headlineFontScale,
-    headlinePalette,
+      headlineText,
+      headlineRatio,
+      headlineFontScale,
+      headlinePalette,
+      slideshowHeadlinePosition,
     layoutPreset,
     metadataCategory,
     metadataDescription,
@@ -734,9 +738,9 @@ function ForgeEditor() {
 
     try {
       if (slideshowMode) {
-        const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, 6);
+        const imageFiles = files.filter((file) => file.type.startsWith('image/')).slice(0, 10);
         if (imageFiles.length < 1) {
-          throw new Error('Selecione de 1 a 6 imagens para o modo sequência');
+          throw new Error('Selecione de 1 a 10 imagens para o modo sequência');
         }
 
         const previousPreviewPaths = selectedImagePaths || [];
@@ -850,7 +854,7 @@ function ForgeEditor() {
         body: JSON.stringify({
           source_url: socialImageUrl.trim(),
           prefer_carousel: slideshowMode,
-          limit: 6,
+          limit: 10,
         }),
       });
 
@@ -864,7 +868,7 @@ function ForgeEditor() {
         const importedUrls = data.images
           .map((item) => apiUrl(item.image_url || ''))
           .filter(Boolean)
-          .slice(0, 6);
+          .slice(0, 10);
         setSelectedImagePaths(importedUrls);
         setSelectedImageUploadPaths(importedUrls);
         setSlideshowImageSettings(normalizeSlideshowSettingsClient([], importedUrls.length));
@@ -1270,7 +1274,7 @@ function ForgeEditor() {
     }
 
     if (slideshowMode && getUploadedImageNames().length < 1) {
-      setError('Selecione de 1 a 6 imagens para o modo sequência');
+      setError('Selecione de 1 a 10 imagens para o modo sequência');
       return;
     }
 
@@ -1330,9 +1334,10 @@ function ForgeEditor() {
           : (bottomRatio === 0 && selectedVideo ? 'post_overlay' : (bottomRatio === 0 || !selectedVideo ? 'image_only' : 'stack')),
         layout_preset: layoutPreset,
         headline_text: headlineText,
-        headline_ratio: layoutPreset === 'postHeadlineAvatar' ? headlineRatio / 100 : 0,
+        headline_ratio: (layoutPreset === 'postHeadlineAvatar' || slideshowMode) ? headlineRatio / 100 : 0,
         headline_font_scale: headlineFontScale / 100,
         headline_palette: activeHeadlinePalette.id,
+        slideshow_headline_position: slideshowMode ? slideshowHeadlinePosition : 'none',
         post_scale: postScale / 100,
         post_y: postY / 100,
         image_fit: imageFit,
@@ -2008,7 +2013,7 @@ function ForgeEditor() {
                 className={`mode-button ${slideshowMode ? 'active' : ''}`}
               >
                 <span className="icon">🎞️</span>
-                Sequência até 6 imagens
+                Sequência até 10 imagens
               </button>
             </div>
 
@@ -2090,7 +2095,7 @@ function ForgeEditor() {
                     ) : (
                       <>
                         <Upload size={32} />
-                        <p>Clique para selecionar {slideshowMode ? 'de 1 a 6 imagens' : 'imagem ou vídeo'}</p>
+                        <p>Clique para selecionar {slideshowMode ? 'de 1 a 10 imagens' : 'imagem ou vídeo'}</p>
                         <span className="upload-hint">
                           {slideshowMode ? 'Uma imagem já funciona. Use vídeo no modo misto quando quiser.' : 'JPG, PNG, MP4, MOV e similares'}
                         </span>
@@ -2245,10 +2250,10 @@ function ForgeEditor() {
               </button>
             </div>
 
-            {layoutPreset === 'postHeadlineAvatar' && (
+            {(layoutPreset === 'postHeadlineAvatar' || slideshowMode) && (
               <div className="headline-preset-panel">
                 <label>
-                  Headline central
+                  {slideshowMode ? 'Headline do carrossel' : 'Headline central'}
                   <input
                     type="text"
                     value={headlineText}
@@ -2310,6 +2315,22 @@ function ForgeEditor() {
                       />
                     </div>
                   </label>
+
+                  {slideshowMode && (
+                    <label>
+                      Posição no carrossel
+                      <select
+                        value={slideshowHeadlinePosition}
+                        onChange={(event) => setSlideshowHeadlinePosition(event.target.value)}
+                        className="input-field"
+                      >
+                        <option value="none">Sem headline</option>
+                        <option value="top">Topo</option>
+                        <option value="middle">Meio</option>
+                        <option value="bottom">Embaixo</option>
+                      </select>
+                    </label>
+                  )}
                 </div>
 
                 <div className="headline-palette-grid" role="group" aria-label="Paletas da headline">
@@ -2325,6 +2346,8 @@ function ForgeEditor() {
                     </button>
                   ))}
                 </div>
+                {layoutPreset === 'postHeadlineAvatar' && (
+                  <>
                 <div className="avatar-speech-panel">
                   <div className="avatar-speech-header">
                     <strong>Fala do avatar</strong>
@@ -2773,6 +2796,8 @@ function ForgeEditor() {
                 <div className="headline-layout-note">
                   Usa imagem no topo, headline maior no meio e avatar embaixo. O 70/30 continua separado.
                 </div>
+                  </>
+                )}
               </div>
             )}
           </div>
