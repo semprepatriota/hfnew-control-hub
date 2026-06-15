@@ -627,55 +627,59 @@ function ForgeEditor() {
       return;
     }
 
-    const draftPayload = {
-      topRatio,
-      bottomRatio,
-      postScale,
-      postY,
-      imageFit,
-      imageCropX,
-      imageCropY,
-      videoFit,
-      backgroundMode,
-      layoutPreset,
-      headlineText,
-      headlineRatio,
-      headlineFontScale,
-      headlinePalette,
-      slideshowHeadlinePosition,
-      avatarSpeechText,
-      avatarSpeechDurationModel,
-      avatarSpeechStyle,
-      avatarVoiceProfile,
-      avatarSpeechTimingNote,
-      screenshotPath: safeScreenshotPath,
-      selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
-      selectedImageUploadPaths,
-      slideshowImageSettings: normalizeSlideshowSettingsClient(
-        slideshowImageSettings,
-        selectedImageUploadPaths.length || safeImagePaths.length,
-      ),
-      slideshowMode,
-      slideshowStyle,
-      socialImageUrl,
-      selectedVideo,
-      selectedAudio,
-      effectsEnabled,
-      effectsMode,
-      effectsPreset,
-      transitionFrequency,
-      effectPreviewOpen,
-      renderResult,
-      metadataTitle,
-      metadataDescription,
-      metadataHashtags,
-      metadataCategory,
-      metadataPrivacyStatus,
-      scheduleDateTime,
-      scheduleMessage,
-    };
+    const saveDraftTimer = window.setTimeout(() => {
+      const draftPayload = {
+        topRatio,
+        bottomRatio,
+        postScale,
+        postY,
+        imageFit,
+        imageCropX,
+        imageCropY,
+        videoFit,
+        backgroundMode,
+        layoutPreset,
+        headlineText,
+        headlineRatio,
+        headlineFontScale,
+        headlinePalette,
+        slideshowHeadlinePosition,
+        avatarSpeechText,
+        avatarSpeechDurationModel,
+        avatarSpeechStyle,
+        avatarVoiceProfile,
+        avatarSpeechTimingNote,
+        screenshotPath: safeScreenshotPath,
+        selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
+        selectedImageUploadPaths,
+        slideshowImageSettings: normalizeSlideshowSettingsClient(
+          slideshowImageSettings,
+          selectedImageUploadPaths.length || safeImagePaths.length,
+        ),
+        slideshowMode,
+        slideshowStyle,
+        socialImageUrl,
+        selectedVideo,
+        selectedAudio,
+        effectsEnabled,
+        effectsMode,
+        effectsPreset,
+        transitionFrequency,
+        effectPreviewOpen,
+        renderResult,
+        metadataTitle,
+        metadataDescription,
+        metadataHashtags,
+        metadataCategory,
+        metadataPrivacyStatus,
+        scheduleDateTime,
+        scheduleMessage,
+      };
 
-    localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+      localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+    }, 220);
+
+    return () => window.clearTimeout(saveDraftTimer);
   }, [
     backgroundMode,
     bottomRatio,
@@ -1817,45 +1821,12 @@ function ForgeEditor() {
     setError('');
 
     try {
-      const response = await fetch(apiUrl('/api/forge/crop-image'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          screenshot_path: imagePath,
-          top_percent: topGuidePercent,
-          bottom_percent: bottomGuidePercent,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao cortar imagem');
-      }
-
-      const data = await response.json();
-      const nextImageUrl = apiUrl(data.image_url);
-      setScreenshotPath(nextImageUrl);
       setImageFit('cover');
       setRenderResult(null);
-
-      setSelectedImagePaths((prev) => {
-        if (!prev.length) return [nextImageUrl];
-        const next = [...prev];
-        next[0] = nextImageUrl;
-        return next;
-      });
-      setSelectedImageUploadPaths((prev) => {
-        if (!prev.length) return [nextImageUrl];
-        const next = [...prev];
-        next[0] = nextImageUrl;
-        return next;
-      });
     } catch (err) {
       setError(err.message);
     } finally {
-      setCroppingImage(false);
+      window.setTimeout(() => setCroppingImage(false), 120);
     }
   };
 
@@ -3565,10 +3536,10 @@ function ForgeEditor() {
                         {croppingImage ? (
                           <>
                             <Loader size={14} className="spinner" />
-                            Cortando...
+                            Aplicando...
                           </>
                         ) : (
-                          'Cortar imagem'
+                          'Aplicar no preview'
                         )}
                       </button>
                     </div>
