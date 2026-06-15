@@ -803,6 +803,8 @@ function ForgeEditor() {
         },
         body: JSON.stringify({
           source_url: socialImageUrl.trim(),
+          prefer_carousel: slideshowMode,
+          limit: 6,
         }),
       });
 
@@ -812,7 +814,19 @@ function ForgeEditor() {
       }
 
       const data = await response.json();
-      setScreenshotPath(apiUrl(data.image_url));
+      if (slideshowMode && Array.isArray(data.images) && data.images.length > 0) {
+        const importedUrls = data.images
+          .map((item) => apiUrl(item.image_url || ''))
+          .filter(Boolean)
+          .slice(0, 6);
+        setSelectedImagePaths(importedUrls);
+        setSelectedImageUploadPaths(importedUrls);
+        setScreenshotPath(importedUrls[0] || '');
+      } else {
+        setScreenshotPath(apiUrl(data.image_url));
+        setSelectedImagePaths([apiUrl(data.image_url)]);
+        setSelectedImageUploadPaths([apiUrl(data.image_url)]);
+      }
       setSocialImageUrl('');
       setRenderResult(null);
     } catch (err) {
@@ -2009,7 +2023,7 @@ function ForgeEditor() {
                 ) : (
                   <>
                     <Download size={15} />
-                    Baixar imagem
+                    {slideshowMode ? 'Baixar carrossel' : 'Baixar imagem'}
                   </>
                 )}
               </button>
