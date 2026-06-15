@@ -25,6 +25,37 @@ import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 
+const createDefaultSlideshowSetting = () => ({
+  fit: 'contain',
+  top_percent: 10,
+  bottom_percent: 10,
+});
+
+const normalizeSlideshowSettingsClient = (settings, count) => {
+  const source = Array.isArray(settings) ? settings : [];
+  return Array.from({ length: count }, (_, index) => {
+    const current = source[index] || {};
+    const defaults = createDefaultSlideshowSetting();
+    const fit = current.fit === 'cover' ? 'cover' : 'contain';
+    const top = Number.isFinite(Number(current.top_percent)) ? Number(current.top_percent) : defaults.top_percent;
+    const bottom = Number.isFinite(Number(current.bottom_percent)) ? Number(current.bottom_percent) : defaults.bottom_percent;
+    return {
+      fit,
+      top_percent: Math.max(0, Math.min(40, top)),
+      bottom_percent: Math.max(0, Math.min(40, bottom)),
+    };
+  });
+};
+
+const moveArrayItem = (items, fromIndex, toIndex) => {
+  if (!Array.isArray(items) || !items.length) return items;
+  if (toIndex < 0 || toIndex >= items.length) return items;
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+};
+
 function ForgeEditor() {
   // Estados principales
   const [topRatio, setTopRatio] = useState(70);
@@ -69,6 +100,7 @@ function ForgeEditor() {
   const [screenshotPath, setScreenshotPath] = useState('');
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
+  const [slideshowImageSettings, setSlideshowImageSettings] = useState([]);
   const [libraryChannelId, setLibraryChannelId] = useState(() => localStorage.getItem('alliance_forge_library_channel_id') || '');
   const [slideshowMode, setSlideshowMode] = useState(false);
   const [slideshowStyle, setSlideshowStyle] = useState('pure');
@@ -525,6 +557,12 @@ function ForgeEditor() {
       setScreenshotPath(draft.screenshotPath || '');
       setSelectedImagePaths(Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths : []);
       setSelectedImageUploadPaths(Array.isArray(draft.selectedImageUploadPaths) ? draft.selectedImageUploadPaths : []);
+      setSlideshowImageSettings(
+        normalizeSlideshowSettingsClient(
+          draft.slideshowImageSettings,
+          Array.isArray(draft.selectedImagePaths) ? draft.selectedImagePaths.length : 0,
+        ),
+      );
       setSlideshowMode(Boolean(draft.slideshowMode));
       setSlideshowStyle(draft.slideshowStyle || 'pure');
       setSocialImageUrl(draft.socialImageUrl || '');
@@ -610,6 +648,10 @@ function ForgeEditor() {
       screenshotPath: safeScreenshotPath,
       selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
       selectedImageUploadPaths,
+      slideshowImageSettings: normalizeSlideshowSettingsClient(
+        slideshowImageSettings,
+        selectedImageUploadPaths.length || safeImagePaths.length,
+      ),
       slideshowMode,
       slideshowStyle,
       socialImageUrl,
@@ -666,6 +708,7 @@ function ForgeEditor() {
     selectedAudio,
     selectedImagePaths,
     selectedImageUploadPaths,
+    slideshowImageSettings,
     selectedVideo,
     slideshowMode,
     slideshowStyle,
@@ -731,6 +774,7 @@ function ForgeEditor() {
 
         setSelectedImagePaths(previewPaths);
         setSelectedImageUploadPaths(uploadedPaths);
+        setSlideshowImageSettings(normalizeSlideshowSettingsClient([], uploadedPaths.length));
         setScreenshotPath(previewPaths[0] || '');
         setRenderResult(null);
         return;
@@ -761,6 +805,7 @@ function ForgeEditor() {
         setScreenshotPath(videoPreviewUrl);
         setSelectedImagePaths([]);
         setSelectedImageUploadPaths([]);
+        setSlideshowImageSettings([]);
         setSelectedVideo({
           filename: data.filename,
           path: data.filepath,
@@ -777,6 +822,7 @@ function ForgeEditor() {
         setScreenshotPath(fullImageUrl);
         setSelectedImagePaths([fullImageUrl]);
         setSelectedImageUploadPaths([fullImageUrl]);
+        setSlideshowImageSettings(normalizeSlideshowSettingsClient([], 1));
         setRenderResult(null);
       }
     } catch (err) {
@@ -821,11 +867,13 @@ function ForgeEditor() {
           .slice(0, 6);
         setSelectedImagePaths(importedUrls);
         setSelectedImageUploadPaths(importedUrls);
+        setSlideshowImageSettings(normalizeSlideshowSettingsClient([], importedUrls.length));
         setScreenshotPath(importedUrls[0] || '');
       } else {
         setScreenshotPath(apiUrl(data.image_url));
         setSelectedImagePaths([apiUrl(data.image_url)]);
         setSelectedImageUploadPaths([apiUrl(data.image_url)]);
+        setSlideshowImageSettings(normalizeSlideshowSettingsClient([], 1));
       }
       setSocialImageUrl('');
       setRenderResult(null);
@@ -1166,6 +1214,7 @@ function ForgeEditor() {
   const activePreviewImage = screenshotPath || selectedImagePaths[0] || '';
   const hasPreviewImage = Boolean(activePreviewImage);
   const hasSingleVideoPreview = !slideshowMode && Boolean(selectedVideo);
+  const slideshowPreviewSettings = normalizeSlideshowSettingsClient(slideshowImageSettings, selectedImagePaths.length);
   const availableSfxCount = (effectLibrary?.sound_effects || []).filter((item) => item.asset_present).length;
 
   const buildForgeEditPlan = () => ({
@@ -1188,44 +1237,31 @@ function ForgeEditor() {
   });
 
   const reorderSlideshowImage = (index, direction) => {
-    setSelectedImagePaths((prev) => {
-      if (!prev.length) return prev;
-      const nextIndex = index + direction;
-      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
-
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.splice(nextIndex, 0, moved);
-      return next;
-    });
-    setSelectedImageUploadPaths((prev) => {
-      if (!prev.length) return prev;
-      const nextIndex = index + direction;
-      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
-
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.splice(nextIndex, 0, moved);
-      return next;
-    });
+    setSelectedImagePaths((prev) => moveArrayItem(prev, index, index + direction));
+    setSelectedImageUploadPaths((prev) => moveArrayItem(prev, index, index + direction));
+    setSlideshowImageSettings((prev) => moveArrayItem(prev, index, index + direction));
   };
 
   const makeSlideshowFirstImage = (index) => {
-    setSelectedImagePaths((prev) => {
-      if (!prev.length || index <= 0 || index >= prev.length) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.unshift(moved);
-      return next;
-    });
-    setSelectedImageUploadPaths((prev) => {
-      if (!prev.length || index <= 0 || index >= prev.length) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.unshift(moved);
-      return next;
+    setSelectedImagePaths((prev) => moveArrayItem(prev, index, 0));
+    setSelectedImageUploadPaths((prev) => moveArrayItem(prev, index, 0));
+    setSlideshowImageSettings((prev) => moveArrayItem(prev, index, 0));
+  };
+
+  const updateSlideshowImageSetting = (index, patch) => {
+    setSlideshowImageSettings((prev) => {
+      const normalized = normalizeSlideshowSettingsClient(prev, Math.max(selectedImagePaths.length, index + 1));
+      normalized[index] = {
+        ...normalized[index],
+        ...patch,
+      };
+      return normalized;
     });
   };
+
+  useEffect(() => {
+    setSlideshowImageSettings((prev) => normalizeSlideshowSettingsClient(prev, selectedImagePaths.length));
+  }, [selectedImagePaths.length]);
 
   const handleRender = async () => {
     if (!hasPreviewImage) {
@@ -1306,6 +1342,9 @@ function ForgeEditor() {
         slideshow_seconds_per_image: 3,
         slideshow_intro_seconds: 1.5,
         slideshow_style: slideshowStyle,
+        slideshow_image_settings: slideshowMode
+          ? normalizeSlideshowSettingsClient(slideshowImageSettings, imagePaths.length)
+          : [],
         edit_plan: buildForgeEditPlan()
       };
 
@@ -1953,6 +1992,7 @@ function ForgeEditor() {
                   setSlideshowStyle('pure');
                   setSelectedImagePaths((prev) => prev.slice(0, 1));
                   setSelectedImageUploadPaths((prev) => prev.slice(0, 1));
+                  setSlideshowImageSettings((prev) => normalizeSlideshowSettingsClient(prev, 1));
                 }}
                 className={`mode-button ${!slideshowMode ? 'active' : ''}`}
               >
@@ -2082,6 +2122,7 @@ function ForgeEditor() {
                     setScreenshotPath('');
                     setSelectedImagePaths([]);
                     setSelectedImageUploadPaths([]);
+                    setSlideshowImageSettings([]);
                     setSelectedVideo(null);
                   }}
                   className="remove-button-simple"
@@ -2096,7 +2137,13 @@ function ForgeEditor() {
               <div className="slideshow-preview-strip">
                 {selectedImagePaths.map((path, index) => (
                   <div key={`${path}-${index}`} className="slideshow-preview-item">
-                    <img src={path} alt={`Slide ${index + 1}`} />
+                    <div className="slideshow-preview-media">
+                      <img
+                        src={path}
+                        alt={`Slide ${index + 1}`}
+                        style={{ objectFit: slideshowPreviewSettings[index]?.fit === 'cover' ? 'cover' : 'contain' }}
+                      />
+                    </div>
                     <span>{index + 1}</span>
                     <div className="slideshow-order-actions">
                       <button
@@ -2128,6 +2175,48 @@ function ForgeEditor() {
                       >
                         ↓
                       </button>
+                    </div>
+                    <div className="slideshow-preview-controls">
+                      <div className="slideshow-fit-toggle">
+                        <button
+                          type="button"
+                          className={`slideshow-fit-button ${slideshowPreviewSettings[index]?.fit !== 'cover' ? 'active' : ''}`}
+                          onClick={() => updateSlideshowImageSetting(index, { fit: 'contain' })}
+                        >
+                          Inteira
+                        </button>
+                        <button
+                          type="button"
+                          className={`slideshow-fit-button ${slideshowPreviewSettings[index]?.fit === 'cover' ? 'active' : ''}`}
+                          onClick={() => updateSlideshowImageSetting(index, { fit: 'cover' })}
+                        >
+                          Corte
+                        </button>
+                      </div>
+                      {slideshowPreviewSettings[index]?.fit === 'cover' && (
+                        <div className="slideshow-crop-controls">
+                          <label>
+                            Topo
+                            <input
+                              type="range"
+                              min="0"
+                              max="40"
+                              value={slideshowPreviewSettings[index]?.top_percent ?? 10}
+                              onChange={(e) => updateSlideshowImageSetting(index, { top_percent: Number(e.target.value) })}
+                            />
+                          </label>
+                          <label>
+                            Base
+                            <input
+                              type="range"
+                              min="0"
+                              max="40"
+                              value={slideshowPreviewSettings[index]?.bottom_percent ?? 10}
+                              onChange={(e) => updateSlideshowImageSetting(index, { bottom_percent: Number(e.target.value) })}
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
