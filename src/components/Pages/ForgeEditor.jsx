@@ -3725,10 +3725,10 @@ function ForgeEditor() {
                         {croppingImage ? (
                           <>
                             <Loader size={14} className="spinner" />
-                            Aplicando...
+                            Cortando...
                           </>
                         ) : (
-                          'Aplicar no preview'
+                          'Cortar imagem'
                         )}
                       </button>
                     </div>
