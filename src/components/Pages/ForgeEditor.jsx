@@ -398,16 +398,6 @@ function ForgeEditor() {
       return;
     }
 
-    if (preset === 'classic7030Headline') {
-      setTopRatio(70);
-      setBottomRatio(30);
-      ratioLockRef.current = { top: 70, bottom: 30 };
-      if (slideshowHeadlinePosition === 'none') {
-        setSlideshowHeadlinePosition('top');
-      }
-      return;
-    }
-
     setTopRatio(70);
     setBottomRatio(30);
     ratioLockRef.current = { top: 70, bottom: 30 };
@@ -1520,12 +1510,12 @@ function ForgeEditor() {
       // Extrair apenas o nome do arquivo
       const imagePath = getUploadedImageName();
       const imagePaths = getUploadedImageNames();
-      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030Headline' || slideshowMode;
-      const resolvedHeadlinePosition = layoutPreset === 'classic7030Headline'
-        ? (slideshowHeadlinePosition === 'none' ? 'top' : slideshowHeadlinePosition)
-        : layoutPreset === 'postHeadlineAvatar'
+      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode;
+      const resolvedHeadlinePosition = layoutPreset === 'postHeadlineAvatar'
         ? (slideshowHeadlinePosition === 'none' ? 'middle' : slideshowHeadlinePosition)
         : slideshowMode
+        ? slideshowHeadlinePosition
+        : layoutPreset === 'classic7030'
         ? slideshowHeadlinePosition
         : 'none';
 
@@ -2455,14 +2445,6 @@ function ForgeEditor() {
               </button>
               <button
                 type="button"
-                onClick={() => applyLayoutPreset('classic7030Headline')}
-                className={`mode-button ${layoutPreset === 'classic7030Headline' ? 'active' : ''}`}
-              >
-                <span className="icon">▦</span>
-                70/30 + Headline
-              </button>
-              <button
-                type="button"
                 onClick={() => applyLayoutPreset('postHeadlineAvatar')}
                 className={`mode-button ${layoutPreset === 'postHeadlineAvatar' ? 'active' : ''}`}
               >
@@ -2471,10 +2453,10 @@ function ForgeEditor() {
               </button>
             </div>
 
-            {(layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030Headline' || slideshowMode) && (
+            {(layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode) && (
               <div className="headline-preset-panel">
                 <label>
-                  {slideshowMode ? 'Headline do carrossel' : layoutPreset === 'classic7030Headline' ? 'Headline do 70/30' : 'Headline central'}
+                  {slideshowMode ? 'Headline do carrossel' : layoutPreset === 'classic7030' ? 'Headline do 70/30' : 'Headline central'}
                   <input
                     type="text"
                     value={headlineText}
@@ -2537,7 +2519,7 @@ function ForgeEditor() {
                     </div>
                   </label>
 
-                  {(slideshowMode || layoutPreset === 'classic7030Headline' || layoutPreset === 'postHeadlineAvatar') && (
+                  {(slideshowMode || layoutPreset === 'classic7030' || layoutPreset === 'postHeadlineAvatar') && (
                     <label>
                       Posição da headline
                       <select
