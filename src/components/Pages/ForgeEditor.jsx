@@ -85,6 +85,38 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
     layoutPreset === 'classic7030' &&
     ['top', 'middle', 'bottom'].includes(headlinePosition) &&
     Boolean((headlineText || '').trim());
+  const showBandHeadline =
+    layoutPreset === 'postHeadlineAvatar' &&
+    ['top', 'middle', 'bottom'].includes(headlinePosition) &&
+    Boolean((headlineText || '').trim());
+
+  const postHeadlineRows = (() => {
+    if (!showBandHeadline) {
+      return [
+        { key: 'post', size: topRatio, className: 'pha-post' },
+        { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
+      ];
+    }
+    if (headlinePosition === 'top') {
+      return [
+        { key: 'headline', size: headlineRatio, className: 'pha-headline' },
+        { key: 'post', size: topRatio, className: 'pha-post' },
+        { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
+      ];
+    }
+    if (headlinePosition === 'bottom') {
+      return [
+        { key: 'post', size: topRatio, className: 'pha-post' },
+        { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
+        { key: 'headline', size: headlineRatio, className: 'pha-headline' },
+      ];
+    }
+    return [
+      { key: 'post', size: topRatio, className: 'pha-post' },
+      { key: 'headline', size: headlineRatio, className: 'pha-headline' },
+      { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
+    ];
+  })();
 
   return (
     <div
@@ -100,42 +132,54 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
         {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideoSource ? (
           <div
             className={`post-headline-avatar-preview ${activeHeadlineClassName}`}
-            style={{ gridTemplateRows: `${topRatio}fr ${headlineRatio}fr ${bottomRatio}fr` }}
+            style={{ gridTemplateRows: postHeadlineRows.map((row) => `${row.size}fr`).join(' ') }}
           >
-            <div className="pha-post">
-              <img
-                src={activePreviewImage}
-                alt="Imagem do post"
-                style={{
-                  objectFit: imageFit,
-                  objectPosition: '50% var(--forge-image-position-y)',
-                }}
-              />
-              <span className="label">Imagem ({topRatio}%)</span>
-            </div>
-            <div className="pha-headline">
-              <strong style={{ fontSize: headlineFontSize }}>
-                {headlineText || 'Headline'}
-              </strong>
-            </div>
-            <div className="pha-avatar">
-              {selectedVideoMediaType === 'image' ? (
-                <img
-                  src={selectedVideoSource}
-                  alt="Avatar"
-                  style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                />
-              ) : selectedVideoSource ? (
-                <video
-                  src={selectedVideoSource}
-                  className="video-preview"
-                  style={{ width: '100%', height: '100%', objectFit: videoFit }}
-                />
-              ) : selectedVideoThumbnail ? (
-                <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
-              ) : null}
-              <span className="label">Avatar ({bottomRatio}%)</span>
-            </div>
+            {postHeadlineRows.map((row) => {
+              if (row.key === 'post') {
+                return (
+                  <div key={row.key} className="pha-post">
+                    <img
+                      src={activePreviewImage}
+                      alt="Imagem do post"
+                      style={{
+                        objectFit: imageFit,
+                        objectPosition: '50% var(--forge-image-position-y)',
+                      }}
+                    />
+                    <span className="label">Imagem ({topRatio}%)</span>
+                  </div>
+                );
+              }
+              if (row.key === 'headline') {
+                return (
+                  <div key={row.key} className="pha-headline">
+                    <strong style={{ fontSize: headlineFontSize }}>
+                      {headlineText || 'Headline'}
+                    </strong>
+                  </div>
+                );
+              }
+              return (
+                <div key={row.key} className="pha-avatar">
+                  {selectedVideoMediaType === 'image' ? (
+                    <img
+                      src={selectedVideoSource}
+                      alt="Avatar"
+                      style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                    />
+                  ) : selectedVideoSource ? (
+                    <video
+                      src={selectedVideoSource}
+                      className="video-preview"
+                      style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                    />
+                  ) : selectedVideoThumbnail ? (
+                    <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
+                  ) : null}
+                  <span className="label">Avatar ({bottomRatio}%)</span>
+                </div>
+              );
+            })}
           </div>
         ) : hasPreviewImage && bottomRatio === 0 && selectedVideoSource ? (
           <div className="post-overlay-preview">
