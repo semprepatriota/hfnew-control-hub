@@ -91,7 +91,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
   const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
-    layoutPreset === 'singleVideo' &&
+    ['singleVideo', 'slideshowPure'].includes(layoutPreset) &&
     ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
   const showBandHeadline =
@@ -146,6 +146,20 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
               style={{ width: '100%', height: '100%', objectFit: videoFit }}
             />
             <span className="label">Vídeo 9:16</span>
+          </div>
+        ) : hasPreviewImage && layoutPreset === 'slideshowPure' ? (
+          <div className="slideshow-pure-preview">
+            <img
+              src={activePreviewImage}
+              alt="Preview do carrossel"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: imageFit,
+                objectPosition: '50% var(--forge-image-position-y)',
+              }}
+            />
+            <span className="label">Carrossel puro</span>
           </div>
         ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && showBandHeadline ? (
           <div
@@ -3985,7 +3999,11 @@ function ForgeEditor() {
             <ForgeVerticalPreview
               previewRootRef={previewRootRef}
               hasPreviewImage={hasPreviewImage}
-              layoutPreset={!slideshowMode && selectedVideo?.source_role === 'single_upload' ? 'singleVideo' : layoutPreset}
+              layoutPreset={
+                slideshowMode && slideshowStyle === 'pure'
+                  ? 'slideshowPure'
+                  : (!slideshowMode && selectedVideo?.source_role === 'single_upload' ? 'singleVideo' : layoutPreset)
+              }
               selectedVideoSource={selectedVideoSource}
               selectedVideoThumbnail={selectedVideoThumbnail}
               selectedVideoMediaType={selectedVideoMediaType}

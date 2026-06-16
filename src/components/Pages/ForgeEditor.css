@@ -1078,6 +1078,14 @@
   background: #000;
 }
 
+.slideshow-pure-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
 .post-headline-avatar-preview {
   position: relative;
   width: 100%;
