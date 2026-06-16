@@ -398,6 +398,16 @@ function ForgeEditor() {
       return;
     }
 
+    if (preset === 'classic7030Headline') {
+      setTopRatio(70);
+      setBottomRatio(30);
+      ratioLockRef.current = { top: 70, bottom: 30 };
+      if (slideshowHeadlinePosition === 'none') {
+        setSlideshowHeadlinePosition('top');
+      }
+      return;
+    }
+
     setTopRatio(70);
     setBottomRatio(30);
     ratioLockRef.current = { top: 70, bottom: 30 };
@@ -1510,6 +1520,12 @@ function ForgeEditor() {
       // Extrair apenas o nome do arquivo
       const imagePath = getUploadedImageName();
       const imagePaths = getUploadedImageNames();
+      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030Headline' || slideshowMode;
+      const resolvedHeadlinePosition = layoutPreset === 'classic7030Headline'
+        ? (slideshowHeadlinePosition === 'none' ? 'top' : slideshowHeadlinePosition)
+        : slideshowMode
+        ? slideshowHeadlinePosition
+        : 'none';
 
       const renderPayload = {
         screenshot_path: imagePath,
@@ -1526,10 +1542,10 @@ function ForgeEditor() {
           : (bottomRatio === 0 && selectedVideo ? 'post_overlay' : (bottomRatio === 0 || !selectedVideo ? 'image_only' : 'stack')),
         layout_preset: layoutPreset,
         headline_text: headlineText,
-        headline_ratio: (layoutPreset === 'postHeadlineAvatar' || slideshowMode) ? headlineRatio / 100 : 0,
+        headline_ratio: usesHeadlineLayout ? headlineRatio / 100 : 0,
         headline_font_scale: headlineFontScale / 100,
         headline_palette: activeHeadlinePalette.id,
-        slideshow_headline_position: slideshowMode ? slideshowHeadlinePosition : 'none',
+        slideshow_headline_position: resolvedHeadlinePosition,
         post_scale: postScale / 100,
         post_y: postY / 100,
         image_fit: imageFit,
@@ -2437,6 +2453,14 @@ function ForgeEditor() {
               </button>
               <button
                 type="button"
+                onClick={() => applyLayoutPreset('classic7030Headline')}
+                className={`mode-button ${layoutPreset === 'classic7030Headline' ? 'active' : ''}`}
+              >
+                <span className="icon">▦</span>
+                70/30 + Headline
+              </button>
+              <button
+                type="button"
                 onClick={() => applyLayoutPreset('postHeadlineAvatar')}
                 className={`mode-button ${layoutPreset === 'postHeadlineAvatar' ? 'active' : ''}`}
               >
@@ -2445,10 +2469,10 @@ function ForgeEditor() {
               </button>
             </div>
 
-            {(layoutPreset === 'postHeadlineAvatar' || slideshowMode) && (
+            {(layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030Headline' || slideshowMode) && (
               <div className="headline-preset-panel">
                 <label>
-                  {slideshowMode ? 'Headline do carrossel' : 'Headline central'}
+                  {slideshowMode ? 'Headline do carrossel' : layoutPreset === 'classic7030Headline' ? 'Headline do 70/30' : 'Headline central'}
                   <input
                     type="text"
                     value={headlineText}
@@ -2511,9 +2535,9 @@ function ForgeEditor() {
                     </div>
                   </label>
 
-                  {slideshowMode && (
+                  {(slideshowMode || layoutPreset === 'classic7030Headline') && (
                     <label>
-                      Posição no carrossel
+                      Posição da headline
                       <select
                         value={slideshowHeadlinePosition}
                         onChange={(event) => setSlideshowHeadlinePosition(event.target.value)}
