@@ -72,6 +72,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   bottomRatio,
   headlineFontScale,
   headlineText,
+  headlinePosition,
   videoFit,
   postScale,
   postY,
@@ -80,6 +81,10 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
   const headlineFontSize = `${Math.max(12, 18 * (headlineFontScale / 100))}px`;
+  const showOverlayHeadline =
+    layoutPreset === 'classic7030' &&
+    ['top', 'middle', 'bottom'].includes(headlinePosition) &&
+    Boolean((headlineText || '').trim());
 
   return (
     <div
@@ -197,6 +202,16 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
         ) : (
           <div className="preview-empty">
             <p>{bottomRatio === 0 ? 'Selecione uma imagem para visualizar' : 'Selecione screenshot e vídeo para visualizar'}</p>
+          </div>
+        )}
+        {showOverlayHeadline && (
+          <div
+            className={`preview-headline-overlay ${activeHeadlineClassName} ${headlinePosition}`}
+            style={{ height: `${Math.max(6, Math.min(20, headlineRatio))}%` }}
+          >
+            <strong style={{ fontSize: headlineFontSize }}>
+              {headlineText || 'Headline'}
+            </strong>
           </div>
         )}
       </div>
@@ -3904,6 +3919,7 @@ function ForgeEditor() {
               bottomRatio={bottomRatio}
               headlineFontScale={headlineFontScale}
               headlineText={headlineText}
+              headlinePosition={slideshowHeadlinePosition}
               videoFit={videoFit}
               postScale={postScale}
               postY={postY}
