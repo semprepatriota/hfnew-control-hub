@@ -1523,6 +1523,8 @@ function ForgeEditor() {
       const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030Headline' || slideshowMode;
       const resolvedHeadlinePosition = layoutPreset === 'classic7030Headline'
         ? (slideshowHeadlinePosition === 'none' ? 'top' : slideshowHeadlinePosition)
+        : layoutPreset === 'postHeadlineAvatar'
+        ? (slideshowHeadlinePosition === 'none' ? 'middle' : slideshowHeadlinePosition)
         : slideshowMode
         ? slideshowHeadlinePosition
         : 'none';
@@ -2535,7 +2537,7 @@ function ForgeEditor() {
                     </div>
                   </label>
 
-                  {(slideshowMode || layoutPreset === 'classic7030Headline') && (
+                  {(slideshowMode || layoutPreset === 'classic7030Headline' || layoutPreset === 'postHeadlineAvatar') && (
                     <label>
                       Posição da headline
                       <select
