@@ -24,6 +24,14 @@ import {
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
+const DEFAULT_HEADLINE_POSITION = 'middle';
+
+const normalizeHeadlinePositionClient = (position, headlineText = '') => {
+  if (['top', 'middle', 'bottom'].includes(position)) {
+    return position;
+  }
+  return (headlineText || '').trim() ? DEFAULT_HEADLINE_POSITION : 'none';
+};
 
 const createDefaultSlideshowSetting = () => ({
   fit: 'contain',
@@ -80,9 +88,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   bottomGuidePercent,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
-  const effectiveHeadlinePosition = ['top', 'middle', 'bottom'].includes(headlinePosition)
-    ? headlinePosition
-    : ((headlineText || '').trim() ? 'middle' : 'none');
+  const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
   const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
     layoutPreset === 'singleVideo' &&
@@ -141,7 +147,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             />
             <span className="label">Vídeo 9:16</span>
           </div>
-        ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && selectedVideoSource && showBandHeadline ? (
+        ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && showBandHeadline ? (
           <div
             className={`post-headline-avatar-preview ${activeHeadlineClassName}`}
             style={{ gridTemplateRows: postHeadlineRows.map((row) => `${row.size}fr`).join(' ') }}
@@ -187,7 +193,11 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                     />
                   ) : selectedVideoThumbnail ? (
                     <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
-                  ) : null}
+                  ) : (
+                    <div className="video-placeholder-large">
+                      <Play size={48} />
+                    </div>
+                  )}
                   <span className="label">{layoutPreset === 'classic7030' ? 'Vídeo' : 'Avatar'} ({bottomRatio}%)</span>
                 </div>
               );
@@ -291,7 +301,7 @@ function ForgeEditor() {
   const [headlineRatio, setHeadlineRatio] = useState(10);
   const [headlineFontScale, setHeadlineFontScale] = useState(100);
   const [headlinePalette, setHeadlinePalette] = useState('purpleGold');
-  const [slideshowHeadlinePosition, setSlideshowHeadlinePosition] = useState('none');
+  const [slideshowHeadlinePosition, setSlideshowHeadlinePosition] = useState(DEFAULT_HEADLINE_POSITION);
   const [generatingHeadline, setGeneratingHeadline] = useState(false);
   const [avatarSpeechText, setAvatarSpeechText] = useState('');
   const [avatarSpeechDurationModel, setAvatarSpeechDurationModel] = useState('30s');
@@ -762,6 +772,12 @@ function ForgeEditor() {
   }, [applyPreviewCropStyle, topGuidePercent, bottomGuidePercent]);
 
   useEffect(() => {
+    if ((headlineText || '').trim() && slideshowHeadlinePosition === 'none') {
+      setSlideshowHeadlinePosition(DEFAULT_HEADLINE_POSITION);
+    }
+  }, [headlineText, slideshowHeadlinePosition]);
+
+  useEffect(() => {
     const draftKey = getDraftKey();
     if (!draftKey || restoredDraftKeyRef.current === draftKey) {
       return;
@@ -798,7 +814,7 @@ function ForgeEditor() {
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
       setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
-      setSlideshowHeadlinePosition(['none', 'top', 'middle', 'bottom'].includes(draft.slideshowHeadlinePosition) ? draft.slideshowHeadlinePosition : 'none');
+      setSlideshowHeadlinePosition(normalizeHeadlinePositionClient(draft.slideshowHeadlinePosition, draft.headlineText || ''));
       setAvatarSpeechText(draft.avatarSpeechText || '');
       setAvatarSpeechDurationModel(['6s', '10s', '15s', '30s', '60s'].includes(draft.avatarSpeechDurationModel) ? draft.avatarSpeechDurationModel : '30s');
       setAvatarSpeechStyle(draft.avatarSpeechStyle || 'humor_bizarro');
@@ -895,7 +911,7 @@ function ForgeEditor() {
         headlineRatio,
         headlineFontScale,
         headlinePalette,
-        slideshowHeadlinePosition,
+        slideshowHeadlinePosition: normalizeHeadlinePositionClient(slideshowHeadlinePosition, headlineText),
         avatarSpeechText,
         avatarSpeechDurationModel,
         avatarSpeechStyle,
