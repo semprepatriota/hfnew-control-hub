@@ -80,14 +80,17 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   bottomGuidePercent,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
-  const headlineFontSize = `${Math.max(12, 18 * (headlineFontScale / 100))}px`;
+  const effectiveHeadlinePosition = ['top', 'middle', 'bottom'].includes(headlinePosition)
+    ? headlinePosition
+    : ((headlineText || '').trim() ? 'middle' : 'none');
+  const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
-    layoutPreset === 'classic7030' &&
-    ['top', 'middle', 'bottom'].includes(headlinePosition) &&
+    layoutPreset === 'singleVideo' &&
+    ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
   const showBandHeadline =
-    layoutPreset === 'postHeadlineAvatar' &&
-    ['top', 'middle', 'bottom'].includes(headlinePosition) &&
+    ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) &&
+    ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
 
   const postHeadlineRows = (() => {
@@ -97,14 +100,14 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
         { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
       ];
     }
-    if (headlinePosition === 'top') {
+    if (effectiveHeadlinePosition === 'top') {
       return [
         { key: 'headline', size: headlineRatio, className: 'pha-headline' },
         { key: 'post', size: topRatio, className: 'pha-post' },
         { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
       ];
     }
-    if (headlinePosition === 'bottom') {
+    if (effectiveHeadlinePosition === 'bottom') {
       return [
         { key: 'post', size: topRatio, className: 'pha-post' },
         { key: 'avatar', size: bottomRatio, className: 'pha-avatar' },
@@ -129,7 +132,16 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
       }}
     >
       <div className="preview-frame">
-        {hasPreviewImage && layoutPreset === 'postHeadlineAvatar' && selectedVideoSource ? (
+        {layoutPreset === 'singleVideo' && selectedVideoSource ? (
+          <div className="single-video-preview">
+            <video
+              src={selectedVideoSource}
+              className="video-preview"
+              style={{ width: '100%', height: '100%', objectFit: videoFit }}
+            />
+            <span className="label">Vídeo 9:16</span>
+          </div>
+        ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && selectedVideoSource && showBandHeadline ? (
           <div
             className={`post-headline-avatar-preview ${activeHeadlineClassName}`}
             style={{ gridTemplateRows: postHeadlineRows.map((row) => `${row.size}fr`).join(' ') }}
@@ -146,7 +158,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                         objectPosition: '50% var(--forge-image-position-y)',
                       }}
                     />
-                    <span className="label">Imagem ({topRatio}%)</span>
+                    <span className="label">{layoutPreset === 'classic7030' ? 'Imagem' : 'Imagem'} ({topRatio}%)</span>
                   </div>
                 );
               }
@@ -176,7 +188,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   ) : selectedVideoThumbnail ? (
                     <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
                   ) : null}
-                  <span className="label">Avatar ({bottomRatio}%)</span>
+                  <span className="label">{layoutPreset === 'classic7030' ? 'Vídeo' : 'Avatar'} ({bottomRatio}%)</span>
                 </div>
               );
             })}
@@ -250,7 +262,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
         )}
         {showOverlayHeadline && (
           <div
-            className={`preview-headline-overlay ${activeHeadlineClassName} ${headlinePosition}`}
+            className={`preview-headline-overlay ${activeHeadlineClassName} ${effectiveHeadlinePosition}`}
             style={{ height: `${Math.max(6, Math.min(20, headlineRatio))}%` }}
           >
             <strong style={{ fontSize: headlineFontSize }}>
@@ -1063,6 +1075,8 @@ function ForgeEditor() {
           path: data.filepath,
           url: apiUrl(data.video_url || `/api/forge/play-video/${data.filename}`),
           thumbnail: videoPreviewUrl,
+          media_type: 'video',
+          source_role: 'single_upload',
         });
         setBackgroundMode('local');
         setRenderResult(null);
@@ -1569,13 +1583,16 @@ function ForgeEditor() {
       // Extrair apenas o nome do arquivo
       const imagePath = getUploadedImageName();
       const imagePaths = getUploadedImageNames();
-      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode;
+      const singleVideoMode = !slideshowMode && selectedVideo?.source_role === 'single_upload';
+      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode || singleVideoMode;
       const resolvedHeadlinePosition = layoutPreset === 'postHeadlineAvatar'
         ? (slideshowHeadlinePosition === 'none' ? 'middle' : slideshowHeadlinePosition)
         : slideshowMode
         ? slideshowHeadlinePosition
+        : singleVideoMode
+        ? (slideshowHeadlinePosition === 'none' && headlineText.trim() ? 'middle' : slideshowHeadlinePosition)
         : layoutPreset === 'classic7030'
-        ? slideshowHeadlinePosition
+        ? (slideshowHeadlinePosition === 'none' && headlineText.trim() ? 'middle' : slideshowHeadlinePosition)
         : 'none';
 
       const renderPayload = {
@@ -1588,6 +1605,8 @@ function ForgeEditor() {
         bottom_ratio: bottomRatio / 100,
         render_mode: layoutPreset === 'postHeadlineAvatar'
           ? 'post_headline_avatar'
+          : singleVideoMode
+          ? 'single_video'
           : slideshowMode
           ? 'slideshow'
           : (bottomRatio === 0 && selectedVideo ? 'post_overlay' : (bottomRatio === 0 || !selectedVideo ? 'image_only' : 'stack')),
@@ -3950,7 +3969,7 @@ function ForgeEditor() {
             <ForgeVerticalPreview
               previewRootRef={previewRootRef}
               hasPreviewImage={hasPreviewImage}
-              layoutPreset={layoutPreset}
+              layoutPreset={!slideshowMode && selectedVideo?.source_role === 'single_upload' ? 'singleVideo' : layoutPreset}
               selectedVideoSource={selectedVideoSource}
               selectedVideoThumbnail={selectedVideoThumbnail}
               selectedVideoMediaType={selectedVideoMediaType}
