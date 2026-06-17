@@ -1124,10 +1124,10 @@
 
 .headline-patriota-main {
   position: absolute;
-  left: 20.5%;
-  right: 13%;
+  left: 19.5%;
+  right: 11.5%;
   top: 8%;
-  bottom: 16%;
+  bottom: 14%;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -1135,8 +1135,8 @@
   text-align: center;
   overflow: hidden;
   background: linear-gradient(90deg, rgba(253, 253, 253, 0.995), rgba(242, 245, 251, 0.98));
-  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
-  padding: 0 48px;
+  border-radius: 26px;
+  padding: 0 28px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 8px 20px rgba(0, 0, 0, 0.16);
@@ -1149,10 +1149,10 @@
   text-transform: uppercase;
   max-width: 100%;
   width: 100%;
-  line-height: 0.98;
+  line-height: 1.02;
   text-shadow: none;
   font-weight: 900;
-  text-align: left;
+  text-align: center;
   display: block;
   -webkit-line-clamp: 2;
 }
@@ -1291,11 +1291,11 @@
 }
 
 .headline-style-content.compact .headline-patriota-main {
-  left: 21.5%;
-  right: 14%;
+  left: 20.5%;
+  right: 12.5%;
   top: 10%;
-  bottom: 18%;
-  padding: 0 22px;
+  bottom: 16%;
+  padding: 0 18px;
 }
 
 .avatar-engine-panel {
