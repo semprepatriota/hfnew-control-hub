@@ -178,6 +178,12 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                         objectPosition: '50% var(--forge-image-position-y)',
                       }}
                     />
+                    {layoutPreset === 'classic7030' && (
+                      <div className="image-guide-overlay" aria-hidden="true">
+                        <div className="image-guide-line top" />
+                        <div className="image-guide-line bottom" />
+                      </div>
+                    )}
                     <span className="label">{layoutPreset === 'classic7030' ? 'Imagem' : 'Imagem'} ({topRatio}%)</span>
                   </div>
                 );
