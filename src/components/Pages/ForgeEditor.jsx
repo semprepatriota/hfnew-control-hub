@@ -238,15 +238,24 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
               <img src={selectedVideoThumbnail} alt="Video" className="post-background" style={{ objectFit: videoFit }} />
             ) : null}
 
-            <img
-              src={activePreviewImage}
-              alt="Post centralizado"
-              className="post-foreground"
+            <div
+              className={`post-foreground-frame ${showImageCropGuides ? 'cover-active' : ''}`}
               style={{
                 width: `${postScale}%`,
                 top: `${postY}%`,
               }}
-            />
+            >
+              <img
+                src={activePreviewImage}
+                alt="Post centralizado"
+                className="post-foreground"
+                style={{
+                  objectFit: imageFit,
+                  objectPosition: '50% var(--forge-image-position-y)',
+                }}
+              />
+              {imageCropGuideOverlay}
+            </div>
             <span className="label">Post sobre vídeo</span>
           </div>
         ) : hasPreviewImage ? (
