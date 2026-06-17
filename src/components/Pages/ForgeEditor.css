@@ -1128,10 +1128,10 @@
 
 .headline-patriota-main {
   position: absolute;
-  left: 18%;
-  right: 12%;
-  top: 7%;
-  bottom: 7%;
+  left: 17%;
+  right: 11%;
+  top: 6%;
+  bottom: 6%;
 }
 
 .headline-patriota-top,
@@ -1149,8 +1149,8 @@
   left: 0;
   right: 0;
   top: 0;
-  height: 54%;
-  padding: 0 22px;
+  height: 62%;
+  padding: 0 28px;
   background: linear-gradient(90deg, rgba(252, 252, 252, 0.98), rgba(240, 244, 255, 0.95));
   clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
   border-top: 2px solid rgba(255, 223, 92, 0.56);
@@ -1161,26 +1161,21 @@
   color: #16368f;
   text-transform: uppercase;
   max-width: 100%;
-  line-height: 1.02;
+  line-height: 1;
   text-shadow: none;
+  font-weight: 900;
+  -webkit-line-clamp: 2;
 }
 
 .headline-patriota-bottom {
   left: 0;
   right: 7%;
   bottom: 0;
-  height: 30%;
-  padding: 0 16px;
+  height: 20%;
+  padding: 0;
   background: linear-gradient(90deg, rgba(11, 42, 169, 0.96), rgba(19, 61, 196, 0.96));
   clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
   border-bottom: 2px solid rgba(255, 202, 43, 0.64);
-}
-
-.headline-patriota-bottom span {
-  color: #f7f8ff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
 }
 
 .headline-patriota-flag {
@@ -1349,17 +1344,13 @@
 }
 
 .headline-style-content.compact .headline-patriota-top {
-  height: 50%;
-  padding: 0 12px;
+  height: 60%;
+  padding: 0 14px;
 }
 
 .headline-style-content.compact .headline-patriota-bottom {
   right: 7%;
-  height: 28%;
-}
-
-.headline-style-content.compact .headline-patriota-bottom span {
-  font-size: 8px;
+  height: 18%;
 }
 
 .avatar-engine-panel {

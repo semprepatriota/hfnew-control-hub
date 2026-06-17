@@ -34,6 +34,9 @@ const DEFAULT_HEADLINE_POSITION = 'middle';
 // Não alterar estrutura/ordem desses quatro modelos sem pedido explícito.
 
 const normalizeHeadlinePositionClient = (position, headlineText = '') => {
+  if (position === 'none') {
+    return 'none';
+  }
   if (['top', 'middle', 'bottom'].includes(position)) {
     return position;
   }
@@ -122,9 +125,7 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
           <div className="headline-patriota-top">
             <strong style={{ fontSize }}>{safeText}</strong>
           </div>
-          <div className="headline-patriota-bottom">
-            <span>AO VIVO</span>
-          </div>
+          <div className="headline-patriota-bottom" />
         </div>
         <div className="headline-patriota-flag" aria-hidden="true">
           <i className="headline-patriota-flag-green" />
@@ -873,12 +874,6 @@ function ForgeEditor() {
   useEffect(() => {
     applyPreviewCropStyle(topGuidePercent, bottomGuidePercent);
   }, [applyPreviewCropStyle, topGuidePercent, bottomGuidePercent]);
-
-  useEffect(() => {
-    if ((headlineText || '').trim() && slideshowHeadlinePosition === 'none') {
-      setSlideshowHeadlinePosition(DEFAULT_HEADLINE_POSITION);
-    }
-  }, [headlineText, slideshowHeadlinePosition]);
 
   useEffect(() => {
     const draftKey = getDraftKey();
@@ -1708,14 +1703,8 @@ function ForgeEditor() {
       const imagePaths = getUploadedImageNames();
       const singleVideoMode = hasSingleVideoPreview;
       const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode || singleVideoMode;
-      const resolvedHeadlinePosition = layoutPreset === 'postHeadlineAvatar'
-        ? (slideshowHeadlinePosition === 'none' ? 'middle' : slideshowHeadlinePosition)
-        : slideshowMode
-        ? slideshowHeadlinePosition
-        : singleVideoMode
-        ? (slideshowHeadlinePosition === 'none' && headlineText.trim() ? 'middle' : slideshowHeadlinePosition)
-        : layoutPreset === 'classic7030'
-        ? (slideshowHeadlinePosition === 'none' && headlineText.trim() ? 'middle' : slideshowHeadlinePosition)
+      const resolvedHeadlinePosition = usesHeadlineLayout
+        ? normalizeHeadlinePositionClient(slideshowHeadlinePosition, headlineText)
         : 'none';
 
       const renderPayload = {
