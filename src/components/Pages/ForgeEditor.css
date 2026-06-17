@@ -1463,6 +1463,11 @@
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
+.forge-crop-guide-host {
+  position: relative;
+  overflow: hidden;
+}
+
 .frame-screenshot,
 .frame-video {
   position: relative;
@@ -1493,6 +1498,10 @@
   z-index: 3;
 }
 
+/* Regra operacional do Forge:
+   estas duas linhas verdes sao obrigatorias no modo "Cortar laterais".
+   Qualquer refactor de preview deve preservar este overlay nos hosts com
+   .forge-crop-guide-host para nao quebrar o ajuste visual do usuario. */
 .image-guide-line {
   position: absolute;
   left: 0;
