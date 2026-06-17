@@ -86,6 +86,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   postY,
   topGuidePercent,
   bottomGuidePercent,
+  showMediaGuides = false,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
@@ -178,6 +179,12 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                         objectPosition: '50% var(--forge-image-position-y)',
                       }}
                     />
+                    {layoutPreset === 'classic7030' && (
+                      <div className="image-guide-overlay" aria-hidden="true">
+                        <div className="image-guide-line top" />
+                        <div className="image-guide-line bottom" />
+                      </div>
+                    )}
                     <span className="label">{layoutPreset === 'classic7030' ? 'Imagem' : 'Imagem'} ({topRatio}%)</span>
                   </div>
                 );
@@ -251,12 +258,10 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
-              {imageFit === 'cover' && (
-                <div className="image-guide-overlay" aria-hidden="true">
-                  <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
-                  <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
-                </div>
-              )}
+              <div className="image-guide-overlay" aria-hidden="true">
+                <div className="image-guide-line top" />
+                <div className="image-guide-line bottom" />
+              </div>
               <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
             </div>
 
@@ -292,6 +297,12 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             <strong style={{ fontSize: headlineFontSize }}>
               {headlineText || 'Headline'}
             </strong>
+          </div>
+        )}
+        {showMediaGuides && hasPreviewImage && (
+          <div className="image-guide-overlay media-unique-guide-overlay" aria-hidden="true">
+            <div className="image-guide-line top" />
+            <div className="image-guide-line bottom" />
           </div>
         )}
       </div>
@@ -4016,6 +4027,7 @@ function ForgeEditor() {
               postY={postY}
               topGuidePercent={topGuidePercent}
               bottomGuidePercent={bottomGuidePercent}
+              showMediaGuides={!slideshowMode}
             />
           </div>
 
