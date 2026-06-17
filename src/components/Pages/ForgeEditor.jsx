@@ -2403,7 +2403,7 @@ function ForgeEditor() {
                         <Upload size={32} />
                         <p>Clique para selecionar {slideshowMode ? 'de 1 a 10 imagens' : 'imagem ou vídeo'}</p>
                         <span className="upload-hint">
-                          {slideshowMode ? 'Use imagens com áudio. Vídeo de fundo é opcional no modo misto.' : 'JPG, PNG, MP4, MOV e similares'}
+                          {slideshowMode ? 'Uma imagem já funciona. Use vídeo no modo misto quando quiser.' : 'JPG, PNG, MP4, MOV e similares'}
                         </span>
                       </>
                     )}
@@ -3951,7 +3951,7 @@ function ForgeEditor() {
                   <div className="post-overlay-note">
                     {selectedVideo
                       ? 'Post centralizado sobre o vídeo selecionado.'
-                      : 'Selecione vídeo se quiser movimento. Sem vídeo, use imagens com áudio.'}
+                      : 'Selecione um vídeo de fundo se quiser movimento atrás do post.'}
                   </div>
 
                   <label>
