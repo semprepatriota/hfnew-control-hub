@@ -251,10 +251,12 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
-              <div className="image-guide-overlay" aria-hidden="true">
-                <div className="image-guide-line top" />
-                <div className="image-guide-line bottom" />
-              </div>
+              {imageFit === 'cover' && (
+                <div className="image-guide-overlay" aria-hidden="true">
+                  <div className="image-guide-line top" />
+                  <div className="image-guide-line bottom" />
+                </div>
+              )}
               <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
             </div>
 
