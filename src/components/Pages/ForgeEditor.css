@@ -1486,18 +1486,6 @@
   z-index: 3;
 }
 
-.preview-frame > .image-guide-overlay,
-.pha-post > .image-guide-overlay,
-.post-overlay-preview > .image-guide-overlay,
-.slideshow-pure-preview > .image-guide-overlay,
-.single-video-preview > .image-guide-overlay {
-  display: none !important;
-}
-
-.frame-screenshot > .image-guide-overlay {
-  display: block !important;
-}
-
 .image-guide-line {
   position: absolute;
   left: 0;
