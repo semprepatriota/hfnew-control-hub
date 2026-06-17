@@ -1573,6 +1573,11 @@ function ForgeEditor() {
       return;
     }
 
+    if (slideshowMode && slideshowStyle === 'mixed' && !selectedVideo) {
+      setError('No modo misto, selecione um vídeo de fundo');
+      return;
+    }
+
     const renderUsesBackgroundVideo = Boolean(
       selectedVideo && (
         (slideshowMode && slideshowStyle === 'mixed')
@@ -3600,7 +3605,8 @@ function ForgeEditor() {
             disabled={
               rendering ||
               !hasPreviewImage ||
-              (slideshowMode && selectedImagePaths.length < 1)
+              (slideshowMode && selectedImagePaths.length < 1) ||
+              (slideshowMode && slideshowStyle === 'mixed' && !selectedVideo)
             }
             className="render-button"
           >
