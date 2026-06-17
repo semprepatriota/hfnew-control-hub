@@ -86,7 +86,6 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   postY,
   topGuidePercent,
   bottomGuidePercent,
-  showMediaGuides = false,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
@@ -297,12 +296,6 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             <strong style={{ fontSize: headlineFontSize }}>
               {headlineText || 'Headline'}
             </strong>
-          </div>
-        )}
-        {showMediaGuides && hasPreviewImage && (
-          <div className="image-guide-overlay media-unique-guide-overlay" aria-hidden="true">
-            <div className="image-guide-line top" />
-            <div className="image-guide-line bottom" />
           </div>
         )}
       </div>
@@ -4027,7 +4020,6 @@ function ForgeEditor() {
               postY={postY}
               topGuidePercent={topGuidePercent}
               bottomGuidePercent={bottomGuidePercent}
-              showMediaGuides={!slideshowMode}
             />
           </div>
 

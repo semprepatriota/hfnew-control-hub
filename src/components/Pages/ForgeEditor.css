@@ -1486,19 +1486,13 @@
   z-index: 3;
 }
 
-.media-unique-guide-overlay {
-  z-index: 80;
-}
-
 .image-guide-line {
   position: absolute;
   left: 0;
   width: 100%;
-  height: 3px;
-  background: #00ff41;
-  border-top: 1px solid rgba(255, 255, 255, 0.85);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.65);
-  box-shadow: 0 0 12px rgba(0, 255, 65, 0.75);
+  height: 0;
+  border-top: 2px solid rgba(0, 255, 65, 0.88);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.35);
 }
 
 .image-guide-line.top {
