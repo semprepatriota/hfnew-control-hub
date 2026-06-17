@@ -91,8 +91,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   const showImageCropGuides = imageFit === 'cover';
   const imageCropGuideOverlay = showImageCropGuides ? (
     <div className="image-guide-overlay" aria-hidden="true">
-      <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
-      <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
+      <div className="image-guide-line top" />
+      <div className="image-guide-line bottom" />
     </div>
   ) : null;
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
