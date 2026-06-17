@@ -88,6 +88,13 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   bottomGuidePercent,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
+  const showImageCropGuides = imageFit === 'cover';
+  const imageCropGuideOverlay = showImageCropGuides ? (
+    <div className="image-guide-overlay" aria-hidden="true">
+      <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
+      <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
+    </div>
+  ) : null;
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
   const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
@@ -148,7 +155,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             <span className="label">Vídeo 9:16</span>
           </div>
         ) : hasPreviewImage && layoutPreset === 'slideshowPure' ? (
-          <div className="slideshow-pure-preview">
+          <div className={`slideshow-pure-preview ${showImageCropGuides ? 'cover-active' : ''}`}>
             <img
               src={activePreviewImage}
               alt="Preview do carrossel"
@@ -159,6 +166,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                 objectPosition: '50% var(--forge-image-position-y)',
               }}
             />
+            {imageCropGuideOverlay}
             <span className="label">Carrossel puro</span>
           </div>
         ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && showBandHeadline ? (
@@ -169,7 +177,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             {postHeadlineRows.map((row) => {
               if (row.key === 'post') {
                 return (
-                  <div key={row.key} className="pha-post">
+                  <div key={row.key} className={`pha-post ${showImageCropGuides ? 'cover-active' : ''}`}>
                     <img
                       src={activePreviewImage}
                       alt="Imagem do post"
@@ -178,6 +186,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                         objectPosition: '50% var(--forge-image-position-y)',
                       }}
                     />
+                    {imageCropGuideOverlay}
                     <span className="label">{layoutPreset === 'classic7030' ? 'Imagem' : 'Imagem'} ({topRatio}%)</span>
                   </div>
                 );
@@ -242,7 +251,10 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
           </div>
         ) : hasPreviewImage ? (
           <>
-            <div className="frame-screenshot" style={{ height: `${topRatio}%` }}>
+            <div
+              className={`frame-screenshot ${showImageCropGuides ? 'cover-active' : ''}`}
+              style={{ height: `${topRatio}%` }}
+            >
               <img
                 src={activePreviewImage}
                 alt="Screenshot"
@@ -251,12 +263,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
-              {imageFit === 'cover' && (
-                <div className="image-guide-overlay" aria-hidden="true">
-                  <div className="image-guide-line top" />
-                  <div className="image-guide-line bottom" />
-                </div>
-              )}
+              {imageCropGuideOverlay}
               <span className="label">{bottomRatio === 0 ? 'Imagem inteira' : 'Screenshot'} ({topRatio}%)</span>
             </div>
 
