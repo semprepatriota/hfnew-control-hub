@@ -88,6 +88,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
   bottomGuidePercent,
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
+  const showImageCropGuides = imageFit === 'cover';
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
   const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
@@ -242,7 +243,10 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
           </div>
         ) : hasPreviewImage ? (
           <>
-            <div className="frame-screenshot" style={{ height: `${topRatio}%` }}>
+            <div
+              className={`frame-screenshot ${showImageCropGuides ? 'cover-active' : ''}`}
+              style={{ height: `${topRatio}%` }}
+            >
               <img
                 src={activePreviewImage}
                 alt="Screenshot"
@@ -251,7 +255,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   objectPosition: '50% var(--forge-image-position-y)',
                 }}
               />
-              {imageFit === 'cover' && (
+              {showImageCropGuides && (
                 <div className="image-guide-overlay" aria-hidden="true">
                   <div className="image-guide-line top" style={{ top: `${topGuidePercent}%` }} />
                   <div className="image-guide-line bottom" style={{ bottom: `${bottomGuidePercent}%` }} />
