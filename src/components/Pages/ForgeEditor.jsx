@@ -21,6 +21,7 @@ import {
   buildVideoDurationLimitMessage,
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
+import hfHeadlineLogo from '../../assets/hf-logo-headline.png';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
@@ -70,6 +71,49 @@ function ForgeCropGuides({ active }) {
     <div className="image-guide-overlay" aria-hidden="true">
       <div className="image-guide-line top" />
       <div className="image-guide-line bottom" />
+    </div>
+  );
+}
+
+function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
+  const safeText = (text || 'Headline').trim() || 'Headline';
+
+  if (styleId === 'breakingFlash') {
+    return (
+      <div className={`headline-style-content style-breaking-flash ${compact ? 'compact' : ''}`}>
+        <span className="headline-accent headline-accent-left" />
+        <span className="headline-tag headline-tag-blue">BREAKING</span>
+        <strong style={{ fontSize }}>{safeText}</strong>
+        <span className="headline-tag headline-tag-red">NEWS</span>
+        <span className="headline-accent headline-accent-right" />
+      </div>
+    );
+  }
+
+  if (styleId === 'liveHf') {
+    return (
+      <div className={`headline-style-content style-live-hf ${compact ? 'compact' : ''}`}>
+        <div className="headline-live-badge">
+          <img src={hfHeadlineLogo} alt="HF" />
+          <span>LIVE</span>
+        </div>
+        <strong style={{ fontSize }}>{safeText}</strong>
+      </div>
+    );
+  }
+
+  if (styleId === 'doubleTicker') {
+    return (
+      <div className={`headline-style-content style-double-ticker ${compact ? 'compact' : ''}`}>
+        <span className="headline-top-chip">HF ALERTA</span>
+        <strong style={{ fontSize }}>{safeText}</strong>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`headline-style-content style-cinematic ${compact ? 'compact' : ''}`}>
+      <strong style={{ fontSize }}>{safeText}</strong>
     </div>
   );
 }
@@ -200,9 +244,11 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
               if (row.key === 'headline') {
                 return (
                   <div key={row.key} className="pha-headline">
-                    <strong style={{ fontSize: headlineFontSize }}>
-                      {headlineText || 'Headline'}
-                    </strong>
+                    <ForgeHeadlineBand
+                      styleId={activeHeadlineClassName}
+                      text={headlineText || 'Headline'}
+                      fontSize={headlineFontSize}
+                    />
                   </div>
                 );
               }
@@ -311,9 +357,11 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             className={`preview-headline-overlay ${activeHeadlineClassName} ${effectiveHeadlinePosition}`}
             style={{ height: `${Math.max(6, Math.min(20, headlineRatio))}%` }}
           >
-            <strong style={{ fontSize: headlineFontSize }}>
-              {headlineText || 'Headline'}
-            </strong>
+            <ForgeHeadlineBand
+              styleId={activeHeadlineClassName}
+              text={headlineText || 'Headline'}
+              fontSize={headlineFontSize}
+            />
           </div>
         )}
       </div>
@@ -482,10 +530,10 @@ function ForgeEditor() {
   ];
 
   const headlinePalettes = [
-    { id: 'purpleGold', label: 'Roxo / Ouro', className: 'palette-purple-gold' },
-    { id: 'blackGold', label: 'Preto / Ouro', className: 'palette-black-gold' },
-    { id: 'redBlack', label: 'Vermelho / Preto', className: 'palette-red-black' },
-    { id: 'whiteBlack', label: 'Branco / Preto', className: 'palette-white-black' },
+    { id: 'purpleGold', label: 'Cinemática', className: 'purpleGold', sampleText: 'HF EM ALERTA TOTAL' },
+    { id: 'breakingFlash', label: 'Breaking', className: 'breakingFlash', sampleText: 'AGORA A CASA CAIU' },
+    { id: 'liveHf', label: 'Live HF', className: 'liveHf', sampleText: 'AO VIVO NO CENTRO DO CAOS' },
+    { id: 'doubleTicker', label: 'Ticker Duplo', className: 'doubleTicker', sampleText: 'NINGUÉM CONSEGUE ESCONDER ISSO' },
   ];
 
   const activeHeadlinePalette = headlinePalettes.find((palette) => palette.id === headlinePalette) || headlinePalettes[0];
@@ -849,7 +897,7 @@ function ForgeEditor() {
       setHeadlineText(draft.headlineText || 'Sua Esperança Renasce');
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
-      setHeadlinePalette(['purpleGold', 'blackGold', 'redBlack', 'whiteBlack'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
+      setHeadlinePalette(['purpleGold', 'breakingFlash', 'liveHf', 'doubleTicker'].includes(draft.headlinePalette) ? draft.headlinePalette : 'purpleGold');
       setSlideshowHeadlinePosition(normalizeHeadlinePositionClient(draft.slideshowHeadlinePosition, draft.headlineText || ''));
       setAvatarSpeechText(draft.avatarSpeechText || '');
       setAvatarSpeechDurationModel(['6s', '10s', '15s', '30s', '60s'].includes(draft.avatarSpeechDurationModel) ? draft.avatarSpeechDurationModel : '30s');
@@ -2666,7 +2714,7 @@ function ForgeEditor() {
                   )}
                 </div>
 
-                <div className="headline-palette-grid" role="group" aria-label="Paletas da headline">
+                <div className="headline-palette-grid" role="group" aria-label="Modelos da headline">
                   {headlinePalettes.map((palette) => (
                     <button
                       key={palette.id}
@@ -2674,8 +2722,14 @@ function ForgeEditor() {
                       className={`headline-palette-button ${palette.className} ${activeHeadlinePalette.id === palette.id ? 'active' : ''}`}
                       onClick={() => setHeadlinePalette(palette.id)}
                     >
-                      <span />
-                      {palette.label}
+                      <div className="headline-palette-preview">
+                        <ForgeHeadlineBand
+                          styleId={palette.className}
+                          text={palette.sampleText}
+                          compact
+                        />
+                      </div>
+                      <span className="headline-palette-label">{palette.label}</span>
                     </button>
                   ))}
                 </div>
