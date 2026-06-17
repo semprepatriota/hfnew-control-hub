@@ -99,6 +99,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
 }) {
   const imageObjectPosition = `50% ${verticalCenterPercent}%`;
   const showImageCropGuides = imageFit === 'cover';
+  const previewImageFit = showImageCropGuides ? 'contain' : imageFit;
+  const previewImagePosition = showImageCropGuides ? '50% 50%' : '50% var(--forge-image-position-y)';
   const effectiveHeadlinePosition = normalizeHeadlinePositionClient(headlinePosition, headlineText);
   const headlineFontSize = `${Math.max(14, 22 * (headlineFontScale / 100))}px`;
   const showOverlayHeadline =
@@ -166,8 +168,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: imageFit,
-                objectPosition: '50% var(--forge-image-position-y)',
+                objectFit: previewImageFit,
+                objectPosition: previewImagePosition,
               }}
             />
             <ForgeCropGuides active={showImageCropGuides} />
@@ -186,8 +188,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                       src={activePreviewImage}
                       alt="Imagem do post"
                       style={{
-                        objectFit: imageFit,
-                        objectPosition: '50% var(--forge-image-position-y)',
+                        objectFit: previewImageFit,
+                        objectPosition: previewImagePosition,
                       }}
                     />
                     <ForgeCropGuides active={showImageCropGuides} />
@@ -254,8 +256,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                 alt="Post centralizado"
                 className="post-foreground"
                 style={{
-                  objectFit: imageFit,
-                  objectPosition: '50% var(--forge-image-position-y)',
+                  objectFit: previewImageFit,
+                  objectPosition: previewImagePosition,
                 }}
               />
               <ForgeCropGuides active={showImageCropGuides} />
@@ -272,8 +274,8 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                 src={activePreviewImage}
                 alt="Screenshot"
                 style={{
-                  objectFit: imageFit,
-                  objectPosition: '50% var(--forge-image-position-y)',
+                  objectFit: previewImageFit,
+                  objectPosition: previewImagePosition,
                 }}
               />
               <ForgeCropGuides active={showImageCropGuides} />
