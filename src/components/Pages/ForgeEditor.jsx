@@ -21,13 +21,14 @@ import {
   buildVideoDurationLimitMessage,
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
+import patriotaHeadline from '../../assets/patriota-headline.png';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
-// 1. Cinemática
+// 1. Patriota
 // 2. Breaking
 // 3. Live HF
 // 4. Ticker Duplo
@@ -115,8 +116,14 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
   }
 
   return (
-    <div className={`headline-style-content style-cinematic ${compact ? 'compact' : ''}`}>
-      <strong style={{ fontSize }}>{safeText}</strong>
+    <div className={`headline-style-content style-patriota ${compact ? 'compact' : ''}`}>
+      <img src={patriotaHeadline} alt="" className="headline-patriota-bg" />
+      <div className="headline-patriota-top">
+        <strong style={{ fontSize }}>{safeText}</strong>
+      </div>
+      <div className="headline-patriota-bottom">
+        <span>AO VIVO</span>
+      </div>
     </div>
   );
 }
@@ -534,7 +541,7 @@ function ForgeEditor() {
 
   // Catálogo fixo do bloco de headline aprovado pelo usuário.
   const headlinePalettes = [
-    { id: 'purpleGold', label: 'Cinemática', className: 'purpleGold', sampleText: 'HF EM ALERTA TOTAL' },
+    { id: 'purpleGold', label: 'Patriota', className: 'purpleGold', sampleText: 'A VERDADE VOLTOU AO CENTRO' },
     { id: 'breakingFlash', label: 'Breaking', className: 'breakingFlash', sampleText: 'AGORA A CASA CAIU' },
     { id: 'liveHf', label: 'Live HF', className: 'liveHf', sampleText: 'AO VIVO NO CENTRO DO CAOS' },
     { id: 'doubleTicker', label: 'Ticker Duplo', className: 'doubleTicker', sampleText: 'NINGUÉM CONSEGUE ESCONDER ISSO' },
