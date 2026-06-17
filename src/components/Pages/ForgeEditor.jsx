@@ -21,7 +21,6 @@ import {
   buildVideoDurationLimitMessage,
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
-import patriotaHeadline from '../../assets/patriota-headline.png';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
@@ -117,12 +116,21 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
 
   return (
     <div className={`headline-style-content style-patriota ${compact ? 'compact' : ''}`}>
-      <img src={patriotaHeadline} alt="" className="headline-patriota-bg" />
-      <div className="headline-patriota-top">
-        <strong style={{ fontSize }}>{safeText}</strong>
-      </div>
-      <div className="headline-patriota-bottom">
-        <span>AO VIVO</span>
+      <div className="headline-patriota-shell">
+        <div className="headline-patriota-left" />
+        <div className="headline-patriota-main">
+          <div className="headline-patriota-top">
+            <strong style={{ fontSize }}>{safeText}</strong>
+          </div>
+          <div className="headline-patriota-bottom">
+            <span>AO VIVO</span>
+          </div>
+        </div>
+        <div className="headline-patriota-flag" aria-hidden="true">
+          <i className="headline-patriota-flag-green" />
+          <i className="headline-patriota-flag-yellow" />
+          <i className="headline-patriota-flag-blue" />
+        </div>
       </div>
     </div>
   );
