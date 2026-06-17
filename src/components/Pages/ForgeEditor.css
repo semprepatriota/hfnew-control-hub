@@ -1105,8 +1105,7 @@
 .style-patriota {
   align-items: stretch;
   justify-content: stretch;
-  background:
-    linear-gradient(90deg, rgba(21, 84, 40, 0.98) 0%, rgba(10, 36, 17, 0.98) 24%, rgba(6, 12, 10, 0.98) 100%);
+  background: #050607;
 }
 
 .headline-patriota-shell {
@@ -1115,109 +1114,47 @@
   overflow: hidden;
 }
 
-.headline-patriota-left {
+.headline-patriota-bg {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 24%;
-  background: linear-gradient(135deg, #1c7e39 0%, #0d4c24 58%, #153115 100%);
-  clip-path: polygon(0 0, 100% 0, 76% 100%, 0 100%);
-  box-shadow: inset -4px 0 14px rgba(255, 214, 64, 0.22);
-}
-
-.headline-patriota-logo {
-  position: absolute;
-  left: 7%;
-  top: 10%;
-  width: 66%;
-  height: 80%;
-  object-fit: contain;
-  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.35));
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .headline-patriota-main {
   position: absolute;
-  left: 19%;
-  right: 10%;
-  top: 6%;
-  bottom: 6%;
-}
-
-.headline-patriota-top,
-.headline-patriota-bottom {
-  position: absolute;
+  left: 20.5%;
+  right: 13%;
+  top: 8%;
+  bottom: 16%;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   overflow: hidden;
+  background: linear-gradient(90deg, rgba(253, 253, 253, 0.995), rgba(242, 245, 251, 0.98));
+  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+  padding: 0 48px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 8px 20px rgba(0, 0, 0, 0.16);
+  border-top: 2px solid rgba(255, 220, 94, 0.54);
+  border-bottom: 2px solid rgba(255, 207, 52, 0.42);
 }
 
-.headline-patriota-top {
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 60%;
-  padding: 0 34px;
-  background: linear-gradient(90deg, rgba(252, 252, 252, 0.98), rgba(240, 244, 255, 0.95));
-  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
-  border-top: 2px solid rgba(255, 223, 92, 0.56);
-  border-bottom: 1px solid rgba(9, 42, 132, 0.15);
-}
-
-.headline-patriota-top strong {
+.headline-patriota-main strong {
   color: #16368f;
   text-transform: uppercase;
   max-width: 100%;
-  line-height: 1;
+  width: 100%;
+  line-height: 0.98;
   text-shadow: none;
   font-weight: 900;
+  text-align: left;
+  display: block;
   -webkit-line-clamp: 2;
-}
-
-.headline-patriota-bottom {
-  left: 0;
-  right: 0;
-  bottom: 1%;
-  height: 24%;
-  padding: 0;
-  background: linear-gradient(90deg, rgba(11, 42, 169, 0.96), rgba(19, 61, 196, 0.96));
-  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
-  border-bottom: 2px solid rgba(255, 202, 43, 0.64);
-}
-
-.headline-patriota-flag {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 21%;
-  overflow: hidden;
-}
-
-.headline-patriota-flag-green,
-.headline-patriota-flag-yellow,
-.headline-patriota-flag-blue {
-  position: absolute;
-  inset: 0;
-}
-
-.headline-patriota-flag-green {
-  background: linear-gradient(135deg, #227440 0%, #145027 100%);
-  clip-path: polygon(36% 0, 100% 0, 100% 100%, 14% 100%, 48% 52%);
-}
-
-.headline-patriota-flag-yellow {
-  background: linear-gradient(135deg, #ffda39 0%, #f0b900 100%);
-  clip-path: polygon(55% 0, 100% 0, 100% 100%, 34% 100%, 61% 52%);
-}
-
-.headline-patriota-flag-blue {
-  background: linear-gradient(135deg, #1d4ec7 0%, #0b2f8f 100%);
-  clip-path: polygon(68% 0, 100% 0, 100% 100%, 52% 100%, 74% 52%);
-  opacity: 0.98;
 }
 
 .style-breaking-flash {
@@ -1353,14 +1290,12 @@
   font-size: 8px;
 }
 
-.headline-style-content.compact .headline-patriota-top {
-  height: 58%;
-  padding: 0 18px;
-}
-
-.headline-style-content.compact .headline-patriota-bottom {
-  right: 0;
-  height: 22%;
+.headline-style-content.compact .headline-patriota-main {
+  left: 21.5%;
+  right: 14%;
+  top: 10%;
+  bottom: 18%;
+  padding: 0 22px;
 }
 
 .avatar-engine-panel {
