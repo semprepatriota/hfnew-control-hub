@@ -81,9 +81,7 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
     return (
       <div className={`headline-style-content style-breaking-flash ${compact ? 'compact' : ''}`}>
         <span className="headline-accent headline-accent-left" />
-        <span className="headline-tag headline-tag-blue">BREAKING</span>
         <strong style={{ fontSize }}>{safeText}</strong>
-        <span className="headline-tag headline-tag-red">NEWS</span>
         <span className="headline-accent headline-accent-right" />
       </div>
     );
@@ -103,7 +101,7 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
   if (styleId === 'doubleTicker') {
     return (
       <div className={`headline-style-content style-double-ticker ${compact ? 'compact' : ''}`}>
-        <span className="headline-top-chip">HF ALERTA</span>
+        <span className="headline-top-chip">ATENÇÃO</span>
         <strong style={{ fontSize }}>{safeText}</strong>
       </div>
     );
