@@ -1583,7 +1583,11 @@ function ForgeEditor() {
 
   const activePreviewImage = screenshotPath || selectedImagePaths[0] || '';
   const hasPreviewImage = Boolean(activePreviewImage);
-  const hasSingleVideoPreview = !slideshowMode && Boolean(selectedVideo);
+  const hasSingleVideoPreview =
+    !slideshowMode &&
+    selectedVideo?.source_role === 'single_upload' &&
+    selectedImagePaths.length === 0 &&
+    selectedImageUploadPaths.length === 0;
   const slideshowPreviewSettings = normalizeSlideshowSettingsClient(slideshowImageSettings, selectedImagePaths.length);
   const selectedVideoSource = selectedVideo ? getSelectedVideoSource(selectedVideo) : '';
   const selectedVideoThumbnail = selectedVideo?.thumbnail || '';
@@ -1687,7 +1691,7 @@ function ForgeEditor() {
       // Extrair apenas o nome do arquivo
       const imagePath = getUploadedImageName();
       const imagePaths = getUploadedImageNames();
-      const singleVideoMode = !slideshowMode && selectedVideo?.source_role === 'single_upload';
+      const singleVideoMode = hasSingleVideoPreview;
       const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode || singleVideoMode;
       const resolvedHeadlinePosition = layoutPreset === 'postHeadlineAvatar'
         ? (slideshowHeadlinePosition === 'none' ? 'middle' : slideshowHeadlinePosition)
@@ -4084,7 +4088,7 @@ function ForgeEditor() {
               layoutPreset={
                 slideshowMode && slideshowStyle === 'pure'
                   ? 'slideshowPure'
-                  : (!slideshowMode && selectedVideo?.source_role === 'single_upload' ? 'singleVideo' : layoutPreset)
+                  : (hasSingleVideoPreview ? 'singleVideo' : layoutPreset)
               }
               selectedVideoSource={selectedVideoSource}
               selectedVideoThumbnail={selectedVideoThumbnail}
