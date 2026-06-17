@@ -1486,15 +1486,15 @@
   z-index: 3;
 }
 
-.frame-screenshot:not(.cover-active) > .image-guide-overlay,
-.pha-post:not(.cover-active) > .image-guide-overlay,
-.slideshow-pure-preview:not(.cover-active) > .image-guide-overlay {
+.preview-frame > .image-guide-overlay,
+.pha-post > .image-guide-overlay,
+.post-overlay-preview > .image-guide-overlay,
+.slideshow-pure-preview > .image-guide-overlay,
+.single-video-preview > .image-guide-overlay {
   display: none !important;
 }
 
-.frame-screenshot.cover-active > .image-guide-overlay,
-.pha-post.cover-active > .image-guide-overlay,
-.slideshow-pure-preview.cover-active > .image-guide-overlay {
+.frame-screenshot > .image-guide-overlay {
   display: block !important;
 }
 
