@@ -22,6 +22,7 @@ import {
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
 import './ForgeEditor.css';
+import hfLogoHeadline from '../../assets/hf-logo-headline.png';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const DEFAULT_HEADLINE_POSITION = 'middle';
@@ -120,7 +121,9 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
   return (
     <div className={`headline-style-content style-patriota ${compact ? 'compact' : ''}`}>
       <div className="headline-patriota-shell">
-        <div className="headline-patriota-left" />
+        <div className="headline-patriota-left">
+          <img src={hfLogoHeadline} alt="" className="headline-patriota-logo" />
+        </div>
         <div className="headline-patriota-main">
           <div className="headline-patriota-top">
             <strong style={{ fontSize }}>{safeText}</strong>

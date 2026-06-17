@@ -1106,7 +1106,7 @@
   align-items: stretch;
   justify-content: stretch;
   background:
-    linear-gradient(90deg, rgba(17, 69, 28, 0.98) 0%, rgba(12, 34, 18, 0.98) 23%, rgba(6, 12, 10, 0.98) 100%);
+    linear-gradient(90deg, rgba(21, 84, 40, 0.98) 0%, rgba(10, 36, 17, 0.98) 24%, rgba(6, 12, 10, 0.98) 100%);
 }
 
 .headline-patriota-shell {
@@ -1126,10 +1126,20 @@
   box-shadow: inset -4px 0 14px rgba(255, 214, 64, 0.22);
 }
 
+.headline-patriota-logo {
+  position: absolute;
+  left: 7%;
+  top: 10%;
+  width: 66%;
+  height: 80%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.35));
+}
+
 .headline-patriota-main {
   position: absolute;
-  left: 17%;
-  right: 11%;
+  left: 19%;
+  right: 10%;
   top: 6%;
   bottom: 6%;
 }
@@ -1149,8 +1159,8 @@
   left: 0;
   right: 0;
   top: 0;
-  height: 62%;
-  padding: 0 28px;
+  height: 60%;
+  padding: 0 34px;
   background: linear-gradient(90deg, rgba(252, 252, 252, 0.98), rgba(240, 244, 255, 0.95));
   clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
   border-top: 2px solid rgba(255, 223, 92, 0.56);
@@ -1169,9 +1179,9 @@
 
 .headline-patriota-bottom {
   left: 0;
-  right: 7%;
-  bottom: 0;
-  height: 20%;
+  right: 0;
+  bottom: 1%;
+  height: 24%;
   padding: 0;
   background: linear-gradient(90deg, rgba(11, 42, 169, 0.96), rgba(19, 61, 196, 0.96));
   clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
@@ -1344,13 +1354,13 @@
 }
 
 .headline-style-content.compact .headline-patriota-top {
-  height: 60%;
-  padding: 0 14px;
+  height: 58%;
+  padding: 0 18px;
 }
 
 .headline-style-content.compact .headline-patriota-bottom {
-  right: 7%;
-  height: 18%;
+  right: 0;
+  height: 22%;
 }
 
 .avatar-engine-panel {
