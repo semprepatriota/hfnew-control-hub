@@ -1104,7 +1104,7 @@
 
 .style-cinematic {
   padding: 6px 12px;
-  background: linear-gradient(90deg, #24122f, #3a1752, #24122f);
+  background: linear-gradient(90deg, #050505, #121212, #050505);
   border-top: 1px solid rgba(255, 215, 0, 0.35);
   border-bottom: 1px solid rgba(255, 215, 0, 0.35);
 }
@@ -1182,23 +1182,16 @@
 .headline-live-badge {
   position: relative;
   z-index: 2;
-  min-width: 78px;
+  min-width: 66px;
   height: calc(100% - 10px);
   margin: 5px 0;
-  padding: 0 12px 0 10px;
+  padding: 0 12px 0 12px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: linear-gradient(135deg, #ffcc1f, #ffb000);
   clip-path: polygon(0 50%, 12% 0, 100% 0, 88% 100%, 12% 100%);
   box-shadow: 0 0 0 1px rgba(15, 19, 37, 0.38) inset;
-}
-
-.headline-live-badge img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 .headline-live-badge span {
@@ -1262,13 +1255,8 @@
 }
 
 .headline-style-content.compact .headline-live-badge {
-  min-width: 58px;
-  padding: 0 8px 0 7px;
-}
-
-.headline-style-content.compact .headline-live-badge img {
-  width: 16px;
-  height: 16px;
+  min-width: 48px;
+  padding: 0 8px 0 8px;
 }
 
 .headline-style-content.compact .headline-live-badge span,

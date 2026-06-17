@@ -21,7 +21,6 @@ import {
   buildVideoDurationLimitMessage,
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
-import hfHeadlineLogo from '../../assets/hf-logo-headline.png';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
@@ -94,7 +93,6 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
     return (
       <div className={`headline-style-content style-live-hf ${compact ? 'compact' : ''}`}>
         <div className="headline-live-badge">
-          <img src={hfHeadlineLogo} alt="HF" />
           <span>LIVE</span>
         </div>
         <strong style={{ fontSize }}>{safeText}</strong>
