@@ -25,6 +25,13 @@ import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const DEFAULT_HEADLINE_POSITION = 'middle';
+// Headline pack travado em 2026-06-17.
+// Ordem/base visual aprovada:
+// 1. Cinemática
+// 2. Breaking
+// 3. Live HF
+// 4. Ticker Duplo
+// Não alterar estrutura/ordem desses quatro modelos sem pedido explícito.
 
 const normalizeHeadlinePositionClient = (position, headlineText = '') => {
   if (['top', 'middle', 'bottom'].includes(position)) {
@@ -525,6 +532,7 @@ function ForgeEditor() {
     },
   ];
 
+  // Catálogo fixo do bloco de headline aprovado pelo usuário.
   const headlinePalettes = [
     { id: 'purpleGold', label: 'Cinemática', className: 'purpleGold', sampleText: 'HF EM ALERTA TOTAL' },
     { id: 'breakingFlash', label: 'Breaking', className: 'breakingFlash', sampleText: 'AGORA A CASA CAIU' },
@@ -1717,6 +1725,8 @@ function ForgeEditor() {
         image_fit: imageFit,
         image_crop_x: 0.5,
         image_crop_y: verticalCenterPercent / 100,
+        image_crop_top: topGuidePercent,
+        image_crop_bottom: bottomGuidePercent,
         video_fit: videoFit,
         slideshow_seconds_per_image: 3,
         slideshow_intro_seconds: 1.5,
