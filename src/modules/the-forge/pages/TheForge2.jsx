@@ -366,13 +366,15 @@ function TheForge2() {
       return;
     }
     await runAction('generate-copy', async () => {
+      const assetDuration = Number(selectedBaseAsset?.duration || 0);
+      const targetSeconds = Math.max(18, Math.min(45, Math.round(assetDuration || 24)));
       const data = await generateForge2Copy(selectedProjectId, {
         topic: studio.text_overlay.topic,
         style: studio.text_overlay.style,
-        target_seconds: 15,
+        target_seconds: targetSeconds,
       });
       setStudio(data.studio);
-      setMessage(`Texto gerado via ${data.generated.source}.`);
+      setMessage(`Texto gerado via ${data.generated.source} com alvo de ${targetSeconds}s.`);
     });
   };
 
