@@ -519,18 +519,47 @@ function TheForge2() {
     setMessage(`${preset.label} aplicado.`);
   };
 
-  const handleDownloadRenderMp4 = () => {
+  const handleDownloadRenderMp4 = async () => {
     if (!lastRender?.download_url) {
       setError('Renderize o vídeo antes de baixar o MP4 final.');
       return;
     }
-    const link = document.createElement('a');
-    link.href = forge2FileUrl(lastRender.download_url);
-    link.download = lastRender.filename || 'forge2-render.mp4';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setMessage('Download do render MP4 iniciado.');
+    await runAction('download-render', async () => {
+      const filename = lastRender.filename || 'forge2-render.mp4';
+      const response = await fetch(forge2FileUrl(lastRender.download_url), { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('Falha ao preparar o arquivo MP4 para download.');
+      }
+
+      const blob = await response.blob();
+      const picker = window.showSaveFilePicker;
+      if (typeof picker === 'function') {
+        const handle = await picker({
+          suggestedName: filename,
+          types: [
+            {
+              description: 'Vídeo MP4',
+              accept: { 'video/mp4': ['.mp4'] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setMessage('Vídeo MP4 salvo no local escolhido.');
+        return;
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setMessage('Download do render MP4 iniciado.');
+    });
   };
 
   const handleRenderVideo = async () => {
