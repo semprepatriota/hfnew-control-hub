@@ -86,6 +86,22 @@ const TEXT_THEMES = [
   { id: 'gold_light', label: 'Ouro claro', color: '#101217', background: '#f6d47b' },
   { id: 'blue_focus', label: 'Azul foco', color: '#ffffff', background: '#0b3b8f' },
   { id: 'red_impact', label: 'Vermelho impacto', color: '#ffffff', background: '#a20f18' },
+  { id: 'cinematic_neon', label: 'Cinemático Neon', color: '#eaf7ff', background: '#04101d' },
+  { id: 'cinematic_bar', label: 'Tarja Cinemática', color: '#f8fbff', background: '#07111f' },
+];
+
+const TEXT_ANIMATIONS = [
+  { id: 'none', label: 'Sem animação' },
+  { id: 'fade', label: 'Aparecer suave' },
+  { id: 'slide', label: 'Entrada lateral' },
+  { id: 'zoom', label: 'Zoom impacto' },
+  { id: 'pulse', label: 'Pulso neon' },
+];
+
+const TEXT_ANIMATION_SPEEDS = [
+  { id: 'slow', label: 'Lenta' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'fast', label: 'Rápida' },
 ];
 
 function createDefaultStudio() {
@@ -115,6 +131,8 @@ function createDefaultStudio() {
       box_height: 48,
       align: 'center',
       animation: 'fade',
+      text_animation: 'none',
+      text_animation_speed: 'normal',
     },
     publication: {
       title: '',
@@ -918,7 +936,13 @@ function TheForge2() {
                       className="forge2-preview-base-video"
                     />
                     <div
-                      className={`forge2-preview-copy align-${studio.text_overlay.align}`}
+                      className={[
+                        'forge2-preview-copy',
+                        `align-${studio.text_overlay.align}`,
+                        `theme-${studio.text_overlay.overlay_theme}`,
+                        `animation-${studio.text_overlay.text_animation || 'none'}`,
+                        `speed-${studio.text_overlay.text_animation_speed || 'normal'}`,
+                      ].join(' ')}
                       style={{
                         left: `${studio.text_overlay.position_x}%`,
                         top: `${studio.text_overlay.position_y}%`,
@@ -1115,6 +1139,69 @@ function TheForge2() {
                 <Plus size={16} />
                 Criar novo render
               </button>
+            </div>
+          </section>
+
+          <section className="forge2-panel forge2-cinematic-style-panel">
+            <div className="forge2-panel-header">
+              <div className="forge2-section-title">
+                <Type size={16} />
+                <h2>Estilos Cinematográficos</h2>
+              </div>
+            </div>
+
+            <div className="forge2-cinematic-style-grid">
+              {TEXT_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
+                  onClick={() => updateStudioLocal((current) => ({
+                    ...current,
+                    text_overlay: {
+                      ...current.text_overlay,
+                      overlay_theme: theme.id,
+                      color: theme.color,
+                    },
+                  }))}
+                >
+                  <span className={`forge2-style-swatch theme-${theme.id}`}>
+                    <strong>Aa</strong>
+                  </span>
+                  <em>{theme.label}</em>
+                </button>
+              ))}
+            </div>
+
+            <div className="forge2-form-grid">
+              <label>
+                <span>Animação do texto</span>
+                <select
+                  value={studio.text_overlay.text_animation || 'none'}
+                  onChange={(event) => updateStudioLocal((current) => ({
+                    ...current,
+                    text_overlay: { ...current.text_overlay, text_animation: event.target.value },
+                  }))}
+                >
+                  {TEXT_ANIMATIONS.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Velocidade</span>
+                <select
+                  value={studio.text_overlay.text_animation_speed || 'normal'}
+                  onChange={(event) => updateStudioLocal((current) => ({
+                    ...current,
+                    text_overlay: { ...current.text_overlay, text_animation_speed: event.target.value },
+                  }))}
+                >
+                  {TEXT_ANIMATION_SPEEDS.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
             </div>
           </section>
 

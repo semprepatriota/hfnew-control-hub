@@ -581,6 +581,87 @@
   text-align: right;
 }
 
+.forge2-preview-copy.theme-cinematic_neon {
+  border: 1px solid rgba(55, 231, 255, 0.78);
+  box-shadow:
+    0 0 12px rgba(55, 231, 255, 0.45),
+    0 0 34px rgba(37, 99, 235, 0.38),
+    inset 0 0 22px rgba(55, 231, 255, 0.1);
+}
+
+.forge2-preview-copy.theme-cinematic_neon .forge2-preview-copy-title {
+  text-shadow:
+    0 0 8px rgba(55, 231, 255, 0.7),
+    0 2px 18px rgba(0, 0, 0, 0.56);
+}
+
+.forge2-preview-copy.theme-cinematic_bar {
+  border-left: 6px solid #2563eb;
+  border-top: 3px solid rgba(59, 130, 246, 0.9);
+  border-bottom: 3px solid rgba(199, 138, 44, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.forge2-preview-copy.animation-fade {
+  animation: forge2-text-fade 0.85s ease both;
+}
+
+.forge2-preview-copy.animation-slide {
+  animation: forge2-text-slide 0.85s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.forge2-preview-copy.animation-zoom {
+  animation: forge2-text-zoom 0.7s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.forge2-preview-copy.animation-pulse {
+  animation: forge2-text-pulse 1.4s ease-in-out infinite;
+}
+
+.forge2-preview-copy.speed-slow {
+  animation-duration: 1.35s;
+}
+
+.forge2-preview-copy.speed-normal {
+  animation-duration: 0.85s;
+}
+
+.forge2-preview-copy.speed-fast {
+  animation-duration: 0.45s;
+}
+
+.forge2-preview-copy.animation-pulse.speed-slow {
+  animation-duration: 2.1s;
+}
+
+.forge2-preview-copy.animation-pulse.speed-normal {
+  animation-duration: 1.4s;
+}
+
+.forge2-preview-copy.animation-pulse.speed-fast {
+  animation-duration: 0.85s;
+}
+
+@keyframes forge2-text-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes forge2-text-slide {
+  from { opacity: 0; transform: translate(calc(-50% + 80px), -50%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+@keyframes forge2-text-zoom {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes forge2-text-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(55, 231, 255, 0)); }
+  50% { filter: drop-shadow(0 0 14px rgba(55, 231, 255, 0.55)); }
+}
+
 .forge2-preview-toggles {
   display: flex;
   gap: 14px;
@@ -793,6 +874,77 @@
 
 .forge2-publication-generate:hover {
   border-color: rgba(110, 180, 255, 0.8) !important;
+}
+
+.forge2-cinematic-style-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.forge2-cinematic-style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.forge2-cinematic-style-grid button {
+  display: grid;
+  gap: 7px;
+  padding: 10px !important;
+  background: rgba(9, 14, 24, 0.9) !important;
+  color: var(--forge2-ink) !important;
+}
+
+.forge2-cinematic-style-grid button.active {
+  border-color: rgba(66, 153, 225, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(66, 153, 225, 0.25);
+}
+
+.forge2-style-swatch {
+  min-height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.forge2-style-swatch.theme-classic_dark {
+  background: #080c14;
+  color: #fff;
+}
+
+.forge2-style-swatch.theme-gold_light {
+  background: #f6d47b;
+  color: #101217;
+}
+
+.forge2-style-swatch.theme-blue_focus {
+  background: #0b3b8f;
+  color: #fff;
+}
+
+.forge2-style-swatch.theme-red_impact {
+  background: #a20f18;
+  color: #fff;
+}
+
+.forge2-style-swatch.theme-cinematic_neon {
+  background: #04101d;
+  color: #eaf7ff;
+  box-shadow: inset 0 0 18px rgba(55, 231, 255, 0.35);
+}
+
+.forge2-style-swatch.theme-cinematic_bar {
+  background: linear-gradient(90deg, #2563eb 0 12%, #07111f 12% 100%);
+  color: #f8fbff;
+  border-top: 2px solid #3b82f6;
+  border-bottom: 2px solid #c78a2c;
+}
+
+.forge2-cinematic-style-grid em {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .forge2-phase-card p {
