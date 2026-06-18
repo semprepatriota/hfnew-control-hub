@@ -770,6 +770,28 @@
   padding: 12px 14px;
 }
 
+.forge2-publication-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.forge2-publication-generate {
+  min-height: 40px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: rgba(66, 153, 225, 0.58) !important;
+  background: linear-gradient(180deg, #2563eb 0%, #173ea8 100%) !important;
+  color: #eef6ff !important;
+  white-space: nowrap;
+}
+
+.forge2-publication-generate:hover {
+  border-color: rgba(110, 180, 255, 0.8) !important;
+}
+
 .forge2-phase-card p {
   margin: 0;
   color: var(--forge2-soft);

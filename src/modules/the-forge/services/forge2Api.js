@@ -164,6 +164,12 @@ export async function generateForge2Copy(projectId, payload) {
   }));
 }
 
+export async function generateForge2Publication(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/generate-publication`), {
+    method: 'POST',
+  }));
+}
+
 export async function renderForge2Studio(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/render`), {
     method: 'POST',

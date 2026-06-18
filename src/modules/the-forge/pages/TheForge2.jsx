@@ -39,6 +39,7 @@ import {
   uploadForge2Music,
   removeForge2Asset,
   generateForge2Copy,
+  generateForge2Publication,
   renderForge2Studio,
   scheduleForge2Render,
   publishForge2ToYouTube,
@@ -375,6 +376,16 @@ function TheForge2() {
       });
       setStudio(data.studio);
       setMessage(`Texto gerado via ${data.generated.source} com alvo de ${targetSeconds}s.`);
+    });
+  };
+
+  const handleGeneratePublication = async () => {
+    if (!selectedProjectId) return;
+    await runAction('generate-publication', async () => {
+      const saved = await saveForge2StudioConfig(selectedProjectId, studio);
+      const data = await generateForge2Publication(selectedProjectId, saved.studio);
+      setStudio(data.studio);
+      setMessage('Publicação gerada com CRONOS Mestre.');
     });
   };
 
@@ -1087,7 +1098,18 @@ function TheForge2() {
                 <Wand2 size={16} />
                 <h2>Publicação</h2>
               </div>
-              <Film size={16} />
+              <div className="forge2-publication-header-actions">
+                <button
+                  type="button"
+                  className="forge2-publication-generate"
+                  onClick={handleGeneratePublication}
+                  disabled={!selectedProjectId || Boolean(busyAction)}
+                >
+                  <Sparkles size={16} />
+                  Gerar com CRONOS Mestre
+                </button>
+                <Film size={16} />
+              </div>
             </div>
 
             <div className="forge2-form-grid">
