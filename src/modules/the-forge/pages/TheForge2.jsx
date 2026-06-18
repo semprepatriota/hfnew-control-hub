@@ -1,166 +1,176 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import {
-  Check,
-  CheckCircle2,
+  AudioLines,
+  Bot,
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
   Clapperboard,
-  FileVideo,
   Film,
+  FolderOpen,
   ImagePlus,
   Loader,
-  Mic,
-  Play,
+  Lock,
   Plus,
   RefreshCw,
   Save,
-  Scissors,
-  Subtitles,
+  Sparkles,
+  Tags,
+  Type,
   Upload,
-  UserRound,
+  Video,
   Wand2,
-  X,
 } from 'lucide-react';
 import {
-  analyzeForge2Project,
   createForge2Project,
-  extractForge2Audio,
   forge2FileUrl,
-  generateForge2Preview,
-  generateForge2Srt,
+  getForge2CopyAgentConfig,
   getForge2Health,
   getForge2Project,
-  getLMStudioStatus,
+  getForge2StudioConfig,
   listForge2Projects,
-  saveForge2Transcript,
-  setForge2PlanItemApproval,
-  transcribeForge2Project,
-  uploadForge2Source,
+  saveForge2CopyAgentConfig,
+  saveForge2StudioConfig,
+  uploadForge2BaseVideo,
+  uploadForge2Gif,
+  uploadForge2Music,
+  generateForge2Copy,
 } from '../services/forge2Api';
 import '../styles/the-forge-2.css';
 
-const STEP_LABELS = {
-  draft: 'Projeto criado',
-  source_uploaded: 'Vídeo enviado',
-  audio_extracted: 'Áudio extraído',
-  transcribed: 'Transcrição pronta',
-  analyzing: 'Analisando',
-  plan_ready: 'Plano pronto',
-  captioned: 'SRT gerado',
-  preview_ready: 'Prévia pronta',
-  error: 'Erro',
-};
+const YOUTUBE_CATEGORIES = [
+  { value: '1', label: 'Film & Animation' },
+  { value: '10', label: 'Music' },
+  { value: '15', label: 'Pets & Animals' },
+  { value: '17', label: 'Sports' },
+  { value: '19', label: 'Travel & Events' },
+  { value: '20', label: 'Gaming' },
+  { value: '22', label: 'People & Blogs' },
+  { value: '23', label: 'Comedy' },
+  { value: '24', label: 'Entertainment' },
+  { value: '25', label: 'News & Politics' },
+  { value: '26', label: 'Howto & Style' },
+  { value: '27', label: 'Education' },
+  { value: '28', label: 'Science & Technology' },
+  { value: '29', label: 'Nonprofits & Activism' },
+];
 
-function formatBytes(value = 0) {
-  if (!value) return '-';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let size = value;
-  let index = 0;
-  while (size >= 1024 && index < units.length - 1) {
-    size /= 1024;
-    index += 1;
-  }
-  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+const FORGE2_ITEMS = [
+  'Biblioteca 9:16',
+  'Biblioteca 1:1',
+  'Biblioteca recolhivel',
+  'Preview central forte',
+  'Gerador de frases',
+  'Painel de API separado',
+  'GIFs sobrepostos',
+  'Musica de fundo',
+  'Titulo',
+  'Descricao',
+  'Hashtags',
+  'Categoria do YouTube',
+  'Privacidade',
+  'Agendamento',
+  'Render/publicacao',
+];
+
+function createDefaultStudio() {
+  return {
+    library_collapsed: false,
+    selected_base_asset_id: '',
+    output_aspect_ratio: '9:16',
+    base_videos_vertical: [],
+    base_videos_square: [],
+    gif_overlays: [],
+    music_tracks: [],
+    text_overlay: {
+      topic: '',
+      style: 'oracao',
+      generated_text: '',
+      font_family: 'Playfair Display',
+      font_size: 58,
+      line_height: 1.08,
+      letter_spacing: 0,
+      color: '#111111',
+      shadow: true,
+      position_x: 50,
+      position_y: 32,
+      box_width: 70,
+      box_height: 48,
+      align: 'center',
+      animation: 'fade',
+    },
+    publication: {
+      title: '',
+      description: '',
+      hashtags: [],
+      youtube_category: '22',
+      privacy_status: 'private',
+      schedule_at: '',
+    },
+    preview_muted: false,
+    preview_loop: true,
+  };
 }
 
-function formatDuration(seconds = 0) {
-  if (!seconds) return '-';
-  const safe = Math.round(seconds);
-  const h = Math.floor(safe / 3600);
-  const m = Math.floor((safe % 3600) / 60);
-  const s = safe % 60;
-  return h ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+function assetDurationLabel(asset) {
+  if (!asset?.duration) return '-';
+  return `${asset.duration.toFixed(1)}s`;
 }
 
-function formatTimestamp(seconds = 0) {
-  if (!Number.isFinite(Number(seconds))) return '00:00';
-  const safe = Math.max(0, Math.round(Number(seconds)));
-  const h = Math.floor(safe / 3600);
-  const m = Math.floor((safe % 3600) / 60);
-  const s = safe % 60;
-  return h
-    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function PlanList({ title, icon: Icon, items, section, empty, onDecision, busy }) {
+function ProjectCard({ item, active, onClick }) {
   return (
-    <div className="forge2-plan-list">
-      <div className="forge2-plan-list-header">
-        <Icon size={18} />
-        <h3>{title}</h3>
-        <span>{items?.length || 0}</span>
+    <button type="button" className={`forge2-project-card ${active ? 'active' : ''}`} onClick={onClick}>
+      <strong>{item.title}</strong>
+      <span>{item.status}</span>
+      <small>{item.resolution || item.id}</small>
+    </button>
+  );
+}
+
+function LibraryAssetCard({ asset, selected, onSelect }) {
+  return (
+    <button type="button" className={`forge2-library-card ${selected ? 'selected' : ''}`} onClick={onSelect}>
+      <video src={forge2FileUrl(asset.url)} muted playsInline preload="metadata" />
+      <div>
+        <strong>{asset.filename}</strong>
+        <span>{asset.width ? `${asset.width}x${asset.height}` : asset.aspect_ratio}</span>
+        <small>{assetDurationLabel(asset)}</small>
       </div>
-      {items?.length ? items.map((item, index) => (
-        <article key={item.id || index} className={`forge2-plan-item ${item.approved ? 'approved' : ''}`}>
-          <div>
-            <strong>{item.title || item.prompt || item.script || `Item ${index + 1}`}</strong>
-            <span>
-              {item.timestamp !== undefined
-                ? formatTimestamp(item.timestamp)
-                : `${formatTimestamp(item.start)} - ${formatTimestamp(item.end)}`}
-            </span>
-          </div>
-          <p>{item.summary || item.reason || item.description || item.prompt || item.script || 'Sem descrição.'}</p>
-          <div className="forge2-plan-actions">
-            <button type="button" onClick={() => onDecision(section, item.id || String(index), true)} disabled={busy}>
-              <Check size={15} />
-              Aprovar
-            </button>
-            <button type="button" onClick={() => onDecision(section, item.id || String(index), false)} disabled={busy}>
-              <X size={15} />
-              Rejeitar
-            </button>
-          </div>
-        </article>
-      )) : (
-        <div className="forge2-plan-empty">{empty}</div>
-      )}
-    </div>
+    </button>
   );
 }
 
 function TheForge2() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [projectData, setProjectData] = useState(null);
-  const [title, setTitle] = useState('Novo vídeo longo');
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [transcriptText, setTranscriptText] = useState('');
-  const [srtText, setSrtText] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [lmStatus, setLmStatus] = useState(null);
-  const [apiHealth, setApiHealth] = useState(null);
+  const [project, setProject] = useState(null);
+  const [studio, setStudio] = useState(createDefaultStudio());
+  const [copyAgent, setCopyAgent] = useState({
+    provider: 'local_fallback',
+    model: 'gpt-4.1-mini',
+    configured: false,
+    api_key_masked: '',
+    api_key: '',
+  });
+  const [newProjectTitle, setNewProjectTitle] = useState('Forge 2.0 Curto');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [libraryTab, setLibraryTab] = useState('9:16');
+  const [baseUploadFile, setBaseUploadFile] = useState(null);
+  const [gifUploadFile, setGifUploadFile] = useState(null);
+  const [musicUploadFile, setMusicUploadFile] = useState(null);
   const [busyAction, setBusyAction] = useState('');
+  const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-
-  const project = projectData?.project || null;
-  const editPlan = projectData?.edit_plan || {};
-  const sourceVideo = project?.source_video || null;
-  const canUseProject = Boolean(project?.id);
-
-  const statusSteps = useMemo(() => [
-    'draft',
-    'source_uploaded',
-    'audio_extracted',
-    'transcribed',
-    'plan_ready',
-    'captioned',
-    'preview_ready',
-  ], []);
-
-  const currentStepIndex = Math.max(0, statusSteps.indexOf(project?.status || 'draft'));
 
   const runAction = async (label, action) => {
     setBusyAction(label);
     setError('');
     setMessage('');
     try {
-      const result = await action();
-      return result;
+      return await action();
     } catch (err) {
-      setError(err.message || 'Falha no The Forge 2.0');
+      setError(err.message || 'Falha no Forge 2.0');
       return null;
     } finally {
       setBusyAction('');
@@ -175,431 +185,562 @@ function TheForge2() {
 
   const loadProject = async (projectId) => {
     if (!projectId) return;
-    const data = await getForge2Project(projectId);
+    const [projectData, studioData, agentData] = await Promise.all([
+      getForge2Project(projectId),
+      getForge2StudioConfig(projectId),
+      getForge2CopyAgentConfig(projectId),
+    ]);
     setSelectedProjectId(projectId);
-    setProjectData(data);
-    setTranscriptText(data.edit_plan?.transcript?.text || '');
-    setPreviewUrl(data.project?.preview_path
-      ? forge2FileUrl(`/api/forge2/projects/${projectId}/files/previews/${data.project.preview_path.split(/[\\/]/).pop()}`)
-      : '');
+    setProject(projectData.project || null);
+    setStudio(studioData.studio || createDefaultStudio());
+    setCopyAgent((current) => ({
+      ...current,
+      ...agentData,
+      api_key: '',
+    }));
   };
 
   useEffect(() => {
-    const loadInitial = async () => {
-      await runAction('initial-load', async () => {
-        const [health, lm, list] = await Promise.all([
-          getForge2Health(),
-          getLMStudioStatus(),
-          refreshProjects(),
-        ]);
+    const bootstrap = async () => {
+      await runAction('bootstrap', async () => {
+        const health = await getForge2Health();
         setApiHealth(health);
-        setLmStatus(lm);
+        const list = await refreshProjects();
         if (list[0]?.id) {
           await loadProject(list[0].id);
         }
       });
     };
-
-    loadInitial();
+    bootstrap();
   }, []);
 
+  const persistStudio = async (nextStudio, successMessage = 'Configuração do estúdio salva.') => {
+    if (!selectedProjectId) return;
+    const data = await saveForge2StudioConfig(selectedProjectId, nextStudio);
+    setStudio(data.studio);
+    setMessage(successMessage);
+  };
+
+  const selectedBaseAsset = [...(studio.base_videos_vertical || []), ...(studio.base_videos_square || [])]
+    .find((item) => item.id === studio.selected_base_asset_id);
+
+  const activeGif = (studio.gif_overlays || []).find((item) => item.enabled);
+  const activeMusic = (studio.music_tracks || []).find((item) => item.enabled);
+  const hashtagsText = (studio.publication?.hashtags || []).join(' ');
+
   const handleCreateProject = async () => {
-    await runAction('create', async () => {
-      const data = await createForge2Project({ title, description });
-      setProjectData(data);
-      setSelectedProjectId(data.project.id);
-      setTranscriptText('');
-      setSrtText('');
-      setPreviewUrl('');
+    await runAction('create-project', async () => {
+      const data = await createForge2Project({
+        title: newProjectTitle,
+        description: newProjectDescription,
+      });
       await refreshProjects();
-      setMessage('Projeto criado no The Forge 2.0');
+      await loadProject(data.project.id);
+      setMessage('Projeto do Forge 2.0 criado.');
     });
   };
 
-  const handleUpload = async () => {
-    if (!canUseProject || !selectedFile) {
-      setError('Crie um projeto e selecione um vídeo longo primeiro.');
+  const handleSaveAgent = async () => {
+    if (!selectedProjectId) return;
+    await runAction('save-agent', async () => {
+      const data = await saveForge2CopyAgentConfig(selectedProjectId, {
+        provider: copyAgent.provider,
+        model: copyAgent.model,
+        api_key: copyAgent.api_key,
+      });
+      setCopyAgent((current) => ({ ...current, ...data, api_key: '' }));
+      setMessage('Agente de frases salvo.');
+    });
+  };
+
+  const handleGenerateCopy = async () => {
+    if (!selectedProjectId) return;
+    if (!studio.text_overlay.topic.trim()) {
+      setError('Informe um tema para gerar a frase.');
       return;
     }
-    await runAction('upload', async () => {
-      const data = await uploadForge2Source(project.id, selectedFile);
-      setProjectData({ project: data.project, edit_plan: editPlan });
-      await loadProject(project.id);
-      await refreshProjects();
-      setMessage('Vídeo enviado e analisado com FFprobe.');
+    await runAction('generate-copy', async () => {
+      const data = await generateForge2Copy(selectedProjectId, {
+        topic: studio.text_overlay.topic,
+        style: studio.text_overlay.style,
+        target_seconds: 10,
+      });
+      setStudio(data.studio);
+      setMessage(`Texto gerado via ${data.generated.source}.`);
     });
   };
 
-  const handleExtractAudio = async () => {
-    if (!canUseProject) return;
-    await runAction('audio', async () => {
-      const data = await extractForge2Audio(project.id);
-      setProjectData((current) => ({ ...current, project: data.project }));
-      await refreshProjects();
-      setMessage('Áudio extraído com FFmpeg.');
+  const handleBaseUpload = async () => {
+    if (!selectedProjectId || !baseUploadFile) return;
+    await runAction('upload-base', async () => {
+      const data = await uploadForge2BaseVideo(selectedProjectId, baseUploadFile, libraryTab);
+      setStudio(data.studio);
+      setBaseUploadFile(null);
+      setMessage('Vídeo base adicionado à biblioteca.');
     });
   };
 
-  const handleTranscribe = async () => {
-    if (!canUseProject) return;
-    await runAction('transcribe', async () => {
-      const data = await transcribeForge2Project(project.id);
-      setProjectData((current) => ({
-        ...current,
-        project: data.project,
-        edit_plan: {
-          ...(current?.edit_plan || {}),
-          transcript: data.transcript,
-          captions: data.transcript?.segments || [],
-        },
-      }));
-      setTranscriptText(data.transcript?.text || '');
-      await refreshProjects();
-      setMessage('Transcrição gerada com faster-whisper.');
+  const handleGifUpload = async () => {
+    if (!selectedProjectId || !gifUploadFile) return;
+    await runAction('upload-gif', async () => {
+      const data = await uploadForge2Gif(selectedProjectId, gifUploadFile);
+      setStudio(data.studio);
+      setGifUploadFile(null);
+      setMessage('GIF adicionado ao projeto.');
     });
   };
 
-  const handleSaveTranscript = async () => {
-    if (!canUseProject) return;
-    await runAction('save-transcript', async () => {
-      const data = await saveForge2Transcript(project.id, transcriptText);
-      setProjectData((current) => ({
-        ...current,
-        project: data.project,
-        edit_plan: {
-          ...(current?.edit_plan || {}),
-          transcript: data.transcript,
-          captions: data.transcript?.segments || [],
-        },
-      }));
-      setMessage('Transcrição revisada e salva.');
+  const handleMusicUpload = async () => {
+    if (!selectedProjectId || !musicUploadFile) return;
+    await runAction('upload-music', async () => {
+      const data = await uploadForge2Music(selectedProjectId, musicUploadFile);
+      setStudio(data.studio);
+      setMusicUploadFile(null);
+      setMessage('Faixa de música adicionada.');
     });
   };
 
-  const handleAnalyzePlan = async () => {
-    if (!canUseProject || !transcriptText) {
-      setError('Gere ou salve uma transcrição antes de analisar o vídeo.');
-      return;
-    }
-    await runAction('analyze', async () => {
-      const data = await analyzeForge2Project(project.id);
-      setProjectData(data);
-      await refreshProjects();
-      setMessage(data.edit_plan?.analysis?.source === 'lm_studio'
-        ? 'Plano de edição gerado pelo LM Studio.'
-        : 'Plano de edição gerado com fallback local.');
+  const updateStudioLocal = (updater) => {
+    setStudio((current) => {
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return next;
     });
   };
 
-  const handlePlanDecision = async (section, itemId, approved) => {
-    if (!canUseProject) return;
-    await runAction('plan-decision', async () => {
-      const data = await setForge2PlanItemApproval(project.id, section, itemId, approved);
-      setProjectData(data);
-      setMessage(approved ? 'Sugestão aprovada.' : 'Sugestão rejeitada.');
-    });
+  const toggleLibrary = () => {
+    updateStudioLocal((current) => ({ ...current, library_collapsed: !current.library_collapsed }));
   };
 
-  const handleGenerateSrt = async () => {
-    if (!canUseProject) return;
-    await runAction('srt', async () => {
-      const data = await generateForge2Srt(project.id);
-      setProjectData((current) => ({ ...current, project: data.project }));
-      setSrtText(data.srt || '');
-      await refreshProjects();
-      setMessage('Arquivo SRT gerado.');
-    });
+  const selectBaseAsset = (asset, aspectRatio) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      selected_base_asset_id: asset.id,
+      output_aspect_ratio: aspectRatio,
+    }));
   };
 
-  const handleGeneratePreview = async () => {
-    if (!canUseProject) return;
-    await runAction('preview', async () => {
-      const data = await generateForge2Preview(project.id);
-      setProjectData((current) => ({ ...current, project: data.project }));
-      setPreviewUrl(forge2FileUrl(data.preview_url));
-      await refreshProjects();
-      setMessage('Prévia legendada criada.');
-    });
+  const toggleGifEnabled = (assetId) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      gif_overlays: current.gif_overlays.map((item) => ({
+        ...item,
+        enabled: item.id === assetId ? !item.enabled : false,
+      })),
+    }));
   };
 
-  const refreshLMStudio = async () => {
-    await runAction('lm-status', async () => {
-      setLmStatus(await getLMStudioStatus());
-    });
+  const toggleMusicEnabled = (assetId) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      music_tracks: current.music_tracks.map((item) => ({
+        ...item,
+        enabled: item.id === assetId ? !item.enabled : false,
+      })),
+    }));
   };
+
+  const renderAspectClass = studio.output_aspect_ratio === '1:1' ? 'square' : 'vertical';
+  const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
 
   return (
-    <div className="forge2-page">
-      <header className="forge2-header">
+    <div className="forge2-page forge2-page-rebuilt">
+      <header className="forge2-header forge2-header-rebuilt">
         <div>
-          <span className="forge2-kicker">Editor privado de vídeos longos</span>
+          <span className="forge2-kicker">Forge 2.0 · estúdio curto</span>
           <h1>The Forge 2.0</h1>
-          <p>Fluxo isolado para vídeo longo, transcrição, legendas, análise por IA local e prévia renderizada.</p>
+          <p>Vídeo base, frase sobreposta, GIF, música e publicação em um fluxo separado do Forge principal.</p>
         </div>
         <div className="forge2-status-card">
           <span>API</span>
-          <strong>{apiHealth?.status === 'operational' ? 'Online' : 'Verificando'}</strong>
-          <small>{apiHealth?.phase || 'fase 1'}</small>
-          <Link className="forge2-editor-link" to="/the-forge/editor">
-            Abrir Forge Easy Editor
-          </Link>
+          <strong>{apiHealth?.status || 'carregando'}</strong>
+          <small>{FORGE2_ITEMS.length} itens fechados no escopo</small>
         </div>
       </header>
 
-      <section className="forge2-grid">
-        <aside className="forge2-panel forge2-projects">
-          <div className="forge2-panel-header">
-            <h2>Projetos</h2>
-            <button type="button" onClick={() => runAction('refresh', refreshProjects)} disabled={Boolean(busyAction)}>
-              <RefreshCw size={16} />
-            </button>
-          </div>
+      <section className="forge2-scope-strip">
+        {FORGE2_ITEMS.map((item, index) => (
+          <span key={item}><strong>{index + 1}.</strong> {item}</span>
+        ))}
+      </section>
 
-          <div className="forge2-create-box">
-            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nome do projeto" />
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Descrição opcional" rows={3} />
-            <button type="button" onClick={handleCreateProject} disabled={Boolean(busyAction) || !title.trim()}>
-              <Plus size={16} />
-              Criar projeto
-            </button>
-          </div>
-
-          <div className="forge2-project-list">
-            {projects.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={item.id === selectedProjectId ? 'active' : ''}
-                onClick={() => runAction('load-project', () => loadProject(item.id))}
-              >
-                <strong>{item.title}</strong>
-                <span>{STEP_LABELS[item.status] || item.status}</span>
-                <small>{item.duration ? formatDuration(item.duration) : item.resolution || item.id}</small>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <main className="forge2-workspace">
+      <section className="forge2-shell">
+        <aside className="forge2-left-rail">
           <section className="forge2-panel">
             <div className="forge2-panel-header">
-              <h2>{project?.title || 'Nenhum projeto selecionado'}</h2>
-              <span className={`forge2-badge ${project?.status === 'error' ? 'error' : ''}`}>
-                {STEP_LABELS[project?.status] || 'Aguardando'}
-              </span>
+              <h2>Projetos</h2>
+              <button type="button" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busyAction)}>
+                <RefreshCw size={16} />
+              </button>
             </div>
-
-            <div className="forge2-steps">
-              {statusSteps.map((step, index) => (
-                <div key={step} className={index <= currentStepIndex ? 'done' : ''}>
-                  <CheckCircle2 size={16} />
-                  <span>{STEP_LABELS[step]}</span>
-                </div>
+            <div className="forge2-create-box">
+              <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} placeholder="Nome do projeto" />
+              <textarea value={newProjectDescription} onChange={(event) => setNewProjectDescription(event.target.value)} placeholder="Descrição do projeto" rows={3} />
+              <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busyAction)}>
+                <Plus size={16} />
+                Criar projeto
+              </button>
+            </div>
+            <div className="forge2-project-list">
+              {projects.map((item) => (
+                <ProjectCard
+                  key={item.id}
+                  item={item}
+                  active={item.id === selectedProjectId}
+                  onClick={() => runAction('load-project', () => loadProject(item.id))}
+                />
               ))}
             </div>
+          </section>
 
-            <div className="forge2-upload-row">
-              <label className="forge2-file-input">
-                <FileVideo size={20} />
-                <span>{selectedFile ? selectedFile.name : 'Selecionar vídeo longo'}</span>
+          <section className="forge2-panel">
+            <div className="forge2-panel-header">
+              <h2>Agente de frases</h2>
+              <Bot size={16} />
+            </div>
+            <div className="forge2-agent-box">
+              <label>
+                <span>Provider</span>
+                <select value={copyAgent.provider} onChange={(event) => setCopyAgent((current) => ({ ...current, provider: event.target.value }))}>
+                  <option value="local_fallback">Fallback local</option>
+                  <option value="custom_openai">ChatGPT custom</option>
+                </select>
+              </label>
+              <label>
+                <span>Modelo</span>
+                <input value={copyAgent.model} onChange={(event) => setCopyAgent((current) => ({ ...current, model: event.target.value }))} />
+              </label>
+              <label>
+                <span>API do agente</span>
                 <input
-                  type="file"
-                  accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi"
-                  onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                  type="password"
+                  value={copyAgent.api_key}
+                  placeholder={copyAgent.api_key_masked || 'Cole a chave deste agente'}
+                  onChange={(event) => setCopyAgent((current) => ({ ...current, api_key: event.target.value }))}
                 />
               </label>
-              <button type="button" onClick={handleUpload} disabled={!canUseProject || !selectedFile || Boolean(busyAction)}>
-                <Upload size={16} />
-                Enviar vídeo
+              <button type="button" onClick={handleSaveAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <Save size={16} />
+                Salvar agente
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <main className="forge2-main-stage">
+          <section className={`forge2-panel forge2-library-panel ${studio.library_collapsed ? 'collapsed' : ''}`}>
+            <div className="forge2-panel-header">
+              <div className="forge2-library-title">
+                <FolderOpen size={16} />
+                <h2>Biblioteca base recolhível</h2>
+              </div>
+              <button type="button" onClick={toggleLibrary}>
+                {studio.library_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
               </button>
             </div>
 
-            {sourceVideo && (
-              <div className="forge2-metadata-grid">
-                <div><span>Duração</span><strong>{formatDuration(sourceVideo.duration)}</strong></div>
-                <div><span>Resolução</span><strong>{sourceVideo.width}x{sourceVideo.height}</strong></div>
-                <div><span>Vídeo</span><strong>{sourceVideo.video_codec || '-'}</strong></div>
-                <div><span>Áudio</span><strong>{sourceVideo.audio_codec || '-'}</strong></div>
-                <div><span>Tamanho</span><strong>{formatBytes(sourceVideo.size_bytes)}</strong></div>
-                <div><span>Formato</span><strong>{sourceVideo.format_name || '-'}</strong></div>
+            {!studio.library_collapsed && (
+              <div className="forge2-library-body">
+                <div className="forge2-library-tabs">
+                  <button type="button" className={libraryTab === '9:16' ? 'active' : ''} onClick={() => setLibraryTab('9:16')}>9:16</button>
+                  <button type="button" className={libraryTab === '1:1' ? 'active' : ''} onClick={() => setLibraryTab('1:1')}>1:1</button>
+                </div>
+
+                <div className="forge2-library-upload">
+                  <label className="forge2-file-input compact">
+                    <Upload size={16} />
+                    <span>{baseUploadFile ? baseUploadFile.name : `Adicionar vídeo base ${libraryTab}`}</span>
+                    <input type="file" accept="video/*" onChange={(event) => setBaseUploadFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <button type="button" onClick={handleBaseUpload} disabled={!selectedProjectId || !baseUploadFile || Boolean(busyAction)}>
+                    Enviar
+                  </button>
+                </div>
+
+                <div className="forge2-library-grid">
+                  {activeLibrary.map((asset) => (
+                    <LibraryAssetCard
+                      key={asset.id}
+                      asset={asset}
+                      selected={studio.selected_base_asset_id === asset.id}
+                      onSelect={() => selectBaseAsset(asset, libraryTab)}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </section>
 
-          <section className="forge2-action-grid">
-            <button type="button" onClick={handleExtractAudio} disabled={!sourceVideo || Boolean(busyAction)}>
-              <Mic size={18} />
-              Extrair áudio
-            </button>
-            <button type="button" onClick={handleTranscribe} disabled={!sourceVideo || Boolean(busyAction)}>
-              <Wand2 size={18} />
-              Transcrever
-            </button>
-            <button type="button" onClick={handleAnalyzePlan} disabled={!transcriptText || Boolean(busyAction)}>
-              <Film size={18} />
-              Analisar plano
-            </button>
-            <button type="button" onClick={handleGenerateSrt} disabled={!transcriptText || Boolean(busyAction)}>
-              <Subtitles size={18} />
-              Gerar SRT
-            </button>
-            <button type="button" onClick={handleGeneratePreview} disabled={!transcriptText || Boolean(busyAction)}>
-              <Play size={18} />
-              Gerar prévia
-            </button>
-          </section>
-
-          <section className="forge2-panel">
-            <div className="forge2-panel-header">
-              <h2>Transcrição</h2>
-              <button type="button" onClick={handleSaveTranscript} disabled={!transcriptText || Boolean(busyAction)}>
-                <Save size={16} />
-                Salvar revisão
-              </button>
-            </div>
-            <textarea
-              className="forge2-transcript"
-              value={transcriptText}
-              onChange={(event) => setTranscriptText(event.target.value)}
-              placeholder="A transcrição aparecerá aqui após executar faster-whisper."
-            />
-          </section>
-
-          <section className="forge2-panel forge2-plan-board">
-            <div className="forge2-panel-header">
-              <div>
-                <h2>Plano de edição</h2>
-                <span className="forge2-panel-subtitle">
-                  IA local para resumo, capítulos, cortes, mídia, avatar e trailer.
-                </span>
-              </div>
-              <button type="button" onClick={handleAnalyzePlan} disabled={!transcriptText || Boolean(busyAction)}>
-                <Wand2 size={16} />
-                Analisar novamente
-              </button>
-            </div>
-
-            <div className="forge2-summary-box">
-              <strong>Resumo</strong>
-              <p>{editPlan.summary || 'Execute a análise para gerar o plano do vídeo longo.'}</p>
-              {editPlan.analysis?.source && (
-                <small>
-                  Origem: {editPlan.analysis.source === 'lm_studio' ? 'LM Studio' : 'Fallback local'} · {editPlan.analysis.detail}
-                </small>
-              )}
-            </div>
-
-            <div className="forge2-plan-grid">
-              <PlanList
-                title="Capítulos"
-                icon={Clapperboard}
-                items={editPlan.chapters || []}
-                section="chapters"
-                empty="Nenhum capítulo gerado ainda."
-                onDecision={handlePlanDecision}
-                busy={Boolean(busyAction)}
-              />
-              <PlanList
-                title="Cortes"
-                icon={Scissors}
-                items={editPlan.cuts || []}
-                section="cuts"
-                empty="Nenhum corte sugerido ainda."
-                onDecision={handlePlanDecision}
-                busy={Boolean(busyAction)}
-              />
-              <PlanList
-                title="Mídias"
-                icon={ImagePlus}
-                items={editPlan.media_insertions || []}
-                section="media_insertions"
-                empty="Nenhum ponto de mídia sugerido ainda."
-                onDecision={handlePlanDecision}
-                busy={Boolean(busyAction)}
-              />
-              <PlanList
-                title="Avatar"
-                icon={UserRound}
-                items={editPlan.avatar_segments || []}
-                section="avatar_segments"
-                empty="Nenhum trecho de avatar sugerido ainda."
-                onDecision={handlePlanDecision}
-                busy={Boolean(busyAction)}
-              />
-            </div>
-
-            <div className="forge2-trailer-box">
-              <div>
-                <Film size={18} />
-                <strong>{editPlan.trailer_plan?.title || 'Trailer automático'}</strong>
-                <span>{editPlan.trailer_plan?.estimated_duration ? `${editPlan.trailer_plan.estimated_duration}s` : 'pendente'}</span>
-              </div>
-              <p>{editPlan.trailer_plan?.hook || 'O roteiro do trailer aparecerá após a análise.'}</p>
-              <div className="forge2-trailer-beats">
-                {(editPlan.trailer_plan?.beats || []).map((beat, index) => (
-                  <span key={beat.id || index}>
-                    {formatTimestamp(beat.start)} - {formatTimestamp(beat.end)} · {beat.description}
+          <section className="forge2-editor-grid">
+            <section className="forge2-panel forge2-preview-panel">
+              <div className="forge2-panel-header">
+                <div>
+                  <h2>Preview de edição MP4</h2>
+                  <span className="forge2-panel-subtitle">
+                    Vídeo base selecionado + frase + GIF + música
                   </span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="forge2-two-columns">
-            <div className="forge2-panel">
-              <div className="forge2-panel-header">
-                <h2>Legenda SRT</h2>
-                <span>{project?.srt_path ? 'Gerado' : 'Pendente'}</span>
-              </div>
-              <pre className="forge2-srt-preview">{srtText || 'Gere o SRT para visualizar as legendas sincronizadas.'}</pre>
-            </div>
-
-            <div className="forge2-panel">
-              <div className="forge2-panel-header">
-                <h2>Prévia</h2>
-                <span>{previewUrl ? 'Disponível' : 'Pendente'}</span>
-              </div>
-              {previewUrl ? (
-                <video src={previewUrl} controls className="forge2-preview-video" />
-              ) : (
-                <div className="forge2-empty-preview">
-                  <Clapperboard size={36} />
-                  <span>A prévia legendada será exibida aqui.</span>
                 </div>
-              )}
-            </div>
+                <button type="button" onClick={() => persistStudio(studio)} disabled={!selectedProjectId || Boolean(busyAction)}>
+                  <Save size={16} />
+                  Salvar ajustes
+                </button>
+              </div>
+
+              <div className={`forge2-preview-stage ${renderAspectClass}`}>
+                {selectedBaseAsset ? (
+                  <>
+                    <video
+                      key={selectedBaseAsset.id}
+                      src={forge2FileUrl(selectedBaseAsset.url)}
+                      controls
+                      muted={studio.preview_muted}
+                      loop={studio.preview_loop}
+                      playsInline
+                      className="forge2-preview-base-video"
+                    />
+                    <div
+                      className={`forge2-preview-copy align-${studio.text_overlay.align}`}
+                      style={{
+                        left: `${studio.text_overlay.position_x}%`,
+                        top: `${studio.text_overlay.position_y}%`,
+                        width: `${studio.text_overlay.box_width}%`,
+                        minHeight: `${studio.text_overlay.box_height}%`,
+                        color: studio.text_overlay.color,
+                        fontFamily: studio.text_overlay.font_family,
+                        fontSize: `${studio.text_overlay.font_size}px`,
+                        lineHeight: studio.text_overlay.line_height,
+                        letterSpacing: `${studio.text_overlay.letter_spacing}px`,
+                        textShadow: studio.text_overlay.shadow ? '0 2px 18px rgba(0,0,0,0.38)' : 'none',
+                      }}
+                    >
+                      {studio.text_overlay.generated_text || 'A frase gerada vai aparecer aqui em cima do vídeo.'}
+                    </div>
+                    {activeGif && (
+                      <img
+                        src={forge2FileUrl(activeGif.url)}
+                        alt=""
+                        className="forge2-preview-gif"
+                        style={{
+                          left: `${activeGif.overlay_x}%`,
+                          top: `${activeGif.overlay_y}%`,
+                          width: `${18 * activeGif.overlay_scale}%`,
+                        }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="forge2-empty-preview">
+                    <Clapperboard size={36} />
+                    <span>Selecione um vídeo base para iniciar o preview.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="forge2-preview-toggles">
+                <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
+                <label><input type="checkbox" checked={studio.preview_loop} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_loop: event.target.checked }))} /> Loop</label>
+              </div>
+            </section>
+
+            <section className="forge2-side-stack">
+              <section className="forge2-panel">
+                <div className="forge2-panel-header">
+                  <div className="forge2-section-title">
+                    <Type size={16} />
+                    <h2>Frase e enquadramento</h2>
+                  </div>
+                  <button type="button" onClick={handleGenerateCopy} disabled={!selectedProjectId || Boolean(busyAction)}>
+                    <Sparkles size={16} />
+                    Gerar
+                  </button>
+                </div>
+
+                <div className="forge2-form-grid">
+                  <label>
+                    <span>Tema</span>
+                    <textarea
+                      rows={3}
+                      value={studio.text_overlay.topic}
+                      onChange={(event) => updateStudioLocal((current) => ({
+                        ...current,
+                        text_overlay: { ...current.text_overlay, topic: event.target.value },
+                      }))}
+                    />
+                  </label>
+                  <label>
+                    <span>Estilo</span>
+                    <select
+                      value={studio.text_overlay.style}
+                      onChange={(event) => updateStudioLocal((current) => ({
+                        ...current,
+                        text_overlay: { ...current.text_overlay, style: event.target.value },
+                      }))}
+                    >
+                      <option value="oracao">Oracao</option>
+                      <option value="frase_dia">Frase do dia</option>
+                      <option value="historia_motivacional">Historia motivacional</option>
+                      <option value="motivacional">Motivacional</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Texto final</span>
+                    <textarea
+                      rows={6}
+                      value={studio.text_overlay.generated_text}
+                      onChange={(event) => updateStudioLocal((current) => ({
+                        ...current,
+                        text_overlay: { ...current.text_overlay, generated_text: event.target.value },
+                      }))}
+                    />
+                  </label>
+                </div>
+
+                <div className="forge2-slider-grid">
+                  <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+                  <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="80" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
+                  <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
+                  <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="80" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
+                </div>
+              </section>
+
+              <section className="forge2-panel">
+                <div className="forge2-panel-header">
+                  <div className="forge2-section-title">
+                    <ImagePlus size={16} />
+                    <h2>GIFs e música</h2>
+                  </div>
+                </div>
+
+                <div className="forge2-inline-upload">
+                  <label className="forge2-file-input compact">
+                    <ImagePlus size={16} />
+                    <span>{gifUploadFile ? gifUploadFile.name : 'Adicionar GIF'}</span>
+                    <input type="file" accept=".gif,.webp,.png" onChange={(event) => setGifUploadFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <button type="button" onClick={handleGifUpload} disabled={!selectedProjectId || !gifUploadFile || Boolean(busyAction)}>Enviar GIF</button>
+                </div>
+
+                <div className="forge2-asset-mini-list">
+                  {(studio.gif_overlays || []).map((asset) => (
+                    <button key={asset.id} type="button" className={asset.enabled ? 'active' : ''} onClick={() => toggleGifEnabled(asset.id)}>
+                      <img src={forge2FileUrl(asset.url)} alt="" />
+                      <div><strong>{asset.filename}</strong><span>Overlay</span></div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="forge2-inline-upload">
+                  <label className="forge2-file-input compact">
+                    <AudioLines size={16} />
+                    <span>{musicUploadFile ? musicUploadFile.name : 'Adicionar música'}</span>
+                    <input type="file" accept=".mp3,.wav,.m4a,.aac,.ogg,audio/*" onChange={(event) => setMusicUploadFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <button type="button" onClick={handleMusicUpload} disabled={!selectedProjectId || !musicUploadFile || Boolean(busyAction)}>Enviar áudio</button>
+                </div>
+
+                <div className="forge2-asset-mini-list audio">
+                  {(studio.music_tracks || []).map((asset) => (
+                    <button key={asset.id} type="button" className={asset.enabled ? 'active' : ''} onClick={() => toggleMusicEnabled(asset.id)}>
+                      <div><strong>{asset.filename}</strong><span>{assetDurationLabel(asset)}</span></div>
+                    </button>
+                  ))}
+                </div>
+
+                {activeMusic && (
+                  <label className="forge2-volume-slider">
+                    <span>Volume da faixa {Math.round((activeMusic.volume || 0) * 100)}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="120"
+                      value={Math.round((activeMusic.volume || 0) * 100)}
+                      onChange={(event) => updateStudioLocal((current) => ({
+                        ...current,
+                        music_tracks: current.music_tracks.map((item) => (
+                          item.id === activeMusic.id
+                            ? { ...item, volume: Number(event.target.value) / 100 }
+                            : item
+                        )),
+                      }))}
+                    />
+                  </label>
+                )}
+              </section>
+            </section>
           </section>
         </main>
 
-        <aside className="forge2-panel forge2-ai-panel">
-          <div className="forge2-panel-header">
-            <h2>LM Studio</h2>
-            <button type="button" onClick={refreshLMStudio} disabled={Boolean(busyAction)}>
-              <RefreshCw size={16} />
+        <aside className="forge2-right-rail">
+          <section className="forge2-panel">
+            <div className="forge2-panel-header">
+              <div className="forge2-section-title">
+                <Wand2 size={16} />
+                <h2>Publicação</h2>
+              </div>
+              <Film size={16} />
+            </div>
+
+            <div className="forge2-form-grid">
+              <label>
+                <span>Título</span>
+                <input value={studio.publication.title} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, title: event.target.value } }))} />
+              </label>
+              <label>
+                <span>Descrição</span>
+                <textarea rows={6} value={studio.publication.description} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, description: event.target.value } }))} />
+              </label>
+              <label>
+                <span>Hashtags</span>
+                <input value={hashtagsText} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, hashtags: event.target.value.split(/\s+/).filter(Boolean) } }))} placeholder="#oracao #frasedodia #shorts" />
+              </label>
+              <label>
+                <span>Categoria do YouTube</span>
+                <select value={studio.publication.youtube_category} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, youtube_category: event.target.value } }))}>
+                  {YOUTUBE_CATEGORIES.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Status de privacidade</span>
+                <select value={studio.publication.privacy_status} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, privacy_status: event.target.value } }))}>
+                  <option value="private">Privado</option>
+                  <option value="public">Publico</option>
+                  <option value="unlisted">Nao listado</option>
+                </select>
+              </label>
+              <label>
+                <span>Programar para postar</span>
+                <input type="datetime-local" value={studio.publication.schedule_at} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, schedule_at: event.target.value } }))} />
+              </label>
+            </div>
+
+            <button type="button" className="forge2-save-publication" onClick={() => runAction('save-studio', () => persistStudio(studio, 'Publicação e preview salvos.'))} disabled={!selectedProjectId || Boolean(busyAction)}>
+              <CalendarClock size={16} />
+              Salvar bloco de publicação
             </button>
-          </div>
-          <div className={`forge2-lm-status ${lmStatus?.online ? 'online' : 'offline'}`}>
-            <strong>{lmStatus?.online ? 'Conectado' : 'Offline'}</strong>
-            <span>{lmStatus?.configured_url || 'http://127.0.0.1:1234'}</span>
-            <small>{lmStatus?.detail || 'Aguardando verificação'}</small>
-          </div>
-          <div className="forge2-plan-summary">
-            <h3>Plano de edição</h3>
-            <span>Capítulos: {editPlan.chapters?.length || 0}</span>
-            <span>Cortes: {editPlan.cuts?.length || 0}</span>
-            <span>Inserções: {editPlan.media_insertions?.length || 0}</span>
-            <span>Avatar: {editPlan.avatar_segments?.length || 0}</span>
-          </div>
-          <div className="forge2-phase-note">
-            <strong>Editor privado</strong>
-            <p>Upload, transcrição, SRT, prévia e plano de edição revisável. Timeline avançada e render final completo ficam isolados para a próxima etapa.</p>
-          </div>
+          </section>
+
+          <section className="forge2-panel forge2-phase-card">
+            <div className="forge2-section-title">
+              <Lock size={16} />
+              <h2>Primeira fase entregue</h2>
+            </div>
+            <p>
+              Biblioteca recolhível, preview central responsivo, gerador de frases com agente separado, GIFs,
+              música e metadados de publicação já persistidos no projeto.
+            </p>
+            <div className="forge2-phase-pills">
+              <span><Video size={14} /> Base MP4</span>
+              <span><Type size={14} /> Overlay</span>
+              <span><Tags size={14} /> SEO</span>
+            </div>
+          </section>
         </aside>
       </section>
 
       {(busyAction || error || message) && (
         <div className={`forge2-toast ${error ? 'error' : ''}`}>
-          {busyAction && <Loader size={16} className="spinner" />}
+          {busyAction ? <Loader size={16} className="spinner" /> : null}
           <span>{error || message || 'Processando...'}</span>
         </div>
       )}

@@ -38,6 +38,30 @@ export async function getForge2Project(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}`), { cache: 'no-store' }));
 }
 
+export async function getForge2StudioConfig(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/studio-config`), { cache: 'no-store' }));
+}
+
+export async function saveForge2StudioConfig(projectId, studio) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/studio-config`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ studio }),
+  }));
+}
+
+export async function getForge2CopyAgentConfig(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/copy-agent-config`), { cache: 'no-store' }));
+}
+
+export async function saveForge2CopyAgentConfig(projectId, payload) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/copy-agent-config`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }));
+}
+
 export async function uploadForge2Source(projectId, file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -90,6 +114,41 @@ export async function generateForge2Srt(projectId) {
 export async function generateForge2Preview(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/preview`), {
     method: 'POST',
+  }));
+}
+
+export async function uploadForge2BaseVideo(projectId, file, aspectRatio) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/assets/base-video?aspect_ratio=${encodeURIComponent(aspectRatio)}`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function uploadForge2Gif(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/assets/gif`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function uploadForge2Music(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/assets/music`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function generateForge2Copy(projectId, payload) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/generate-copy`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   }));
 }
 
