@@ -144,6 +144,12 @@ export async function uploadForge2Music(projectId, file) {
   }));
 }
 
+export async function removeForge2Asset(projectId, assetKind, assetId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetKind)}/${encodeURIComponent(assetId)}`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function generateForge2Copy(projectId, payload) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/generate-copy`), {
     method: 'POST',
