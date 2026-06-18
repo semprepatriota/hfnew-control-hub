@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AudioLines,
   Bot,
@@ -152,6 +152,10 @@ function hexToRgba(hex, opacity) {
   return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(opacity, 1))})`;
 }
 
+function clampPercent(value, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, Number(value) || 0));
+}
+
 function ProjectCard({ item, active, onClick }) {
   return (
     <button type="button" className={`forge2-project-card ${active ? 'active' : ''}`} onClick={onClick}>
@@ -207,6 +211,8 @@ function TheForge2() {
   const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
+  const previewStageRef = useRef(null);
 
   const runAction = async (label, action) => {
     setBusyAction(label);
@@ -277,6 +283,8 @@ function TheForge2() {
   const overlayTextColor = studio.text_overlay?.overlay_theme === 'classic_dark' && ['#111111', '#000000'].includes((studio.text_overlay?.color || '').toLowerCase())
     ? textTheme.color
     : (studio.text_overlay?.color || textTheme.color);
+  const overlayPreviewText = studio.text_overlay.generated_text || 'A frase gerada vai aparecer aqui em cima do vídeo.';
+  const overlayPreviewLines = overlayPreviewText.split(/\n+/).map((line) => line.trim()).filter(Boolean);
 
   const handleCreateProject = async () => {
     await runAction('create-project', async () => {
@@ -313,7 +321,7 @@ function TheForge2() {
       const data = await generateForge2Copy(selectedProjectId, {
         topic: studio.text_overlay.topic,
         style: studio.text_overlay.style,
-        target_seconds: 10,
+        target_seconds: 15,
       });
       setStudio(data.studio);
       setMessage(`Texto gerado via ${data.generated.source}.`);
@@ -387,6 +395,44 @@ function TheForge2() {
         enabled: item.id === assetId ? !item.enabled : false,
       })),
     }));
+  };
+
+  const updateActiveGif = (patch) => {
+    if (!activeGif) return;
+    updateStudioLocal((current) => ({
+      ...current,
+      gif_overlays: current.gif_overlays.map((item) => (
+        item.id === activeGif.id
+          ? {
+              ...item,
+              ...patch,
+              overlay_x: patch.overlay_x === undefined ? item.overlay_x : clampPercent(patch.overlay_x, 2, 98),
+              overlay_y: patch.overlay_y === undefined ? item.overlay_y : clampPercent(patch.overlay_y, 2, 98),
+              overlay_scale: patch.overlay_scale === undefined ? item.overlay_scale : Math.max(0.2, Math.min(3, Number(patch.overlay_scale) || 1)),
+            }
+          : item
+      )),
+    }));
+  };
+
+  const handleGifPointerDown = (event) => {
+    if (!activeGif || !previewStageRef.current) return;
+    event.preventDefault();
+    const rect = previewStageRef.current.getBoundingClientRect();
+
+    const moveGif = (moveEvent) => {
+      const x = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      const y = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      updateActiveGif({ overlay_x: x, overlay_y: y });
+    };
+
+    const stopMove = () => {
+      window.removeEventListener('pointermove', moveGif);
+      window.removeEventListener('pointerup', stopMove);
+    };
+
+    window.addEventListener('pointermove', moveGif);
+    window.addEventListener('pointerup', stopMove);
   };
 
   const toggleMusicEnabled = (assetId) => {
@@ -601,10 +647,23 @@ function TheForge2() {
               {(studio.gif_overlays || []).map((asset) => (
                 <button key={asset.id} type="button" className={asset.enabled ? 'active' : ''} onClick={() => toggleGifEnabled(asset.id)}>
                   <img src={forge2FileUrl(asset.url)} alt="" />
-                  <div><strong>{asset.filename}</strong><span>Overlay</span></div>
+                  <div><strong>{asset.filename}</strong><span>{asset.enabled ? 'Ativo no preview' : 'Clique para usar'}</span></div>
                 </button>
               ))}
             </div>
+
+            {activeGif && (
+              <label className="forge2-volume-slider">
+                <span>Tamanho do GIF {Math.round((activeGif.overlay_scale || 1) * 100)}%</span>
+                <input
+                  type="range"
+                  min="20"
+                  max="300"
+                  value={Math.round((activeGif.overlay_scale || 1) * 100)}
+                  onChange={(event) => updateActiveGif({ overlay_scale: Number(event.target.value) / 100 })}
+                />
+              </label>
+            )}
 
             <div className="forge2-inline-upload compact-stack">
               <label className="forge2-file-input compact">
@@ -727,7 +786,7 @@ function TheForge2() {
                 </button>
               </div>
 
-              <div className={`forge2-preview-stage ${renderAspectClass}`}>
+              <div ref={previewStageRef} className={`forge2-preview-stage ${renderAspectClass}`}>
                 {selectedBaseAsset ? (
                   <>
                     <video
@@ -755,13 +814,18 @@ function TheForge2() {
                         textShadow: studio.text_overlay.shadow ? '0 2px 18px rgba(0,0,0,0.38)' : 'none',
                       }}
                     >
-                      {studio.text_overlay.generated_text || 'A frase gerada vai aparecer aqui em cima do vídeo.'}
+                      <strong className="forge2-preview-copy-title">{overlayPreviewLines[0]}</strong>
+                      {overlayPreviewLines.slice(1).map((line, index) => (
+                        <span key={`${line}-${index}`} className="forge2-preview-copy-line">{line}</span>
+                      ))}
                     </div>
                     {activeGif && (
                       <img
                         src={forge2FileUrl(activeGif.url)}
                         alt=""
                         className="forge2-preview-gif"
+                        draggable={false}
+                        onPointerDown={handleGifPointerDown}
                         style={{
                           left: `${activeGif.overlay_x}%`,
                           top: `${activeGif.overlay_y}%`,
@@ -778,12 +842,46 @@ function TheForge2() {
                 )}
               </div>
 
-              <div className="forge2-slider-grid forge2-preview-sliders">
-                <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
-                <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="80" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
-                <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
-                <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="80" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
-              </div>
+              <section className={`forge2-text-controls ${textControlsCollapsed ? 'collapsed' : ''}`}>
+                <div className="forge2-text-controls-header">
+                  <strong>Ajustes da frase</strong>
+                  <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
+                    {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                </div>
+                {!textControlsCollapsed && (
+                  <>
+                    <div className="forge2-slider-grid forge2-preview-sliders">
+                      <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="150" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+                      <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
+                      <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
+                      <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
+                      <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
+                    </div>
+
+                    <div className="forge2-theme-grid">
+                      {TEXT_THEMES.map((theme) => (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
+                          onClick={() => updateStudioLocal((current) => ({
+                            ...current,
+                            text_overlay: {
+                              ...current.text_overlay,
+                              overlay_theme: theme.id,
+                              color: theme.color,
+                            },
+                          }))}
+                        >
+                          <span style={{ background: theme.background, color: theme.color }}>Aa</span>
+                          <strong>{theme.label}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
 
               <div className="forge2-preview-toggles">
                 <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
@@ -851,7 +949,7 @@ function TheForge2() {
                   <label>
                     <span>Texto final</span>
                     <textarea
-                      rows={6}
+                      rows={8}
                       value={studio.text_overlay.generated_text}
                       onChange={(event) => updateStudioLocal((current) => ({
                         ...current,
@@ -859,31 +957,6 @@ function TheForge2() {
                       }))}
                     />
                   </label>
-                </div>
-
-                <div className="forge2-theme-grid">
-                  {TEXT_THEMES.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
-                      onClick={() => updateStudioLocal((current) => ({
-                        ...current,
-                        text_overlay: {
-                          ...current.text_overlay,
-                          overlay_theme: theme.id,
-                          color: theme.color,
-                        },
-                      }))}
-                    >
-                      <span style={{ background: theme.background, color: theme.color }}>Aa</span>
-                      <strong>{theme.label}</strong>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="forge2-slider-grid">
-                  <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
                 </div>
               </section>
             </section>
