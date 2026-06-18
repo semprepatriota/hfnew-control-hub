@@ -718,27 +718,6 @@ function TheForge2() {
                   <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
                   <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
                 </div>
-
-                <div className="forge2-theme-grid">
-                  {TEXT_THEMES.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
-                      onClick={() => updateStudioLocal((current) => ({
-                        ...current,
-                        text_overlay: {
-                          ...current.text_overlay,
-                          overlay_theme: theme.id,
-                          color: theme.color,
-                        },
-                      }))}
-                    >
-                      <span style={{ background: theme.background, color: theme.color }}>Aa</span>
-                      <strong>{theme.label}</strong>
-                    </button>
-                  ))}
-                </div>
               </>
             )}
           </section>
