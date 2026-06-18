@@ -648,6 +648,18 @@
   flex-wrap: wrap;
 }
 
+.lead-folder-detail__agent-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lead-folder-detail__agent-actions span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
 .lead-folder-detail__success {
   color: #00FF41;
   font-size: 12px;

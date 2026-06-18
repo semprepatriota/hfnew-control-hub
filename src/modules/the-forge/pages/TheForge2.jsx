@@ -67,8 +67,8 @@ const FORGE2_ITEMS = [
   'Biblioteca 1:1',
   'Biblioteca recolhivel',
   'Preview central forte',
-  'Gerador de frases',
-  'Painel de API separado',
+  'CRONOS Mestre',
+  'Agente específico opcional',
   'GIFs sobrepostos',
   'Musica de fundo',
   'Titulo',
@@ -201,7 +201,7 @@ function TheForge2() {
   const [project, setProject] = useState(null);
   const [studio, setStudio] = useState(createDefaultStudio());
   const [copyAgent, setCopyAgent] = useState({
-    provider: 'local_fallback',
+    provider: 'central_cronos',
     model: 'gpt-4.1-mini',
     configured: false,
     api_key_masked: '',
@@ -219,6 +219,7 @@ function TheForge2() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const previewStageRef = useRef(null);
 
   const runAction = async (label, action) => {
@@ -319,7 +320,7 @@ function TheForge2() {
           setProject(null);
           setStudio(createDefaultStudio());
           setCopyAgent({
-            provider: 'local_fallback',
+            provider: 'central_cronos',
             model: 'gpt-4.1-mini',
             configured: false,
             api_key_masked: '',
@@ -341,7 +342,20 @@ function TheForge2() {
         api_key: copyAgent.api_key,
       });
       setCopyAgent((current) => ({ ...current, ...data, api_key: '' }));
-      setMessage('Agente de frases salvo.');
+      setMessage('Configuração de agente salva.');
+    });
+  };
+
+  const handleDeleteSpecificAgent = async () => {
+    if (!selectedProjectId) return;
+    await runAction('delete-copy-agent', async () => {
+      const data = await saveForge2CopyAgentConfig(selectedProjectId, {
+        provider: 'central_cronos',
+        model: 'gpt-4.1-mini',
+        api_key: '',
+      });
+      setCopyAgent((current) => ({ ...current, ...data, api_key: '' }));
+      setMessage('Agente específico removido. CRONOS Mestre selecionado.');
     });
   };
 
@@ -627,6 +641,55 @@ function TheForge2() {
         ))}
       </section>
 
+      <section className={`forge2-panel forge2-agent-top-panel ${agentPanelOpen ? 'open' : 'collapsed'}`}>
+        <div className="forge2-panel-header">
+          <div className="forge2-section-title">
+            <Bot size={16} />
+            <h2>Agente Mestre e agente específico</h2>
+          </div>
+          <button type="button" onClick={() => setAgentPanelOpen((current) => !current)}>
+            {agentPanelOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {agentPanelOpen ? 'Minimizar' : 'Abrir'}
+          </button>
+        </div>
+        {agentPanelOpen && (
+          <div className="forge2-agent-box forge2-agent-box-top">
+            <label>
+              <span>Agente ativo</span>
+              <select value={copyAgent.provider} onChange={(event) => setCopyAgent((current) => ({ ...current, provider: event.target.value }))}>
+                <option value="central_cronos">CRONOS Mestre</option>
+                <option value="custom_openai">Agente específico deste projeto</option>
+                <option value="local_fallback">Fallback local</option>
+              </select>
+            </label>
+            <label>
+              <span>Modelo</span>
+              <input value={copyAgent.model} onChange={(event) => setCopyAgent((current) => ({ ...current, model: event.target.value }))} />
+            </label>
+            <label>
+              <span>API do agente específico</span>
+              <input
+                type="password"
+                value={copyAgent.api_key}
+                placeholder={copyAgent.api_key_masked || 'Cole a chave somente se usar agente específico'}
+                onChange={(event) => setCopyAgent((current) => ({ ...current, api_key: event.target.value }))}
+                disabled={copyAgent.provider !== 'custom_openai'}
+              />
+            </label>
+            <div className="forge2-agent-actions">
+              <button type="button" onClick={handleSaveAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <Save size={16} />
+                Salvar agente
+              </button>
+              <button type="button" className="danger" onClick={handleDeleteSpecificAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <Trash2 size={16} />
+                Deletar agente específico
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       <section className="forge2-shell">
         <aside className="forge2-left-rail">
           <section className="forge2-panel">
@@ -654,39 +717,6 @@ function TheForge2() {
                   onDelete={() => handleDeleteProject(item.id)}
                 />
               ))}
-            </div>
-          </section>
-
-          <section className="forge2-panel">
-            <div className="forge2-panel-header">
-              <h2>Agente de frases</h2>
-              <Bot size={16} />
-            </div>
-            <div className="forge2-agent-box">
-              <label>
-                <span>Provider</span>
-                <select value={copyAgent.provider} onChange={(event) => setCopyAgent((current) => ({ ...current, provider: event.target.value }))}>
-                  <option value="local_fallback">Fallback local</option>
-                  <option value="custom_openai">ChatGPT custom</option>
-                </select>
-              </label>
-              <label>
-                <span>Modelo</span>
-                <input value={copyAgent.model} onChange={(event) => setCopyAgent((current) => ({ ...current, model: event.target.value }))} />
-              </label>
-              <label>
-                <span>API do agente</span>
-                <input
-                  type="password"
-                  value={copyAgent.api_key}
-                  placeholder={copyAgent.api_key_masked || 'Cole a chave deste agente'}
-                  onChange={(event) => setCopyAgent((current) => ({ ...current, api_key: event.target.value }))}
-                />
-              </label>
-              <button type="button" onClick={handleSaveAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
-                <Save size={16} />
-                Salvar agente
-              </button>
             </div>
           </section>
 

@@ -15,12 +15,12 @@ const DEFAULT_BATCH_PROGRESS = {
   errors: 0,
 };
 
-const DEFAULT_MASTER_AGENT_CONFIG = {
+const DEFAULT_RESPONDER_AGENT_CONFIG = {
   enabled: true,
-  assistant_name: 'CRONOS Mestre',
+  assistant_name: 'CRONOS Responder',
   api_key: '',
   model: 'gpt-4o-mini',
-  usage: 'Comentários e coordenação',
+  usage: 'Comentários e respostas',
   system_prompt: '',
 };
 
@@ -62,9 +62,9 @@ function Agents() {
   const [savingLead, setSavingLead] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [masterAgentOpen, setMasterAgentOpen] = useState(false);
-  const [masterAgentSaving, setMasterAgentSaving] = useState(false);
-  const [masterAgentConfig, setMasterAgentConfig] = useState(DEFAULT_MASTER_AGENT_CONFIG);
+  const [responderAgentOpen, setResponderAgentOpen] = useState(false);
+  const [responderAgentSaving, setResponderAgentSaving] = useState(false);
+  const [responderAgentConfig, setResponderAgentConfig] = useState(DEFAULT_RESPONDER_AGENT_CONFIG);
   const [integrationDefaults, setIntegrationDefaults] = useState({});
   const batchStopRef = useRef(false);
   const batchPollRef = useRef(null);
@@ -290,22 +290,22 @@ function Agents() {
     return authToken ? { Authorization: `Bearer ${authToken}` } : {};
   };
 
-  const loadMasterAgentConfig = useCallback(async () => {
+  const loadResponderAgentConfig = useCallback(async () => {
     try {
       const response = await fetch(apiUrl('/api/integrations/settings'), {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || 'Erro ao carregar CRONOS Mestre');
+        throw new Error(data.detail || 'Erro ao carregar CRONOS Responder');
       }
       setIntegrationDefaults(data.defaults || {});
-      setMasterAgentConfig({
-        ...DEFAULT_MASTER_AGENT_CONFIG,
-        ...(data.defaults?.cronos_master_agent || {}),
+      setResponderAgentConfig({
+        ...DEFAULT_RESPONDER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_responder_agent || {}),
       });
     } catch (err) {
-      setError(err.message || 'Erro ao carregar CRONOS Mestre');
+      setError(err.message || 'Erro ao carregar CRONOS Responder');
     }
   }, []);
 
@@ -346,8 +346,8 @@ function Agents() {
   }, [loadChannels]);
 
   useEffect(() => {
-    loadMasterAgentConfig();
-  }, [loadMasterAgentConfig]);
+    loadResponderAgentConfig();
+  }, [loadResponderAgentConfig]);
 
   useEffect(() => {
     const currentItems = sourcePlatform === 'youtube'
@@ -409,8 +409,8 @@ function Agents() {
     loadReplyStats();
   }, [loadReplyStats]);
 
-  const saveMasterAgentConfig = async () => {
-    setMasterAgentSaving(true);
+  const saveResponderAgentConfig = async () => {
+    setResponderAgentSaving(true);
     setError('');
     try {
       const response = await fetch(apiUrl('/api/integrations/settings/global'), {
@@ -422,24 +422,24 @@ function Agents() {
         body: JSON.stringify({
           tools: {
             ...integrationDefaults,
-            cronos_master_agent: masterAgentConfig,
+            cronos_responder_agent: responderAgentConfig,
           },
         }),
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || 'Erro ao salvar CRONOS Mestre');
+        throw new Error(data.detail || 'Erro ao salvar CRONOS Responder');
       }
       setIntegrationDefaults(data.defaults || {});
-      setMasterAgentConfig({
-        ...DEFAULT_MASTER_AGENT_CONFIG,
-        ...(data.defaults?.cronos_master_agent || masterAgentConfig),
+      setResponderAgentConfig({
+        ...DEFAULT_RESPONDER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_responder_agent || responderAgentConfig),
       });
-      setSuccessMessage('CRONOS Mestre salvo.');
+      setSuccessMessage('CRONOS Responder salvo.');
     } catch (err) {
-      setError(err.message || 'Erro ao salvar CRONOS Mestre');
+      setError(err.message || 'Erro ao salvar CRONOS Responder');
     } finally {
-      setMasterAgentSaving(false);
+      setResponderAgentSaving(false);
     }
   };
 
@@ -1208,67 +1208,67 @@ function Agents() {
       )}
 
       <section className="agents-panel">
-        <section className={`agents-config-card ${masterAgentOpen ? 'open' : ''}`}>
+        <section className={`agents-config-card ${responderAgentOpen ? 'open' : ''}`}>
           <div className="agents-config-card__header">
             <div>
-              <h2>CRONOS Mestre</h2>
-              <p>Agente separado do CRONOS central do app. Uso exclusivo deste módulo.</p>
+              <h2>CRONOS Responder</h2>
+              <p>Especialista em respostas de comentários para Agentes e Leads.</p>
             </div>
-            <button type="button" className="refresh-button" onClick={() => setMasterAgentOpen((current) => !current)}>
-              {masterAgentOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              {masterAgentOpen ? 'Minimizar' : 'Abrir'}
+            <button type="button" className="refresh-button" onClick={() => setResponderAgentOpen((current) => !current)}>
+              {responderAgentOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {responderAgentOpen ? 'Minimizar' : 'Abrir'}
             </button>
           </div>
 
-          {masterAgentOpen && (
+          {responderAgentOpen && (
             <div className="agents-config-card__body">
               <div className="agents-config-grid">
                 <label className="agents-select-group">
                   <span>Nome do agente</span>
                   <input
                     type="text"
-                    value={masterAgentConfig.assistant_name || ''}
-                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, assistant_name: event.target.value }))}
+                    value={responderAgentConfig.assistant_name || ''}
+                    onChange={(event) => setResponderAgentConfig((current) => ({ ...current, assistant_name: event.target.value }))}
                   />
                 </label>
                 <label className="agents-select-group">
                   <span>Modelo</span>
                   <input
                     type="text"
-                    value={masterAgentConfig.model || ''}
-                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, model: event.target.value }))}
+                    value={responderAgentConfig.model || ''}
+                    onChange={(event) => setResponderAgentConfig((current) => ({ ...current, model: event.target.value }))}
                   />
                 </label>
                 <label className="agents-select-group">
                   <span>Uso</span>
                   <input
                     type="text"
-                    value={masterAgentConfig.usage || ''}
-                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, usage: event.target.value }))}
+                    value={responderAgentConfig.usage || ''}
+                    onChange={(event) => setResponderAgentConfig((current) => ({ ...current, usage: event.target.value }))}
                   />
                 </label>
                 <label className="agents-select-group">
                   <span>API do GBT</span>
                   <input
                     type="password"
-                    value={masterAgentConfig.api_key || ''}
+                    value={responderAgentConfig.api_key || ''}
                     placeholder="sk-proj-..."
-                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, api_key: event.target.value }))}
+                    onChange={(event) => setResponderAgentConfig((current) => ({ ...current, api_key: event.target.value }))}
                   />
                 </label>
                 <label className="agents-select-group agents-config-grid__full">
                   <span>Prompt do agente</span>
                   <textarea
-                    value={masterAgentConfig.system_prompt || ''}
-                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, system_prompt: event.target.value }))}
+                    value={responderAgentConfig.system_prompt || ''}
+                    onChange={(event) => setResponderAgentConfig((current) => ({ ...current, system_prompt: event.target.value }))}
                     rows={8}
                   />
                 </label>
               </div>
               <div className="agents-config-card__actions">
-                <button type="button" className="connect-button" onClick={saveMasterAgentConfig} disabled={masterAgentSaving}>
-                  {masterAgentSaving ? <Loader size={16} className="spinner" /> : <Save size={16} />}
-                  Salvar CRONOS Mestre
+                <button type="button" className="connect-button" onClick={saveResponderAgentConfig} disabled={responderAgentSaving}>
+                  {responderAgentSaving ? <Loader size={16} className="spinner" /> : <Save size={16} />}
+                  Salvar CRONOS Responder
                 </button>
               </div>
             </div>

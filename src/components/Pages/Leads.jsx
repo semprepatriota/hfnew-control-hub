@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, ChevronDown, ChevronUp, Database, Download, FolderUp, Loader, RefreshCw, Save, Send, Square, Trash2, Users } from 'lucide-react';
+import { CheckSquare, ChevronDown, ChevronUp, Database, Download, FolderUp, Loader, RefreshCw, Save, Send, Square, Trash2, Users, Wand2 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
 import './Pages.css';
 import './Leads.css';
@@ -51,6 +51,7 @@ function Leads() {
   const [messageTemplates, setMessageTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [copySuccess, setCopySuccess] = useState('');
+  const [masterMessageGenerating, setMasterMessageGenerating] = useState(false);
   const [responderAgentOpen, setResponderAgentOpen] = useState(false);
   const [responderAgentSaving, setResponderAgentSaving] = useState(false);
   const [responderAgentConfig, setResponderAgentConfig] = useState(DEFAULT_RESPONDER_AGENT_CONFIG);
@@ -360,6 +361,47 @@ function Leads() {
     setFolderCustomLink(template.customLink || '');
     setCopySuccess('Modelo aplicado.');
     window.setTimeout(() => setCopySuccess(''), 2000);
+  };
+
+  const generateMasterLeadMessage = async () => {
+    if (!openedFolder) {
+      setError('Abra uma pasta de leads antes de gerar a mensagem.');
+      return;
+    }
+
+    const selectedLeads = (openedFolder.items || []).filter((item) => folderSelectedLeadIds.includes(item.id));
+    const contextLeads = selectedLeads.length > 0 ? selectedLeads : (openedFolder.items || []).slice(0, 10);
+
+    setMasterMessageGenerating(true);
+    setError('');
+    setCopySuccess('');
+    try {
+      const response = await fetch(apiUrl('/api/leads/generate-master-message'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          folder_name: openedFolder.name || '',
+          platform: openedFolder.platform || '',
+          source_account_name: openedFolder.source_account_name || '',
+          base_instruction: folderMessage || 'Gerar uma mensagem de acompanhamento para contatos que comentaram no video.',
+          selected_leads: contextLeads,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao gerar mensagem com CRONOS Mestre');
+      }
+      setFolderMessage(data.message || '');
+      setCopySuccess('Mensagem gerada com CRONOS Mestre.');
+      window.setTimeout(() => setCopySuccess(''), 2500);
+    } catch (err) {
+      setError(err.message || 'Erro ao gerar mensagem com CRONOS Mestre');
+    } finally {
+      setMasterMessageGenerating(false);
+    }
   };
 
   const copyFolderMessage = async () => {
@@ -1041,6 +1083,15 @@ function Leads() {
                 placeholder="Escreva aqui a mensagem para enviar aos leads desta pasta."
                 rows="10"
               />
+              <div className="lead-folder-detail__agent-actions">
+                <button type="button" className="connect-button" onClick={generateMasterLeadMessage} disabled={masterMessageGenerating || !openedFolder}>
+                  {masterMessageGenerating ? <Loader size={16} className="spinner" /> : <Wand2 size={16} />}
+                  Gerar MSG com CRONOS Mestre
+                </button>
+                <span>
+                  Usa os leads selecionados como contexto. Se nada estiver selecionado, usa uma amostra da pasta.
+                </span>
+              </div>
               <div className="lead-folder-detail__fields">
                 {renderAssetField({
                   id: 'lead-folder-image',

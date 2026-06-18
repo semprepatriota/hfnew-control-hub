@@ -170,6 +170,37 @@
   gap: 12px;
 }
 
+.forge2-agent-top-panel {
+  margin-bottom: 18px;
+}
+
+.forge2-agent-top-panel.collapsed {
+  padding-bottom: 12px;
+}
+
+.forge2-agent-box-top {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.forge2-agent-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.forge2-agent-actions button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.forge2-agent-actions .danger {
+  background: linear-gradient(180deg, #842a24 0%, #551813 100%) !important;
+}
+
 .forge2-create-box input,
 .forge2-create-box textarea,
 .forge2-agent-box input,
