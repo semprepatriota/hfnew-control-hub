@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clapperboard,
+  Download,
   Film,
   FolderOpen,
   ImagePlus,
@@ -107,6 +108,11 @@ function createDefaultStudio() {
       privacy_status: 'private',
       schedule_at: '',
     },
+    presets: [
+      { id: 'preset_1', label: 'Preset 1', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'oracao' },
+      { id: 'preset_2', label: 'Preset 2', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'frase_dia' },
+      { id: 'preset_3', label: 'Preset 3', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'motivacional' },
+    ],
     preview_muted: false,
     preview_loop: true,
   };
@@ -339,6 +345,77 @@ function TheForge2() {
     }));
   };
 
+  const savePresetSlot = (presetId) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      presets: (current.presets || []).map((preset) => (
+        preset.id === presetId
+          ? {
+              ...preset,
+              gif_asset_id: current.gif_overlays.find((item) => item.enabled)?.id || '',
+              music_asset_id: current.music_tracks.find((item) => item.enabled)?.id || '',
+              volume: current.music_tracks.find((item) => item.enabled)?.volume || 0.7,
+              text_style: current.text_overlay.style,
+            }
+          : preset
+      )),
+    }));
+    setMessage('Preset de mídia atualizado.');
+  };
+
+  const applyPresetSlot = (presetId) => {
+    const preset = (studio.presets || []).find((item) => item.id === presetId);
+    if (!preset) return;
+    updateStudioLocal((current) => ({
+      ...current,
+      gif_overlays: current.gif_overlays.map((item) => ({
+        ...item,
+        enabled: preset.gif_asset_id ? item.id === preset.gif_asset_id : false,
+      })),
+      music_tracks: current.music_tracks.map((item) => ({
+        ...item,
+        enabled: preset.music_asset_id ? item.id === preset.music_asset_id : false,
+        volume: preset.music_asset_id && item.id === preset.music_asset_id ? (preset.volume || item.volume) : item.volume,
+      })),
+      text_overlay: {
+        ...current.text_overlay,
+        style: preset.text_style || current.text_overlay.style,
+      },
+    }));
+    setMessage(`${preset.label} aplicado.`);
+  };
+
+  const handleDownloadBaseMp4 = () => {
+    if (!selectedBaseAsset?.url) {
+      setError('Selecione um vídeo base antes de baixar o MP4.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = forge2FileUrl(selectedBaseAsset.url);
+    link.download = selectedBaseAsset.filename || 'forge2-base.mp4';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setMessage('Download do MP4 iniciado.');
+  };
+
+  const handleRenderStub = async () => {
+    await runAction('render-forge2', async () => {
+      await persistStudio(studio, 'Ajustes salvos. Pipeline final de render do Forge 2.0 fica no próximo bloco.');
+    });
+  };
+
+  const handlePublishStub = async () => {
+    await runAction('publish-forge2', async () => {
+      await persistStudio(studio, 'Metadados salvos. Publicação no YouTube fica preparada para a próxima fase.');
+    });
+  };
+
+  const handleResetRender = () => {
+    setMessage('Estado de render limpo para uma nova rodada.');
+    setError('');
+  };
+
   const renderAspectClass = studio.output_aspect_ratio === '1:1' ? 'square' : 'vertical';
   const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
 
@@ -479,9 +556,9 @@ function TheForge2() {
                     Vídeo base selecionado + frase + GIF + música
                   </span>
                 </div>
-                <button type="button" onClick={() => persistStudio(studio)} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <button type="button" onClick={() => persistStudio(studio, 'Estúdio salvo.')} disabled={!selectedProjectId || Boolean(busyAction)}>
                   <Save size={16} />
-                  Salvar ajustes
+                  Salvar estúdio
                 </button>
               </div>
 
@@ -539,19 +616,29 @@ function TheForge2() {
                 <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
                 <label><input type="checkbox" checked={studio.preview_loop} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_loop: event.target.checked }))} /> Loop</label>
               </div>
-            </section>
 
-            <section className="forge2-side-stack">
-              <section className="forge2-panel">
+              <div className="forge2-preview-action-bar">
+                <button type="button" className="forge2-primary-action" onClick={handleGenerateCopy} disabled={!selectedProjectId || Boolean(busyAction)}>
+                  <Sparkles size={16} />
+                  Gerar frase
+                </button>
+                <button type="button" className="forge2-primary-action" onClick={handleRenderStub} disabled={!selectedProjectId || Boolean(busyAction)}>
+                  <Clapperboard size={16} />
+                  Renderizar vídeo
+                </button>
+                <button type="button" onClick={handleDownloadBaseMp4} disabled={!selectedBaseAsset}>
+                  <Download size={16} />
+                  Baixar vídeo MP4
+                </button>
+              </div>
+
+              <section className="forge2-panel forge2-copy-panel">
                 <div className="forge2-panel-header">
                   <div className="forge2-section-title">
                     <Type size={16} />
                     <h2>Frase e enquadramento</h2>
                   </div>
-                  <button type="button" onClick={handleGenerateCopy} disabled={!selectedProjectId || Boolean(busyAction)}>
-                    <Sparkles size={16} />
-                    Gerar
-                  </button>
+                  <span className="forge2-panel-subtitle">Texto maior, enquadramento e leitura mais limpa</span>
                 </div>
 
                 <div className="forge2-form-grid">
@@ -601,7 +688,9 @@ function TheForge2() {
                   <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="80" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
                 </div>
               </section>
+            </section>
 
+            <section className="forge2-side-stack">
               <section className="forge2-panel">
                 <div className="forge2-panel-header">
                   <div className="forge2-section-title">
@@ -664,6 +753,28 @@ function TheForge2() {
                     />
                   </label>
                 )}
+
+                <div className="forge2-presets-block">
+                  <div className="forge2-presets-header">
+                    <strong>Combinações salvas</strong>
+                    <button type="button" onClick={() => persistStudio(studio, 'Ajustes de mídia salvos.')} disabled={!selectedProjectId || Boolean(busyAction)}>
+                      <Save size={16} />
+                      Salvar ajustes
+                    </button>
+                  </div>
+                  <div className="forge2-presets-grid">
+                    {(studio.presets || []).map((preset) => (
+                      <div key={preset.id} className="forge2-preset-card">
+                        <strong>{preset.label}</strong>
+                        <span>{preset.text_style || 'sem estilo'}</span>
+                        <div className="forge2-preset-actions">
+                          <button type="button" onClick={() => applyPresetSlot(preset.id)}>Aplicar</button>
+                          <button type="button" onClick={() => savePresetSlot(preset.id)}>Salvar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </section>
             </section>
           </section>
@@ -714,10 +825,24 @@ function TheForge2() {
               </label>
             </div>
 
-            <button type="button" className="forge2-save-publication" onClick={() => runAction('save-studio', () => persistStudio(studio, 'Publicação e preview salvos.'))} disabled={!selectedProjectId || Boolean(busyAction)}>
-              <CalendarClock size={16} />
-              Salvar bloco de publicação
-            </button>
+            <div className="forge2-publication-actions">
+              <button type="button" className="forge2-save-publication" onClick={() => runAction('save-studio', () => persistStudio(studio, 'Agendamento salvo.'))} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <CalendarClock size={16} />
+                Programar na agenda
+              </button>
+              <button type="button" onClick={handleDownloadBaseMp4} disabled={!selectedBaseAsset}>
+                <Download size={16} />
+                Baixar vídeo MP4
+              </button>
+              <button type="button" onClick={handlePublishStub} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <Upload size={16} />
+                Publicar no YouTube
+              </button>
+              <button type="button" onClick={handleResetRender}>
+                <Plus size={16} />
+                Criar novo render
+              </button>
+            </div>
           </section>
 
           <section className="forge2-panel forge2-phase-card">
