@@ -661,6 +661,47 @@ function TheForge2() {
             </div>
           </section>
 
+          <section className={`forge2-text-controls forge2-text-controls-side ${textControlsCollapsed ? 'collapsed' : ''}`}>
+            <div className="forge2-text-controls-header">
+              <strong>Ajustes da frase</strong>
+              <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
+                {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+              </button>
+            </div>
+            {!textControlsCollapsed && (
+              <>
+                <div className="forge2-slider-grid forge2-preview-sliders">
+                  <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="150" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+                  <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
+                  <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
+                  <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
+                  <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
+                </div>
+
+                <div className="forge2-theme-grid">
+                  {TEXT_THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
+                      onClick={() => updateStudioLocal((current) => ({
+                        ...current,
+                        text_overlay: {
+                          ...current.text_overlay,
+                          overlay_theme: theme.id,
+                          color: theme.color,
+                        },
+                      }))}
+                    >
+                      <span style={{ background: theme.background, color: theme.color }}>Aa</span>
+                      <strong>{theme.label}</strong>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
           <section className="forge2-panel forge2-media-panel">
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
@@ -896,47 +937,6 @@ function TheForge2() {
                   </div>
                 )}
               </div>
-
-              <section className={`forge2-text-controls ${textControlsCollapsed ? 'collapsed' : ''}`}>
-                <div className="forge2-text-controls-header">
-                  <strong>Ajustes da frase</strong>
-                  <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
-                    {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                  </button>
-                </div>
-                {!textControlsCollapsed && (
-                  <>
-                    <div className="forge2-slider-grid forge2-preview-sliders">
-                      <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="150" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
-                      <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
-                      <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
-                      <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
-                      <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
-                    </div>
-
-                    <div className="forge2-theme-grid">
-                      {TEXT_THEMES.map((theme) => (
-                        <button
-                          key={theme.id}
-                          type="button"
-                          className={studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}
-                          onClick={() => updateStudioLocal((current) => ({
-                            ...current,
-                            text_overlay: {
-                              ...current.text_overlay,
-                              overlay_theme: theme.id,
-                              color: theme.color,
-                            },
-                          }))}
-                        >
-                          <span style={{ background: theme.background, color: theme.color }}>Aa</span>
-                          <strong>{theme.label}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </section>
 
               <div className="forge2-preview-toggles">
                 <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
