@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckSquare, Database, Download, FolderUp, Loader, RefreshCw, Send, Square, Trash2, Users } from 'lucide-react';
+import { CheckSquare, ChevronDown, ChevronUp, Database, Download, FolderUp, Loader, RefreshCw, Save, Send, Square, Trash2, Users } from 'lucide-react';
 import { apiUrl } from '../../config/api';
 import './Pages.css';
 import './Leads.css';
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const LEAD_MESSAGE_TEMPLATES_KEY = 'alliance_dark_lead_message_templates';
+const DEFAULT_RESPONDER_AGENT_CONFIG = {
+  enabled: true,
+  assistant_name: 'CRONOS Responder',
+  api_key: '',
+  model: 'gpt-4o-mini',
+  usage: 'Leads e mensagens',
+  system_prompt: '',
+};
 
 function Leads() {
   const [items, setItems] = useState([]);
@@ -43,12 +51,35 @@ function Leads() {
   const [messageTemplates, setMessageTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [copySuccess, setCopySuccess] = useState('');
+  const [responderAgentOpen, setResponderAgentOpen] = useState(false);
+  const [responderAgentSaving, setResponderAgentSaving] = useState(false);
+  const [responderAgentConfig, setResponderAgentConfig] = useState(DEFAULT_RESPONDER_AGENT_CONFIG);
+  const [integrationDefaults, setIntegrationDefaults] = useState({});
   const folderBatchStopRef = useRef(false);
 
   const getAuthHeaders = () => {
     const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
     return authToken ? { Authorization: `Bearer ${authToken}` } : {};
   };
+
+  const loadResponderAgentConfig = useCallback(async () => {
+    try {
+      const response = await fetch(apiUrl('/api/integrations/settings'), {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao carregar CRONOS Responder');
+      }
+      setIntegrationDefaults(data.defaults || {});
+      setResponderAgentConfig({
+        ...DEFAULT_RESPONDER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_responder_agent || {}),
+      });
+    } catch (err) {
+      setError(err.message || 'Erro ao carregar CRONOS Responder');
+    }
+  }, []);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -94,6 +125,10 @@ function Leads() {
   useEffect(() => {
     loadFolders();
   }, [loadFolders]);
+
+  useEffect(() => {
+    loadResponderAgentConfig();
+  }, [loadResponderAgentConfig]);
 
   useEffect(() => {
     try {
@@ -666,6 +701,41 @@ function Leads() {
     );
   };
 
+  const saveResponderAgentConfig = async () => {
+    setResponderAgentSaving(true);
+    setError('');
+    try {
+      const response = await fetch(apiUrl('/api/integrations/settings/global'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          tools: {
+            ...integrationDefaults,
+            cronos_responder_agent: responderAgentConfig,
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao salvar CRONOS Responder');
+      }
+      setIntegrationDefaults(data.defaults || {});
+      setResponderAgentConfig({
+        ...DEFAULT_RESPONDER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_responder_agent || responderAgentConfig),
+      });
+      setCopySuccess('CRONOS Responder salvo.');
+      window.setTimeout(() => setCopySuccess(''), 2000);
+    } catch (err) {
+      setError(err.message || 'Erro ao salvar CRONOS Responder');
+    } finally {
+      setResponderAgentSaving(false);
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -676,6 +746,73 @@ function Leads() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+
+      <section className={`leads-config-card ${responderAgentOpen ? 'open' : ''}`}>
+        <div className="leads-config-card__header">
+          <div>
+            <h2>CRONOS Responder</h2>
+            <p>Agente separado do CRONOS central. Uso exclusivo do módulo Leads.</p>
+          </div>
+          <button type="button" className="refresh-button" onClick={() => setResponderAgentOpen((current) => !current)}>
+            {responderAgentOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {responderAgentOpen ? 'Minimizar' : 'Abrir'}
+          </button>
+        </div>
+
+        {responderAgentOpen && (
+          <div className="leads-config-card__body">
+            <div className="leads-config-grid">
+              <label className="leads-filter leads-config-field">
+                <span>Nome do agente</span>
+                <input
+                  type="text"
+                  value={responderAgentConfig.assistant_name || ''}
+                  onChange={(event) => setResponderAgentConfig((current) => ({ ...current, assistant_name: event.target.value }))}
+                />
+              </label>
+              <label className="leads-filter leads-config-field">
+                <span>Modelo</span>
+                <input
+                  type="text"
+                  value={responderAgentConfig.model || ''}
+                  onChange={(event) => setResponderAgentConfig((current) => ({ ...current, model: event.target.value }))}
+                />
+              </label>
+              <label className="leads-filter leads-config-field">
+                <span>Uso</span>
+                <input
+                  type="text"
+                  value={responderAgentConfig.usage || ''}
+                  onChange={(event) => setResponderAgentConfig((current) => ({ ...current, usage: event.target.value }))}
+                />
+              </label>
+              <label className="leads-filter leads-config-field">
+                <span>API do GBT</span>
+                <input
+                  type="password"
+                  value={responderAgentConfig.api_key || ''}
+                  placeholder="sk-proj-..."
+                  onChange={(event) => setResponderAgentConfig((current) => ({ ...current, api_key: event.target.value }))}
+                />
+              </label>
+              <label className="leads-filter leads-config-field leads-config-field--full">
+                <span>Prompt do agente</span>
+                <textarea
+                  value={responderAgentConfig.system_prompt || ''}
+                  onChange={(event) => setResponderAgentConfig((current) => ({ ...current, system_prompt: event.target.value }))}
+                  rows={8}
+                />
+              </label>
+            </div>
+            <div className="leads-config-card__actions">
+              <button type="button" className="connect-button" onClick={saveResponderAgentConfig} disabled={responderAgentSaving}>
+                {responderAgentSaving ? <Loader size={16} className="spinner" /> : <Save size={16} />}
+                Salvar CRONOS Responder
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="leads-toolbar">
         <div className="leads-toolbar__left">

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Bot, CheckSquare, Loader, MessageSquare, RefreshCw, Send, Sparkles, Square, Trash2 } from 'lucide-react';
+import { AlertCircle, Bot, CheckSquare, ChevronDown, ChevronUp, Loader, MessageSquare, RefreshCw, Save, Send, Sparkles, Square, Trash2 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
 import './Pages.css';
 import './Agents.css';
@@ -13,6 +13,15 @@ const DEFAULT_BATCH_PROGRESS = {
   replied: 0,
   skipped: 0,
   errors: 0,
+};
+
+const DEFAULT_MASTER_AGENT_CONFIG = {
+  enabled: true,
+  assistant_name: 'CRONOS Mestre',
+  api_key: '',
+  model: 'gpt-4o-mini',
+  usage: 'Comentários e coordenação',
+  system_prompt: '',
 };
 
 function Agents() {
@@ -53,6 +62,10 @@ function Agents() {
   const [savingLead, setSavingLead] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [masterAgentOpen, setMasterAgentOpen] = useState(false);
+  const [masterAgentSaving, setMasterAgentSaving] = useState(false);
+  const [masterAgentConfig, setMasterAgentConfig] = useState(DEFAULT_MASTER_AGENT_CONFIG);
+  const [integrationDefaults, setIntegrationDefaults] = useState({});
   const batchStopRef = useRef(false);
   const batchPollRef = useRef(null);
   const robotRepeatTimeoutRef = useRef(null);
@@ -277,6 +290,25 @@ function Agents() {
     return authToken ? { Authorization: `Bearer ${authToken}` } : {};
   };
 
+  const loadMasterAgentConfig = useCallback(async () => {
+    try {
+      const response = await fetch(apiUrl('/api/integrations/settings'), {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao carregar CRONOS Mestre');
+      }
+      setIntegrationDefaults(data.defaults || {});
+      setMasterAgentConfig({
+        ...DEFAULT_MASTER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_master_agent || {}),
+      });
+    } catch (err) {
+      setError(err.message || 'Erro ao carregar CRONOS Mestre');
+    }
+  }, []);
+
   const loadChannels = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -312,6 +344,10 @@ function Agents() {
   useEffect(() => {
     loadChannels();
   }, [loadChannels]);
+
+  useEffect(() => {
+    loadMasterAgentConfig();
+  }, [loadMasterAgentConfig]);
 
   useEffect(() => {
     const currentItems = sourcePlatform === 'youtube'
@@ -372,6 +408,40 @@ function Agents() {
   useEffect(() => {
     loadReplyStats();
   }, [loadReplyStats]);
+
+  const saveMasterAgentConfig = async () => {
+    setMasterAgentSaving(true);
+    setError('');
+    try {
+      const response = await fetch(apiUrl('/api/integrations/settings/global'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          tools: {
+            ...integrationDefaults,
+            cronos_master_agent: masterAgentConfig,
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Erro ao salvar CRONOS Mestre');
+      }
+      setIntegrationDefaults(data.defaults || {});
+      setMasterAgentConfig({
+        ...DEFAULT_MASTER_AGENT_CONFIG,
+        ...(data.defaults?.cronos_master_agent || masterAgentConfig),
+      });
+      setSuccessMessage('CRONOS Mestre salvo.');
+    } catch (err) {
+      setError(err.message || 'Erro ao salvar CRONOS Mestre');
+    } finally {
+      setMasterAgentSaving(false);
+    }
+  };
 
   const fetchCommentsBatchInternal = async (requestedLimit = fetchCount, shouldAnnounce = true) => {
     if (sourcePlatform !== 'youtube') {
@@ -1138,6 +1208,73 @@ function Agents() {
       )}
 
       <section className="agents-panel">
+        <section className={`agents-config-card ${masterAgentOpen ? 'open' : ''}`}>
+          <div className="agents-config-card__header">
+            <div>
+              <h2>CRONOS Mestre</h2>
+              <p>Agente separado do CRONOS central do app. Uso exclusivo deste módulo.</p>
+            </div>
+            <button type="button" className="refresh-button" onClick={() => setMasterAgentOpen((current) => !current)}>
+              {masterAgentOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {masterAgentOpen ? 'Minimizar' : 'Abrir'}
+            </button>
+          </div>
+
+          {masterAgentOpen && (
+            <div className="agents-config-card__body">
+              <div className="agents-config-grid">
+                <label className="agents-select-group">
+                  <span>Nome do agente</span>
+                  <input
+                    type="text"
+                    value={masterAgentConfig.assistant_name || ''}
+                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, assistant_name: event.target.value }))}
+                  />
+                </label>
+                <label className="agents-select-group">
+                  <span>Modelo</span>
+                  <input
+                    type="text"
+                    value={masterAgentConfig.model || ''}
+                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, model: event.target.value }))}
+                  />
+                </label>
+                <label className="agents-select-group">
+                  <span>Uso</span>
+                  <input
+                    type="text"
+                    value={masterAgentConfig.usage || ''}
+                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, usage: event.target.value }))}
+                  />
+                </label>
+                <label className="agents-select-group">
+                  <span>API do GBT</span>
+                  <input
+                    type="password"
+                    value={masterAgentConfig.api_key || ''}
+                    placeholder="sk-proj-..."
+                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, api_key: event.target.value }))}
+                  />
+                </label>
+                <label className="agents-select-group agents-config-grid__full">
+                  <span>Prompt do agente</span>
+                  <textarea
+                    value={masterAgentConfig.system_prompt || ''}
+                    onChange={(event) => setMasterAgentConfig((current) => ({ ...current, system_prompt: event.target.value }))}
+                    rows={8}
+                  />
+                </label>
+              </div>
+              <div className="agents-config-card__actions">
+                <button type="button" className="connect-button" onClick={saveMasterAgentConfig} disabled={masterAgentSaving}>
+                  {masterAgentSaving ? <Loader size={16} className="spinner" /> : <Save size={16} />}
+                  Salvar CRONOS Mestre
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
         <div className="agents-stats-grid">
           <div className="agents-stat-card">
             <div className="agents-stat-card__top">

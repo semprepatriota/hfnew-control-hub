@@ -4,6 +4,74 @@
   gap: 18px;
 }
 
+.agents-config-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(0, 255, 65, 0.14);
+  border-radius: 10px;
+  background: rgba(7, 7, 8, 0.8);
+}
+
+.agents-config-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.agents-config-card__header h2 {
+  margin: 0 0 4px;
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.agents-config-card__header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+}
+
+.agents-config-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.agents-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agents-config-grid__full {
+  grid-column: 1 / -1;
+}
+
+.agents-config-grid textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  resize: vertical;
+  outline: none;
+}
+
+.agents-config-grid textarea:focus {
+  border-color: rgba(0, 255, 65, 0.34);
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.12);
+  background: rgba(0, 255, 65, 0.06);
+}
+
+.agents-config-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .agents-batch-panel {
   display: flex;
   flex-direction: column;
@@ -661,6 +729,7 @@
 }
 
 @media (max-width: 900px) {
+  .agents-config-grid,
   .agents-stats-grid,
   .agents-batch-metrics,
   .agents-grid {

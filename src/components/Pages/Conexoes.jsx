@@ -808,12 +808,21 @@ function Conexoes() {
                       {tool.fields.map((field) => (
                         <div className="settings-group" key={`${tool.id}-${field.id}`}>
                           <label>{field.label}</label>
-                          <input
-                            type={field.type}
-                            value={toolState[field.id] || ''}
-                            onChange={(event) => updateToolField(tool.id, field.id, event.target.value)}
-                            placeholder={field.placeholder}
-                          />
+                          {field.type === 'textarea' ? (
+                            <textarea
+                              value={toolState[field.id] || ''}
+                              onChange={(event) => updateToolField(tool.id, field.id, event.target.value)}
+                              placeholder={field.placeholder}
+                              rows={8}
+                            />
+                          ) : (
+                            <input
+                              type={field.type}
+                              value={toolState[field.id] || ''}
+                              onChange={(event) => updateToolField(tool.id, field.id, event.target.value)}
+                              placeholder={field.placeholder}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
