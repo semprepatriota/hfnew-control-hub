@@ -463,6 +463,28 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.forge2-render-result {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(58, 214, 133, 0.32);
+  border-radius: 14px;
+  padding: 11px 13px;
+  background: rgba(10, 42, 28, 0.52);
+  color: #dfffea;
+}
+
+.forge2-render-result strong {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.forge2-render-result span {
+  color: rgba(223, 255, 234, 0.82);
+  font-size: 13px;
+  word-break: break-word;
+}
+
 .forge2-primary-action {
   min-height: 46px;
   font-weight: 700;

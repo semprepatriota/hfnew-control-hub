@@ -152,6 +152,24 @@ export async function generateForge2Copy(projectId, payload) {
   }));
 }
 
+export async function renderForge2Studio(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/render`), {
+    method: 'POST',
+  }));
+}
+
+export async function scheduleForge2Render(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/schedule`), {
+    method: 'POST',
+  }));
+}
+
+export async function publishForge2ToYouTube(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/publish-youtube`), {
+    method: 'POST',
+  }));
+}
+
 export function forge2FileUrl(path) {
   return apiUrl(path);
 }

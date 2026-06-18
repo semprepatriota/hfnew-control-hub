@@ -36,6 +36,9 @@ import {
   uploadForge2Gif,
   uploadForge2Music,
   generateForge2Copy,
+  renderForge2Studio,
+  scheduleForge2Render,
+  publishForge2ToYouTube,
 } from '../services/forge2Api';
 import '../styles/the-forge-2.css';
 
@@ -164,6 +167,7 @@ function TheForge2() {
   const [baseUploadFile, setBaseUploadFile] = useState(null);
   const [gifUploadFile, setGifUploadFile] = useState(null);
   const [musicUploadFile, setMusicUploadFile] = useState(null);
+  const [lastRender, setLastRender] = useState(null);
   const [busyAction, setBusyAction] = useState('');
   const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
@@ -198,6 +202,7 @@ function TheForge2() {
     ]);
     setSelectedProjectId(projectId);
     setProject(projectData.project || null);
+    setLastRender(projectData.edit_plan?.render_settings?.studio_last_render || null);
     setStudio(studioData.studio || createDefaultStudio());
     setCopyAgent((current) => ({
       ...current,
@@ -385,33 +390,57 @@ function TheForge2() {
     setMessage(`${preset.label} aplicado.`);
   };
 
-  const handleDownloadBaseMp4 = () => {
-    if (!selectedBaseAsset?.url) {
-      setError('Selecione um vídeo base antes de baixar o MP4.');
+  const handleDownloadRenderMp4 = () => {
+    if (!lastRender?.download_url) {
+      setError('Renderize o vídeo antes de baixar o MP4 final.');
       return;
     }
     const link = document.createElement('a');
-    link.href = forge2FileUrl(selectedBaseAsset.url);
-    link.download = selectedBaseAsset.filename || 'forge2-base.mp4';
+    link.href = forge2FileUrl(lastRender.download_url);
+    link.download = lastRender.filename || 'forge2-render.mp4';
     document.body.appendChild(link);
     link.click();
     link.remove();
-    setMessage('Download do MP4 iniciado.');
+    setMessage('Download do render MP4 iniciado.');
   };
 
-  const handleRenderStub = async () => {
+  const handleRenderVideo = async () => {
     await runAction('render-forge2', async () => {
-      await persistStudio(studio, 'Ajustes salvos. Pipeline final de render do Forge 2.0 fica no próximo bloco.');
+      await saveForge2StudioConfig(selectedProjectId, studio);
+      const data = await renderForge2Studio(selectedProjectId);
+      setStudio(data.studio || studio);
+      setProject(data.project || project);
+      setLastRender(data.render);
+      setMessage('Render final do Forge 2.0 concluído.');
     });
   };
 
-  const handlePublishStub = async () => {
+  const handleScheduleRender = async () => {
+    if (!lastRender) {
+      setError('Renderize o vídeo antes de programar na agenda.');
+      return;
+    }
+    await runAction('schedule-forge2', async () => {
+      await saveForge2StudioConfig(selectedProjectId, studio);
+      const data = await scheduleForge2Render(selectedProjectId);
+      setMessage(`Vídeo programado: ${data.schedule?.item?.scheduled_at || studio.publication.schedule_at}`);
+    });
+  };
+
+  const handlePublishYouTube = async () => {
+    if (!lastRender) {
+      setError('Renderize o vídeo antes de publicar no YouTube.');
+      return;
+    }
     await runAction('publish-forge2', async () => {
-      await persistStudio(studio, 'Metadados salvos. Publicação no YouTube fica preparada para a próxima fase.');
+      await saveForge2StudioConfig(selectedProjectId, studio);
+      const data = await publishForge2ToYouTube(selectedProjectId);
+      setMessage(`Publicado no YouTube: ${data.youtube?.short_url || data.youtube?.url || 'concluído'}`);
     });
   };
 
   const handleResetRender = () => {
+    setLastRender(null);
     setMessage('Estado de render limpo para uma nova rodada.');
     setError('');
   };
@@ -622,15 +651,22 @@ function TheForge2() {
                   <Sparkles size={16} />
                   Gerar frase
                 </button>
-                <button type="button" className="forge2-primary-action" onClick={handleRenderStub} disabled={!selectedProjectId || Boolean(busyAction)}>
+                <button type="button" className="forge2-primary-action" onClick={handleRenderVideo} disabled={!selectedProjectId || !selectedBaseAsset || Boolean(busyAction)}>
                   <Clapperboard size={16} />
                   Renderizar vídeo
                 </button>
-                <button type="button" onClick={handleDownloadBaseMp4} disabled={!selectedBaseAsset}>
+                <button type="button" onClick={handleDownloadRenderMp4} disabled={!lastRender}>
                   <Download size={16} />
                   Baixar vídeo MP4
                 </button>
               </div>
+
+              {lastRender && (
+                <div className="forge2-render-result">
+                  <strong>Último render</strong>
+                  <span>{lastRender.filename} · {lastRender.width}x{lastRender.height} · {(lastRender.duration || 0).toFixed(1)}s</span>
+                </div>
+              )}
 
               <section className="forge2-panel forge2-copy-panel">
                 <div className="forge2-panel-header">
@@ -826,15 +862,15 @@ function TheForge2() {
             </div>
 
             <div className="forge2-publication-actions">
-              <button type="button" className="forge2-save-publication" onClick={() => runAction('save-studio', () => persistStudio(studio, 'Agendamento salvo.'))} disabled={!selectedProjectId || Boolean(busyAction)}>
+              <button type="button" className="forge2-save-publication" onClick={handleScheduleRender} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
                 <CalendarClock size={16} />
                 Programar na agenda
               </button>
-              <button type="button" onClick={handleDownloadBaseMp4} disabled={!selectedBaseAsset}>
+              <button type="button" onClick={handleDownloadRenderMp4} disabled={!lastRender}>
                 <Download size={16} />
                 Baixar vídeo MP4
               </button>
-              <button type="button" onClick={handlePublishStub} disabled={!selectedProjectId || Boolean(busyAction)}>
+              <button type="button" onClick={handlePublishYouTube} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
                 <Upload size={16} />
                 Publicar no YouTube
               </button>
