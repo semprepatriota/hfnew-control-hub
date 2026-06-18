@@ -645,10 +645,20 @@ function TheForge2() {
 
             <div className="forge2-asset-mini-list">
               {(studio.gif_overlays || []).map((asset) => (
-                <button key={asset.id} type="button" className={asset.enabled ? 'active' : ''} onClick={() => toggleGifEnabled(asset.id)}>
-                  <img src={forge2FileUrl(asset.url)} alt="" />
-                  <div><strong>{asset.filename}</strong><span>{asset.enabled ? 'Ativo no preview' : 'Clique para usar'}</span></div>
-                </button>
+                <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
+                  <button type="button" className="forge2-asset-mini-select" onClick={() => toggleGifEnabled(asset.id)}>
+                    <img src={forge2FileUrl(asset.url)} alt="" />
+                    <div><strong>{asset.filename}</strong><span>{asset.enabled ? 'Ativo no preview' : 'Clique para usar'}</span></div>
+                  </button>
+                  <button
+                    type="button"
+                    className="forge2-asset-mini-delete"
+                    aria-label={`Excluir ${asset.filename}`}
+                    onClick={() => removeAsset('gif', asset.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
 
@@ -676,9 +686,19 @@ function TheForge2() {
 
             <div className="forge2-asset-mini-list audio">
               {(studio.music_tracks || []).map((asset) => (
-                <button key={asset.id} type="button" className={asset.enabled ? 'active' : ''} onClick={() => toggleMusicEnabled(asset.id)}>
-                  <div><strong>{asset.filename}</strong><span>{assetDurationLabel(asset)}</span></div>
-                </button>
+                <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
+                  <button type="button" className="forge2-asset-mini-select" onClick={() => toggleMusicEnabled(asset.id)}>
+                    <div><strong>{asset.filename}</strong><span>{assetDurationLabel(asset)}</span></div>
+                  </button>
+                  <button
+                    type="button"
+                    className="forge2-asset-mini-delete"
+                    aria-label={`Excluir ${asset.filename}`}
+                    onClick={() => removeAsset('music', asset.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
 
