@@ -68,8 +68,8 @@ const FORGE2_ITEMS = [
   'Biblioteca 1:1',
   'Biblioteca recolhivel',
   'Preview central forte',
-  'CRONOS Mestre',
-  'Agente específico opcional',
+  'Gerador FORGE',
+  'Fallback local',
   'GIFs sobrepostos',
   'Musica de fundo',
   'Titulo',
@@ -385,7 +385,7 @@ function TheForge2() {
       const saved = await saveForge2StudioConfig(selectedProjectId, studio);
       const data = await generateForge2Publication(selectedProjectId, saved.studio);
       setStudio(data.studio);
-      setMessage('Publicação gerada com CRONOS Mestre.');
+      setMessage('Publicação gerada com Gerador FORGE.');
     });
   };
 
@@ -652,55 +652,6 @@ function TheForge2() {
         {FORGE2_ITEMS.map((item, index) => (
           <span key={item}><strong>{index + 1}.</strong> {item}</span>
         ))}
-      </section>
-
-      <section className={`forge2-panel forge2-agent-top-panel ${agentPanelOpen ? 'open' : 'collapsed'}`}>
-        <div className="forge2-panel-header">
-          <div className="forge2-section-title">
-            <Bot size={16} />
-            <h2>Agente Mestre e agente específico</h2>
-          </div>
-          <button type="button" onClick={() => setAgentPanelOpen((current) => !current)}>
-            {agentPanelOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            {agentPanelOpen ? 'Minimizar' : 'Abrir'}
-          </button>
-        </div>
-        {agentPanelOpen && (
-          <div className="forge2-agent-box forge2-agent-box-top">
-            <label>
-              <span>Agente ativo</span>
-              <select value={copyAgent.provider} onChange={(event) => setCopyAgent((current) => ({ ...current, provider: event.target.value }))}>
-                <option value="central_cronos">CRONOS Mestre</option>
-                <option value="custom_openai">Agente específico deste projeto</option>
-                <option value="local_fallback">Fallback local</option>
-              </select>
-            </label>
-            <label>
-              <span>Modelo</span>
-              <input value={copyAgent.model} onChange={(event) => setCopyAgent((current) => ({ ...current, model: event.target.value }))} />
-            </label>
-            <label>
-              <span>API do agente específico</span>
-              <input
-                type="password"
-                value={copyAgent.api_key}
-                placeholder={copyAgent.api_key_masked || 'Cole a chave somente se usar agente específico'}
-                onChange={(event) => setCopyAgent((current) => ({ ...current, api_key: event.target.value }))}
-                disabled={copyAgent.provider !== 'custom_openai'}
-              />
-            </label>
-            <div className="forge2-agent-actions">
-              <button type="button" onClick={handleSaveAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
-                <Save size={16} />
-                Salvar agente
-              </button>
-              <button type="button" className="danger" onClick={handleDeleteSpecificAgent} disabled={!selectedProjectId || Boolean(busyAction)}>
-                <Trash2 size={16} />
-                Deletar agente específico
-              </button>
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="forge2-shell">
@@ -1106,7 +1057,7 @@ function TheForge2() {
                   disabled={!selectedProjectId || Boolean(busyAction)}
                 >
                   <Sparkles size={16} />
-                  Gerar com CRONOS Mestre
+                  Gerador FORGE
                 </button>
                 <Film size={16} />
               </div>

@@ -773,19 +773,22 @@
 .forge2-publication-header-actions {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .forge2-publication-generate {
-  min-height: 40px;
-  padding: 10px 14px;
+  min-height: 34px;
+  padding: 8px 10px !important;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-color: rgba(66, 153, 225, 0.58) !important;
   background: linear-gradient(180deg, #2563eb 0%, #173ea8 100%) !important;
   color: #eef6ff !important;
   white-space: nowrap;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .forge2-publication-generate:hover {
