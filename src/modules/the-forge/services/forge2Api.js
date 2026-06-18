@@ -38,6 +38,12 @@ export async function getForge2Project(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}`), { cache: 'no-store' }));
 }
 
+export async function deleteForge2Project(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function getForge2StudioConfig(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/studio-config`), { cache: 'no-store' }));
 }

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import {
   createForge2Project,
+  deleteForge2Project,
   forge2FileUrl,
   getForge2CopyAgentConfig,
   getForge2Health,
@@ -156,13 +157,19 @@ function clampPercent(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Number(value) || 0));
 }
 
-function ProjectCard({ item, active, onClick }) {
+function ProjectCard({ item, active, onClick, onDelete }) {
   return (
-    <button type="button" className={`forge2-project-card ${active ? 'active' : ''}`} onClick={onClick}>
-      <strong>{item.title}</strong>
-      <span>{item.status}</span>
-      <small>{item.resolution || item.id}</small>
-    </button>
+    <div className={`forge2-project-card ${active ? 'active' : ''}`}>
+      <button type="button" className="forge2-project-card-main" onClick={onClick}>
+        <strong>{item.title}</strong>
+        <span>{item.status}</span>
+        <small>{item.resolution || item.id}</small>
+      </button>
+      <button type="button" className="forge2-project-delete" onClick={onDelete}>
+        <Trash2 size={14} />
+        Excluir
+      </button>
+    </div>
   );
 }
 
@@ -295,6 +302,33 @@ function TheForge2() {
       await refreshProjects();
       await loadProject(data.project.id);
       setMessage('Projeto do Forge 2.0 criado.');
+    });
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!projectId) return;
+    await runAction('delete-project', async () => {
+      await deleteForge2Project(projectId);
+      const list = await refreshProjects();
+      if (selectedProjectId === projectId) {
+        const nextProjectId = list[0]?.id || '';
+        if (nextProjectId) {
+          await loadProject(nextProjectId);
+        } else {
+          setSelectedProjectId('');
+          setProject(null);
+          setStudio(createDefaultStudio());
+          setCopyAgent({
+            provider: 'local_fallback',
+            model: 'gpt-4.1-mini',
+            configured: false,
+            api_key_masked: '',
+            api_key: '',
+          });
+          setLastRender(null);
+        }
+      }
+      setMessage('Projeto excluído.');
     });
   };
 
@@ -588,6 +622,7 @@ function TheForge2() {
                   item={item}
                   active={item.id === selectedProjectId}
                   onClick={() => runAction('load-project', () => loadProject(item.id))}
+                  onDelete={() => handleDeleteProject(item.id)}
                 />
               ))}
             </div>

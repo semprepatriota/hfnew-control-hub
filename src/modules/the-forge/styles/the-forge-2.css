@@ -213,18 +213,38 @@
 
 .forge2-project-card {
   width: 100%;
-  padding: 12px;
   border-radius: 14px;
   border: 1px solid var(--forge2-line);
   background: rgba(12, 18, 29, 0.86);
-  text-align: left;
   display: grid;
-  gap: 5px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .forge2-project-card.active {
   border-color: rgba(199, 138, 44, 0.55);
   background: linear-gradient(180deg, #172238 0%, #1d2038 100%);
+}
+
+.forge2-project-card-main {
+  width: 100%;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  padding: 0 !important;
+  text-align: left;
+  display: grid;
+  gap: 5px;
+}
+
+.forge2-project-delete {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #842a24 0%, #551813 100%) !important;
 }
 
 .forge2-project-card span,
