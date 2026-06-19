@@ -104,13 +104,6 @@ const TEXT_ANIMATION_SPEEDS = [
   { id: 'fast', label: 'Rápida' },
 ];
 
-const TEXT_FRAME_PRESETS = [
-  { id: '50/50', label: '50/50', font_size: 30, position_y: 50, box_width: 82, box_height: 48 },
-  { id: '60/40', label: '60/40', font_size: 28, position_y: 30, box_width: 84, box_height: 54 },
-  { id: '70/30', label: '70/30', font_size: 26, position_y: 35, box_width: 86, box_height: 62 },
-  { id: '80/20', label: '80/20', font_size: 24, position_y: 40, box_width: 88, box_height: 72 },
-];
-
 function createDefaultStudio() {
   return {
     library_collapsed: false,
@@ -228,6 +221,10 @@ function hexToRgba(hex, opacity) {
 
 function clampPercent(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Number(value) || 0));
+}
+
+function limitText(value, maxLength = 600) {
+  return String(value || '').trim().slice(0, maxLength);
 }
 
 function inferProductionStyle(text) {
@@ -561,21 +558,6 @@ function TheForge2() {
     });
   };
 
-  const applyTextFramePreset = (preset) => {
-    updateStudioLocal((current) => ({
-      ...current,
-      text_overlay: {
-        ...current.text_overlay,
-        font_size: preset.font_size,
-        position_y: preset.position_y,
-        box_width: preset.box_width,
-        box_height: preset.box_height,
-        position_x: 50,
-        align: 'center',
-      },
-    }));
-  };
-
   const toggleLibrary = () => {
     updateStudioLocal((current) => ({ ...current, library_collapsed: !current.library_collapsed }));
   };
@@ -823,7 +805,7 @@ function TheForge2() {
     ...current,
     text_overlay: {
       ...current.text_overlay,
-      topic: item.topic || item.title,
+      topic: limitText(item.topic || item.title, 600),
       style: item.style || current.text_overlay.style,
       generated_text: item.treated_text || item.raw_text,
     },
@@ -1085,20 +1067,6 @@ function TheForge2() {
             </div>
             {!textControlsCollapsed && (
               <>
-                <div className="forge2-text-frame-presets">
-                  <span>Escrita ajustada</span>
-                  <div>
-                    {TEXT_FRAME_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => applyTextFramePreset(preset)}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <div className="forge2-slider-grid forge2-preview-sliders">
                   <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
                   <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
