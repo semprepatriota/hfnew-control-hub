@@ -14,6 +14,26 @@ async function parseResponse(response) {
   return payload;
 }
 
+function limitText(value, maxLength) {
+  return String(value || '').slice(0, maxLength);
+}
+
+function sanitizeStudioForApi(studio) {
+  if (!studio) return studio;
+  return {
+    ...studio,
+    text_overlay: {
+      ...(studio.text_overlay || {}),
+      topic: limitText(studio.text_overlay?.topic, 400),
+    },
+    production_items: (studio.production_items || []).map((item) => ({
+      ...item,
+      title: limitText(item.title, 180),
+      topic: limitText(item.topic || item.title, 400),
+    })),
+  };
+}
+
 export async function getForge2Health() {
   return parseResponse(await fetch(apiUrl('/api/forge2/health'), { cache: 'no-store' }));
 }
@@ -49,10 +69,11 @@ export async function getForge2StudioConfig(projectId) {
 }
 
 export async function saveForge2StudioConfig(projectId, studio) {
+  const safeStudio = sanitizeStudioForApi(studio);
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/studio-config`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ studio }),
+    body: JSON.stringify({ studio: safeStudio }),
   }));
 }
 
