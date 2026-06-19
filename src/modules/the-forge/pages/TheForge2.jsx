@@ -345,6 +345,7 @@ function TheForge2() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
+  const [copyPanelCollapsed, setCopyPanelCollapsed] = useState(false);
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const previewStageRef = useRef(null);
   const productionScrollTopRef = useRef(null);
@@ -1353,54 +1354,92 @@ function TheForge2() {
                 </div>
               )}
 
-              <section className="forge2-panel forge2-copy-panel">
+              <section className={`forge2-panel forge2-copy-panel ${copyPanelCollapsed ? 'collapsed' : ''}`}>
                 <div className="forge2-panel-header">
                   <div className="forge2-section-title">
                     <Type size={16} />
                     <h2>Frase e enquadramento</h2>
                   </div>
-                  <span className="forge2-panel-subtitle">Texto maior, enquadramento e leitura mais limpa</span>
+                  <div className="forge2-copy-header-actions">
+                    <span className="forge2-panel-subtitle">Texto maior, enquadramento e leitura mais limpa</span>
+                    <button type="button" onClick={() => setCopyPanelCollapsed((current) => !current)}>
+                      {copyPanelCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="forge2-form-grid">
-                  <label>
-                    <span>Tema</span>
-                    <textarea
-                      rows={3}
-                      value={studio.text_overlay.topic}
-                      onChange={(event) => updateStudioLocal((current) => ({
-                        ...current,
-                        text_overlay: { ...current.text_overlay, topic: event.target.value },
-                      }))}
-                    />
-                  </label>
-                  <label>
-                    <span>Estilo</span>
-                    <select
-                      value={studio.text_overlay.style}
-                      onChange={(event) => updateStudioLocal((current) => ({
-                        ...current,
-                        text_overlay: { ...current.text_overlay, style: event.target.value },
-                      }))}
-                    >
-                      <option value="oracao">Oracao</option>
-                      <option value="frase_dia">Frase do dia</option>
-                      <option value="historia_motivacional">Historia motivacional</option>
-                      <option value="motivacional">Motivacional</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Texto final</span>
-                    <textarea
-                      rows={8}
-                      value={studio.text_overlay.generated_text}
-                      onChange={(event) => updateStudioLocal((current) => ({
-                        ...current,
-                        text_overlay: { ...current.text_overlay, generated_text: event.target.value },
-                      }))}
-                    />
-                  </label>
+                {!copyPanelCollapsed && (
+                  <div className="forge2-form-grid">
+                    <label>
+                      <span>Tema</span>
+                      <textarea
+                        rows={3}
+                        value={studio.text_overlay.topic}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          text_overlay: { ...current.text_overlay, topic: event.target.value },
+                        }))}
+                      />
+                    </label>
+                    <label>
+                      <span>Estilo</span>
+                      <select
+                        value={studio.text_overlay.style}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          text_overlay: { ...current.text_overlay, style: event.target.value },
+                        }))}
+                      >
+                        <option value="oracao">Oracao</option>
+                        <option value="frase_dia">Frase do dia</option>
+                        <option value="historia_motivacional">Historia motivacional</option>
+                        <option value="motivacional">Motivacional</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Texto final</span>
+                      <textarea
+                        rows={8}
+                        value={studio.text_overlay.generated_text}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          text_overlay: { ...current.text_overlay, generated_text: event.target.value },
+                        }))}
+                      />
+                    </label>
+                  </div>
+                )}
+              </section>
+
+              <section className="forge2-panel forge2-render-preview-panel">
+                <div className="forge2-panel-header">
+                  <div>
+                    <h2>Preview do vídeo renderizado</h2>
+                    <span className="forge2-panel-subtitle">Comparação direta com o preview de edição acima</span>
+                  </div>
                 </div>
+                {lastRender?.download_url || lastRender?.url ? (
+                  <>
+                    <div className={`forge2-render-preview-stage ${renderAspectClass}`}>
+                      <video
+                        key={lastRender.id || lastRender.filename}
+                        src={forge2FileUrl(lastRender.url || lastRender.download_url)}
+                        controls
+                        playsInline
+                        className="forge2-render-preview-video"
+                      />
+                    </div>
+                    <div className="forge2-render-result compact">
+                      <strong>Último MP4</strong>
+                      <span>{lastRender.filename} · {lastRender.width}x{lastRender.height} · {(lastRender.duration || 0).toFixed(1)}s</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="forge2-render-preview-empty">
+                    <Film size={28} />
+                    <span>Renderize um vídeo para comparar aqui.</span>
+                  </div>
+                )}
               </section>
             </section>
 
