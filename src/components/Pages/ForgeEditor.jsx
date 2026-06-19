@@ -25,6 +25,7 @@ import './ForgeEditor.css';
 import patriotaHeadline from '../../assets/patriota-headline.png';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
+const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
@@ -73,6 +74,22 @@ const moveArrayItem = (items, fromIndex, toIndex) => {
   const [moved] = next.splice(fromIndex, 1);
   next.splice(toIndex, 0, moved);
   return next;
+};
+
+const normalizeForge7030ImageTable = (items) => {
+  const source = Array.isArray(items) ? items : [];
+  return source
+    .filter((item) => item?.image_url)
+    .slice(0, 60)
+    .map((item, index) => ({
+      id: item.id || `forge7030_item_${Date.now()}_${index}`,
+      slot: index + 1,
+      image_url: item.image_url,
+      filename: item.filename || `Imagem ${index + 1}`,
+      headline_palette: item.headline_palette || 'purpleGold',
+      video_filename: item.video_filename || '',
+      status: item.status || 'pendente',
+    }));
 };
 
 function ForgeCropGuides({ active }) {
@@ -475,6 +492,17 @@ function ForgeEditor() {
   const [metadataCategory, setMetadataCategory] = useState('22');
   const [metadataPrivacyStatus, setMetadataPrivacyStatus] = useState('private');
   const [scheduleDateTime, setScheduleDateTime] = useState('');
+  const [imageProductionCollapsed, setImageProductionCollapsed] = useState(true);
+  const [imageProductionItems, setImageProductionItems] = useState(() => {
+    try {
+      return normalizeForge7030ImageTable(JSON.parse(localStorage.getItem(FORGE_7030_IMAGE_TABLE_KEY) || '[]'));
+    } catch {
+      return [];
+    }
+  });
+  const [uploadingImageProduction, setUploadingImageProduction] = useState(false);
+  const [imageProductionMessage, setImageProductionMessage] = useState('');
+  const [activeImageProductionItemId, setActiveImageProductionItemId] = useState('');
 
   const youtubeCategoryOptions = [
     { value: '1', label: '1 - Film & Animation' },
@@ -553,6 +581,19 @@ function ForgeEditor() {
   const availableAvatarSpeechStyles = avatarGeneratorStatus?.speech_styles || [];
   const availableAvatarVoiceProfiles = avatarGeneratorStatus?.voice_profiles || [];
   const activeAvatarVoiceProfile = availableAvatarVoiceProfiles.find((item) => item.id === avatarVoiceProfile) || null;
+  const normalizedImageProductionItems = normalizeForge7030ImageTable(imageProductionItems);
+  const nextImageProductionItem = normalizedImageProductionItems.find((item) => item.status === 'pendente')
+    || normalizedImageProductionItems.find((item) => item.status !== 'renderizado')
+    || normalizedImageProductionItems[0]
+    || null;
+  const nextImageProductionSlot = nextImageProductionItem?.slot || 1;
+
+  useEffect(() => {
+    localStorage.setItem(
+      FORGE_7030_IMAGE_TABLE_KEY,
+      JSON.stringify(normalizeForge7030ImageTable(imageProductionItems))
+    );
+  }, [imageProductionItems]);
 
   const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
     const safeTop = Math.min(72, Math.max(38, Number(nextTop) || 54));
@@ -1095,6 +1136,103 @@ function ForgeEditor() {
       localStorage.removeItem(draftKey);
     }
   }, [getDraftKey]);
+
+  const updateImageProductionItem = (itemId, patch) => {
+    setImageProductionItems((current) => normalizeForge7030ImageTable(
+      current.map((item) => (item.id === itemId ? { ...item, ...patch } : item))
+    ));
+  };
+
+  const handleImageProductionUpload = async (event) => {
+    const files = Array.from(event.target.files || [])
+      .filter((file) => file.type.startsWith('image/'));
+    event.target.value = '';
+    if (!files.length) return;
+
+    const freeSlots = Math.max(0, 60 - normalizedImageProductionItems.length);
+    const imageFiles = files.slice(0, freeSlots);
+    if (!imageFiles.length) {
+      setError('A tabela 70/30 já está com 60 imagens.');
+      return;
+    }
+
+    setUploadingImageProduction(true);
+    setError('');
+    setImageProductionMessage('');
+
+    try {
+      const uploadedItems = [];
+      for (const file of imageFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(apiUrl('/api/forge/upload-media'), {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || `Erro ao enviar ${file.name}`);
+        }
+
+        const data = await response.json();
+        const imageUrl = apiUrl(data.image_url || data.preview_image_url || data.preview_url || '');
+        if (imageUrl) {
+          uploadedItems.push({
+            id: `forge7030_item_${Date.now()}_${uploadedItems.length}`,
+            image_url: imageUrl,
+            filename: data.filename || file.name,
+            headline_palette: headlinePalette,
+            video_filename: selectedVideo?.filename || '',
+            status: 'pendente',
+          });
+        }
+      }
+
+      setImageProductionItems((current) => normalizeForge7030ImageTable([...current, ...uploadedItems]));
+      setImageProductionMessage(`${uploadedItems.length} imagens adicionadas à tabela 70/30.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploadingImageProduction(false);
+    }
+  };
+
+  const deleteImageProductionItem = (itemId) => {
+    setImageProductionItems((current) => normalizeForge7030ImageTable(
+      current.filter((item) => item.id !== itemId)
+    ));
+  };
+
+  const pullImageProductionItem = (item = nextImageProductionItem) => {
+    if (!item?.image_url) {
+      setError('Nenhuma imagem pendente na tabela 70/30.');
+      return;
+    }
+
+    const tableVideo = localVideos.find((video) => video.filename === item.video_filename);
+
+    setSlideshowMode(false);
+    setSlideshowStyle('pure');
+    setSelectedImagePaths([item.image_url]);
+    setSelectedImageUploadPaths([item.image_url]);
+    setSlideshowImageSettings(normalizeSlideshowSettingsClient([], 1));
+    setScreenshotPath(item.image_url);
+    setHeadlinePalette(item.headline_palette || 'purpleGold');
+    setLayoutPreset('classic7030');
+    setSlideshowHeadlinePosition((current) => normalizeHeadlinePositionClient(current, headlineText));
+    if (tableVideo) {
+      setSelectedVideo(tableVideo);
+      setBackgroundMode('local');
+    }
+    setRenderResult(null);
+    setImageProductionItems((current) => normalizeForge7030ImageTable(
+      current.map((entry) => (entry.id === item.id ? { ...entry, status: 'em_edicao' } : entry))
+    ));
+    setActiveImageProductionItemId(item.id);
+    setImageProductionMessage(`Imagem ${item.slot}/60 puxada para o Forge 70/30.`);
+  };
 
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -1761,6 +1899,15 @@ function ForgeEditor() {
       setTopRatio(ratioSnapshot.top);
       setBottomRatio(ratioSnapshot.bottom);
       setScheduleDateTime(getDefaultScheduleDateTime());
+      if (activeImageProductionItemId) {
+        setImageProductionItems((current) => normalizeForge7030ImageTable(
+          current.map((entry) => (
+            entry.id === activeImageProductionItemId
+              ? { ...entry, status: 'renderizado' }
+              : entry
+          ))
+        ));
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -2373,9 +2520,120 @@ function ForgeEditor() {
       <div className="forge-grid">
         {/* Coluna 1: Controles */}
         <div className="forge-controls">
+          <div className={`control-section forge7030-production-panel ${imageProductionCollapsed ? 'collapsed' : ''}`}>
+            <div className="forge7030-production-header">
+              <div>
+                <h3>🗂️ Tabela de produção 70/30</h3>
+                <span>{normalizedImageProductionItems.length}/60 imagens prontas para produção</span>
+              </div>
+              <div className="forge7030-production-actions">
+                <label className={`forge7030-upload-button ${uploadingImageProduction ? 'disabled' : ''}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageProductionUpload}
+                    disabled={uploadingImageProduction || normalizedImageProductionItems.length >= 60}
+                  />
+                  {uploadingImageProduction ? (
+                    <>
+                      <Loader size={14} className="spinner" />
+                      Enviando
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={14} />
+                      Adicionar imagens
+                    </>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  className="forge7030-collapse-button"
+                  onClick={() => setImageProductionCollapsed((current) => !current)}
+                >
+                  {imageProductionCollapsed ? 'Abrir' : 'Minimizar'}
+                </button>
+              </div>
+            </div>
+
+            {!imageProductionCollapsed && (
+              <div className="forge7030-production-body">
+                {imageProductionMessage && (
+                  <div className="forge7030-production-message">{imageProductionMessage}</div>
+                )}
+                {normalizedImageProductionItems.length === 0 ? (
+                  <div className="forge7030-production-empty">
+                    <Upload size={22} />
+                    <span>Adicione até 60 imagens de uma vez. A tabela só prepara a fila; a renderização continua igual.</span>
+                  </div>
+                ) : (
+                  <div className="forge7030-production-grid">
+                    {normalizedImageProductionItems.map((item) => (
+                      <div key={item.id} className={`forge7030-production-card status-${item.status}`}>
+                        <button
+                          type="button"
+                          className="forge7030-production-delete"
+                          onClick={() => deleteImageProductionItem(item.id)}
+                          title="Excluir imagem da tabela"
+                          aria-label={`Excluir imagem ${item.slot}`}
+                        >
+                          <X size={12} />
+                        </button>
+                        <div className="forge7030-production-thumb">
+                          <img src={item.image_url} alt={`Imagem ${item.slot}`} />
+                          <span>{item.slot}/60</span>
+                        </div>
+                        <label>
+                          Headline
+                          <select
+                            value={item.headline_palette}
+                            onChange={(event) => updateImageProductionItem(item.id, { headline_palette: event.target.value })}
+                          >
+                            {headlinePalettes.map((palette) => (
+                              <option key={palette.id} value={palette.id}>{palette.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Vídeo base
+                          <select
+                            value={item.video_filename}
+                            onChange={(event) => updateImageProductionItem(item.id, { video_filename: event.target.value })}
+                          >
+                            <option value="">Manter atual</option>
+                            {localVideos.map((video) => (
+                              <option key={video.filename} value={video.filename}>{shortVideoName(video.filename)}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="forge7030-production-card-footer">
+                          <span>{item.status === 'em_edicao' ? 'Em edição' : item.status === 'renderizado' ? 'Renderizado' : 'Pendente'}</span>
+                          <button type="button" onClick={() => pullImageProductionItem(item)}>
+                            Usar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Section 1: Screenshot Upload */}
           <div className="control-section upload-section-full">
-            <h3>📸 Imagem da Biblioteca</h3>
+            <div className="forge7030-section-title-row">
+              <h3>📸 Imagem da Biblioteca</h3>
+              <button
+                type="button"
+                className="forge7030-pull-table-button"
+                onClick={() => pullImageProductionItem()}
+                disabled={!nextImageProductionItem}
+              >
+                Puxar da Tabela {nextImageProductionSlot}/60
+              </button>
+            </div>
 
             <div className="mode-toggle media-mode-toggle">
               <button
