@@ -185,6 +185,9 @@ function AppShell() {
         const timeoutId = window.setTimeout(() => controller.abort(), 5000);
         const response = await fetch(apiUrl('/api/auth/status'), { headers, signal: controller.signal });
         window.clearTimeout(timeoutId);
+        if (!response.ok) {
+          throw new Error(`auth_status_http_${response.status}`);
+        }
         const data = await response.json();
         const recentAuthAt = Number(window.localStorage.getItem(RECENT_AUTH_KEY) || '0');
         const hasRecentAuth = recentAuthAt > 0 && (Date.now() - recentAuthAt) <= RECENT_AUTH_WINDOW_MS;
@@ -229,6 +232,20 @@ function AppShell() {
           authRetryTimeout.current = window.setTimeout(() => {
             setAuthAttempt((current) => current + 1);
           }, AUTH_STATUS_RETRY_DELAY_MS);
+          return;
+        }
+
+        if (authToken) {
+          setAuthStatus({
+            checked: true,
+            loading: false,
+            allowed: true,
+            message: error?.name === 'AbortError'
+              ? 'Sessao local mantida. API demorou para responder.'
+              : 'Sessao local mantida. Validacao remota indisponivel.',
+            email: '',
+            name: ''
+          });
           return;
         }
 

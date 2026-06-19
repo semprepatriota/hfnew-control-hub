@@ -77,6 +77,52 @@ const moveArrayItem = (items, fromIndex, toIndex) => {
   return next;
 };
 
+const safeStorageGet = (key, fallback = '') => {
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch (error) {
+    console.warn(`Nao foi possivel ler ${key}:`, error);
+    return fallback;
+  }
+};
+
+const safeStorageRemove = (key) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    console.warn(`Nao foi possivel remover ${key}:`, error);
+  }
+};
+
+const pruneForgeDraftStorage = () => {
+  try {
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith(FORGE_DRAFT_KEY_PREFIX))
+      .forEach((key) => window.localStorage.removeItem(key));
+  } catch (error) {
+    console.warn('Nao foi possivel limpar rascunhos do Forge:', error);
+  }
+};
+
+const safeStorageSet = (key, value, { pruneDrafts = false } = {}) => {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn(`Nao foi possivel salvar ${key}:`, error);
+    if (pruneDrafts) {
+      pruneForgeDraftStorage();
+      try {
+        window.localStorage.setItem(key, value);
+        return true;
+      } catch (retryError) {
+        console.warn(`Falha ao salvar ${key} apos limpeza:`, retryError);
+      }
+    }
+    return false;
+  }
+};
+
 const normalizeForge7030ImageTable = (items) => {
   const source = Array.isArray(items) ? items : [];
   return source
@@ -447,7 +493,7 @@ function ForgeEditor() {
   const [selectedImagePaths, setSelectedImagePaths] = useState([]);
   const [selectedImageUploadPaths, setSelectedImageUploadPaths] = useState([]);
   const [slideshowImageSettings, setSlideshowImageSettings] = useState([]);
-  const [libraryChannelId, setLibraryChannelId] = useState(() => localStorage.getItem('alliance_forge_library_channel_id') || '');
+  const [libraryChannelId, setLibraryChannelId] = useState(() => safeStorageGet('alliance_forge_library_channel_id'));
   const [slideshowMode, setSlideshowMode] = useState(false);
   const [slideshowStyle, setSlideshowStyle] = useState('pure');
   const [socialImageUrl, setSocialImageUrl] = useState('');
@@ -496,7 +542,7 @@ function ForgeEditor() {
   const [imageProductionCollapsed, setImageProductionCollapsed] = useState(true);
   const [imageProductionItems, setImageProductionItems] = useState(() => {
     try {
-      return normalizeForge7030ImageTable(JSON.parse(localStorage.getItem(FORGE_7030_IMAGE_TABLE_KEY) || '[]'));
+      return normalizeForge7030ImageTable(JSON.parse(safeStorageGet(FORGE_7030_IMAGE_TABLE_KEY, '[]')));
     } catch {
       return [];
     }
@@ -506,7 +552,7 @@ function ForgeEditor() {
   const [activeImageProductionItemId, setActiveImageProductionItemId] = useState('');
   const [localVideoLabels, setLocalVideoLabels] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(FORGE_LOCAL_VIDEO_LABELS_KEY) || '{}');
+      return JSON.parse(safeStorageGet(FORGE_LOCAL_VIDEO_LABELS_KEY, '{}'));
     } catch {
       return {};
     }
@@ -598,14 +644,15 @@ function ForgeEditor() {
   const nextImageProductionSlot = nextImageProductionItem?.slot || 1;
 
   useEffect(() => {
-    localStorage.setItem(
+    safeStorageSet(
       FORGE_7030_IMAGE_TABLE_KEY,
-      JSON.stringify(normalizeForge7030ImageTable(imageProductionItems))
+      JSON.stringify(normalizeForge7030ImageTable(imageProductionItems)),
+      { pruneDrafts: true }
     );
   }, [imageProductionItems]);
 
   useEffect(() => {
-    localStorage.setItem(FORGE_LOCAL_VIDEO_LABELS_KEY, JSON.stringify(localVideoLabels));
+    safeStorageSet(FORGE_LOCAL_VIDEO_LABELS_KEY, JSON.stringify(localVideoLabels), { pruneDrafts: true });
   }, [localVideoLabels]);
 
   const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
@@ -635,7 +682,7 @@ function ForgeEditor() {
     ratioLockRef.current = { top: 70, bottom: 30 };
   };
 
-  const loadLocalVideos = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
+  const loadLocalVideos = useCallback(async (channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id')) => {
     const requestId = ++libraryRequestRef.current;
     try {
       const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
@@ -651,7 +698,7 @@ function ForgeEditor() {
     }
   }, [libraryChannelId]);
 
-  const loadAvatarVideos = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
+  const loadAvatarVideos = useCallback(async (channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id')) => {
     const requestId = ++avatarLibraryRequestRef.current;
     try {
       const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
@@ -700,7 +747,7 @@ function ForgeEditor() {
     }
   }, []);
 
-  const loadLocalAudios = useCallback(async (channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '') => {
+  const loadLocalAudios = useCallback(async (channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id')) => {
     const requestId = ++audioLibraryRequestRef.current;
     try {
       const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
@@ -726,15 +773,15 @@ function ForgeEditor() {
 
   // Carregar vídeos locais
   useEffect(() => {
-    loadLocalVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
-    loadAvatarVideos(localStorage.getItem('alliance_forge_library_channel_id') || '');
-    loadLocalAudios(localStorage.getItem('alliance_forge_library_channel_id') || '');
+    loadLocalVideos(safeStorageGet('alliance_forge_library_channel_id'));
+    loadAvatarVideos(safeStorageGet('alliance_forge_library_channel_id'));
+    loadLocalAudios(safeStorageGet('alliance_forge_library_channel_id'));
     loadAvatarGeneratorStatus();
     loadAvatarEngineRegistry();
-    const capturedImage = localStorage.getItem('forge_selected_image');
+    const capturedImage = safeStorageGet('forge_selected_image');
     if (capturedImage) {
       setScreenshotPath(capturedImage);
-      localStorage.removeItem('forge_selected_image');
+      safeStorageRemove('forge_selected_image');
     }
   }, [loadAvatarEngineRegistry, loadAvatarGeneratorStatus, loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
 
@@ -763,7 +810,7 @@ function ForgeEditor() {
 
   useEffect(() => {
     const syncActiveLibraryChannel = async () => {
-      const storedChannelId = localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const storedChannelId = safeStorageGet('alliance_forge_library_channel_id');
       if (storedChannelId) {
         setLibraryChannelId(storedChannelId);
         setSelectedVideo(null);
@@ -783,7 +830,7 @@ function ForgeEditor() {
         const data = await response.json();
         const activeChannelId = data.active_channel_id || '';
         if (activeChannelId) {
-          localStorage.setItem('alliance_forge_library_channel_id', activeChannelId);
+          safeStorageSet('alliance_forge_library_channel_id', activeChannelId);
           setLibraryChannelId(activeChannelId);
           setSelectedVideo(null);
           setSelectedAudio(null);
@@ -804,7 +851,7 @@ function ForgeEditor() {
 
   useEffect(() => {
     const syncLibraryChannel = () => {
-      const nextChannelId = localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const nextChannelId = safeStorageGet('alliance_forge_library_channel_id');
       setLibraryChannelId(nextChannelId);
       setSelectedVideo(null);
       setSelectedAudio(null);
@@ -864,7 +911,7 @@ function ForgeEditor() {
       if (video.path.includes('uploads\\') || video.path.includes('/uploads/')) {
         return apiUrl(`/api/forge/uploaded/${encodeURIComponent(filename)}`);
       }
-      const channelId = video.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const channelId = video.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
       const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
       return apiUrl(`/api/forge/play-video/${encodeURIComponent(filename)}${query}`);
     }
@@ -878,7 +925,7 @@ function ForgeEditor() {
     if (audio.path) {
       const filename = audio.filename || audio.path.split(/[\\/]/).pop() || '';
       if (!filename) return '';
-      const channelId = audio.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const channelId = audio.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
       const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
       return apiUrl(`/api/forge/play-audio/${encodeURIComponent(filename)}${query}`);
     }
@@ -886,7 +933,7 @@ function ForgeEditor() {
   };
 
   const getDraftKey = useCallback((channelId) => {
-    const resolvedChannelId = channelId || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || 'default';
+    const resolvedChannelId = channelId || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id') || 'default';
     return `${FORGE_DRAFT_KEY_PREFIX}${resolvedChannelId}`;
   }, [libraryChannelId]);
 
@@ -931,7 +978,7 @@ function ForgeEditor() {
     restoredDraftKeyRef.current = draftKey;
 
     try {
-      const rawDraft = localStorage.getItem(draftKey);
+      const rawDraft = safeStorageGet(draftKey);
       if (!rawDraft) {
         return;
       }
@@ -1036,7 +1083,7 @@ function ForgeEditor() {
     );
 
     if (!hasDraftContent) {
-      localStorage.removeItem(draftKey);
+      safeStorageRemove(draftKey);
       return;
     }
 
@@ -1091,7 +1138,7 @@ function ForgeEditor() {
         scheduleMessage,
       };
 
-      localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+      safeStorageSet(draftKey, JSON.stringify(draftPayload), { pruneDrafts: true });
     }, 220);
 
     return () => window.clearTimeout(saveDraftTimer);
@@ -1146,7 +1193,7 @@ function ForgeEditor() {
   const clearForgeDraft = useCallback(() => {
     const draftKey = getDraftKey();
     if (draftKey) {
-      localStorage.removeItem(draftKey);
+      safeStorageRemove(draftKey);
     }
   }, [getDraftKey]);
 
@@ -1422,7 +1469,7 @@ function ForgeEditor() {
 
     setUploadingVideo(true);
     setError('');
-    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const formData = new FormData();
@@ -1475,7 +1522,7 @@ function ForgeEditor() {
 
     setUploadingAvatarVideo(true);
     setError('');
-    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const formData = new FormData();
@@ -1525,7 +1572,7 @@ function ForgeEditor() {
 
     setUploadingAudio(true);
     setError('');
-    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const formData = new FormData();
@@ -1573,7 +1620,7 @@ function ForgeEditor() {
 
     setDeletingVideoFile(filename);
     setError('');
-    const channelId = selectedVideo?.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = selectedVideo?.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const response = await fetch(apiUrl('/api/forge/delete-video'), {
@@ -1613,7 +1660,7 @@ function ForgeEditor() {
 
     setDeletingAvatarFile(filename);
     setError('');
-    const channelId = selectedVideo?.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = selectedVideo?.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const response = await fetch(apiUrl('/api/forge/delete-avatar-video'), {
@@ -1649,7 +1696,7 @@ function ForgeEditor() {
 
     setDeletingAudioFile(filename);
     setError('');
-    const channelId = selectedAudio?.channel_id || libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = selectedAudio?.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const response = await fetch(apiUrl('/api/forge/delete-audio'), {
@@ -2009,7 +2056,7 @@ function ForgeEditor() {
 
     setGeneratingAvatarSpeech(true);
     setError('');
-    const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+    const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
       const response = await fetch(apiUrl('/api/forge/avatar-generator/speech'), {
@@ -2231,7 +2278,7 @@ function ForgeEditor() {
           provider_id: avatarEngineRegistry?.preferred_video_provider || '',
           avatar_filename: selectedVideo.filename,
           audio_filename: selectedAudio.filename,
-          channel_id: libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '',
+          channel_id: libraryChannelId || safeStorageGet('alliance_forge_library_channel_id'),
         }),
       });
       const data = await response.json();
@@ -2268,7 +2315,7 @@ function ForgeEditor() {
           provider_id: avatarEngineRegistry?.preferred_video_provider || '',
           avatar_filename: selectedVideo.filename,
           audio_filename: selectedAudio.filename,
-          channel_id: libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '',
+          channel_id: libraryChannelId || safeStorageGet('alliance_forge_library_channel_id'),
         }),
       });
       const data = await response.json();
@@ -2278,7 +2325,7 @@ function ForgeEditor() {
       setAvatarEngineRenderResult(data);
 
       setSavingAvatarEngineRender(true);
-      const channelId = libraryChannelId || localStorage.getItem('alliance_forge_library_channel_id') || '';
+      const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
       const saveResponse = await fetch(apiUrl('/api/forge/avatar-engine/save-to-library'), {
         method: 'POST',
         headers: {
