@@ -760,6 +760,10 @@ function TheForge2() {
   const renderAspectClass = studio.output_aspect_ratio === '1:1' ? 'square' : 'vertical';
   const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
   const productionItems = normalizeProductionItems(studio.production_items);
+  const nextProductionPullItem = productionItems.find((item) => (
+    productionItemText(item) && !['em_edicao', 'gerando', 'gerado', 'renderizado', 'agendado'].includes(item.status)
+  )) || productionItems.find((item) => productionItemText(item));
+  const nextProductionPullSlot = nextProductionPullItem?.slot || 1;
 
   const syncProductionScroll = (source) => {
     const top = productionScrollTopRef.current;
@@ -780,6 +784,24 @@ function TheForge2() {
       )),
     }));
   };
+
+  const applyProductionItemToStudio = (current, item) => ({
+    ...current,
+    text_overlay: {
+      ...current.text_overlay,
+      topic: item.topic || item.title,
+      style: item.style || current.text_overlay.style,
+      generated_text: item.treated_text || item.raw_text,
+    },
+    publication: {
+      ...current.publication,
+      title: item.title || current.publication.title,
+      schedule_at: item.schedule_at || current.publication.schedule_at,
+    },
+    production_items: normalizeProductionItems(current.production_items).map((entry) => (
+      entry.slot === item.slot ? { ...entry, status: 'em_edicao' } : entry
+    )),
+  });
 
   const handleImportProductionTable = async () => {
     const parsed = parseProductionImportText(studio.production_import_text);
@@ -803,24 +825,25 @@ function TheForge2() {
       setError('Essa linha ainda não tem conteúdo.');
       return;
     }
-    updateStudioLocal((current) => ({
-      ...current,
-      text_overlay: {
-        ...current.text_overlay,
-        topic: item.topic || item.title,
-        style: item.style || current.text_overlay.style,
-        generated_text: item.treated_text || item.raw_text,
-      },
-      publication: {
-        ...current.publication,
-        title: item.title || current.publication.title,
-        schedule_at: item.schedule_at || current.publication.schedule_at,
-      },
-      production_items: normalizeProductionItems(current.production_items).map((entry) => (
-        entry.slot === item.slot ? { ...entry, status: 'em_edicao' } : entry
-      )),
-    }));
+    updateStudioLocal((current) => applyProductionItemToStudio(current, item));
     setMessage(`Publicação ${item.slot} enviada para Frase e enquadramento.`);
+  };
+
+  const handlePullNextProductionItem = async () => {
+    const item = nextProductionPullItem;
+    if (!item || !productionItemText(item)) {
+      setError('Nenhuma publicação preenchida na tabela para puxar.');
+      return;
+    }
+    const nextStudio = applyProductionItemToStudio(studio, item);
+    if (selectedProjectId) {
+      await runAction('pull-next-production-item', async () => {
+        await persistStudio(nextStudio, `Publicação ${item.slot}/90 puxada para o preview.`);
+      });
+    } else {
+      setStudio(nextStudio);
+      setMessage(`Publicação ${item.slot}/90 puxada para o preview.`);
+    }
   };
 
   const handleGenerateProductionItem = async (item) => {
@@ -996,7 +1019,7 @@ function TheForge2() {
                       <td>
                         <div className="forge2-production-actions">
                           <button type="button" onClick={() => handleUseProductionItem(item)} disabled={!productionItemText(item)}>
-                            Puxar da Tabela {item.slot}/90
+                            Usar no Forge
                           </button>
                           <button type="button" onClick={() => handleGenerateProductionItem(item)} disabled={!selectedProjectId || !productionItemText(item) || Boolean(busyAction)}>
                             Melhorar texto
@@ -1189,9 +1212,20 @@ function TheForge2() {
                 <FolderOpen size={16} />
                 <h2>Biblioteca base recolhível</h2>
               </div>
-              <button type="button" onClick={toggleLibrary}>
-                {studio.library_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-              </button>
+              <div className="forge2-library-header-actions">
+                <button
+                  type="button"
+                  className="forge2-pull-table-button"
+                  onClick={handlePullNextProductionItem}
+                  disabled={!nextProductionPullItem || Boolean(busyAction)}
+                >
+                  <Sparkles size={15} />
+                  Puxar da Tabela {nextProductionPullSlot}/90
+                </button>
+                <button type="button" onClick={toggleLibrary}>
+                  {studio.library_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                </button>
+              </div>
             </div>
 
             {!studio.library_collapsed && (
