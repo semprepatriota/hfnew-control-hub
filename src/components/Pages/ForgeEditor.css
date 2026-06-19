@@ -2336,6 +2336,38 @@
   border-color: rgba(255, 0, 0, 0.4);
 }
 
+.local-video-name-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.local-video-name-editor input {
+  min-width: 0;
+  flex: 1;
+  height: 30px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 255, 65, 0.32);
+  background: rgba(0, 0, 0, 0.78);
+  color: #ffffff;
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.local-video-name-editor button {
+  min-height: 30px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 255, 65, 0.35);
+  background: rgba(0, 255, 65, 0.11);
+  color: #dfffe8;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .video-checkbox {
   width: 16px;
   height: 16px;

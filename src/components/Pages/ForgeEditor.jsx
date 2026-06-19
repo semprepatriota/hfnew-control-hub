@@ -26,6 +26,7 @@ import patriotaHeadline from '../../assets/patriota-headline.png';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
+const FORGE_LOCAL_VIDEO_LABELS_KEY = 'alliance_forge_local_video_labels_v1';
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
@@ -503,6 +504,14 @@ function ForgeEditor() {
   const [uploadingImageProduction, setUploadingImageProduction] = useState(false);
   const [imageProductionMessage, setImageProductionMessage] = useState('');
   const [activeImageProductionItemId, setActiveImageProductionItemId] = useState('');
+  const [localVideoLabels, setLocalVideoLabels] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(FORGE_LOCAL_VIDEO_LABELS_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [editingLocalVideoName, setEditingLocalVideoName] = useState('');
 
   const youtubeCategoryOptions = [
     { value: '1', label: '1 - Film & Animation' },
@@ -594,6 +603,10 @@ function ForgeEditor() {
       JSON.stringify(normalizeForge7030ImageTable(imageProductionItems))
     );
   }, [imageProductionItems]);
+
+  useEffect(() => {
+    localStorage.setItem(FORGE_LOCAL_VIDEO_LABELS_KEY, JSON.stringify(localVideoLabels));
+  }, [localVideoLabels]);
 
   const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
     const safeTop = Math.min(72, Math.max(38, Number(nextTop) || 54));
@@ -1689,6 +1702,27 @@ function ForgeEditor() {
     return `${filename.slice(0, 12)}...${filename.slice(-10)}`;
   };
 
+  const getLocalVideoDisplayName = (videoOrFilename = '') => {
+    const filename = typeof videoOrFilename === 'string'
+      ? videoOrFilename
+      : (videoOrFilename?.filename || '');
+    const customName = localVideoLabels[filename];
+    return (customName || '').trim() || shortVideoName(filename);
+  };
+
+  const updateLocalVideoDisplayName = (filename, value) => {
+    const nextName = value.trim();
+    setLocalVideoLabels((current) => {
+      const next = { ...current };
+      if (nextName) {
+        next[filename] = nextName.slice(0, 80);
+      } else {
+        delete next[filename];
+      }
+      return next;
+    });
+  };
+
   const getUploadedImageName = () => {
     const renderSource = slideshowMode
       ? (selectedImageUploadPaths[0] || screenshotPath || '')
@@ -2603,7 +2637,7 @@ function ForgeEditor() {
                           >
                             <option value="">Manter atual</option>
                             {localVideos.map((video) => (
-                              <option key={video.filename} value={video.filename}>{shortVideoName(video.filename)}</option>
+                              <option key={video.filename} value={video.filename}>{getLocalVideoDisplayName(video)}</option>
                             ))}
                           </select>
                         </label>
@@ -3732,7 +3766,7 @@ function ForgeEditor() {
                           <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
                             {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
                           </span>
-                          <strong>{shortVideoName(video.filename)}</strong>
+                          <strong>{getLocalVideoDisplayName(video)}</strong>
                         </div>
                         {selectedVideo?.filename === video.filename && (
                           <div className="local-selected-mark">
@@ -3768,6 +3802,47 @@ function ForgeEditor() {
                           Selecionar
                         </label>
                       </div>
+                      <div className="local-video-name-editor">
+                        {editingLocalVideoName === video.filename ? (
+                          <>
+                            <input
+                              type="text"
+                              value={localVideoLabels[video.filename] || ''}
+                              placeholder="Nome do vídeo"
+                              maxLength={80}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => updateLocalVideoDisplayName(video.filename, event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === 'Escape') {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  setEditingLocalVideoName('');
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setEditingLocalVideoName('');
+                              }}
+                            >
+                              OK
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEditingLocalVideoName(video.filename);
+                            }}
+                          >
+                            Editar nome
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
@@ -3795,7 +3870,7 @@ function ForgeEditor() {
                       controls
                       className="video-thumb"
                     />
-                    <span className="selected-video-name">✓ {shortVideoName(selectedVideo.filename)}</span>
+                    <span className="selected-video-name">✓ {getLocalVideoDisplayName(selectedVideo)}</span>
                     <span className={`selected-video-ratio ${selectedVideo.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
                       {selectedVideo.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
                     </span>
