@@ -678,17 +678,12 @@ function TheForge2() {
       setError('Renderize o vídeo antes de baixar o MP4 final.');
       return;
     }
-    await runAction('download-render', async () => {
-      const filename = lastRender.filename || 'forge2-render.mp4';
-      const response = await fetch(forge2FileUrl(lastRender.download_url), { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error('Falha ao preparar o arquivo MP4 para download.');
-      }
-
-      const blob = await response.blob();
-      const picker = window.showSaveFilePicker;
-      if (typeof picker === 'function') {
-        const handle = await picker({
+    const filename = lastRender.filename || 'forge2-render.mp4';
+    const picker = window.showSaveFilePicker;
+    let fileHandle = null;
+    if (typeof picker === 'function') {
+      try {
+        fileHandle = await picker({
           suggestedName: filename,
           types: [
             {
@@ -697,7 +692,23 @@ function TheForge2() {
             },
           ],
         });
-        const writable = await handle.createWritable();
+      } catch (err) {
+        if (err?.name === 'AbortError') {
+          return;
+        }
+        setError(err.message || 'Não foi possível abrir o seletor de arquivo.');
+        return;
+      }
+    }
+    await runAction('download-render', async () => {
+      const response = await fetch(forge2FileUrl(lastRender.download_url), { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('Falha ao preparar o arquivo MP4 para download.');
+      }
+
+      const blob = await response.blob();
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable();
         await writable.write(blob);
         await writable.close();
         setMessage('Vídeo MP4 salvo no local escolhido.');
