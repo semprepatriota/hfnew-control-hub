@@ -104,6 +104,13 @@ const TEXT_ANIMATION_SPEEDS = [
   { id: 'fast', label: 'Rápida' },
 ];
 
+const TEXT_FRAME_PRESETS = [
+  { id: '50/50', label: '50/50', font_size: 30, position_y: 50, box_width: 82, box_height: 48 },
+  { id: '60/40', label: '60/40', font_size: 28, position_y: 30, box_width: 84, box_height: 54 },
+  { id: '70/30', label: '70/30', font_size: 26, position_y: 35, box_width: 86, box_height: 62 },
+  { id: '80/20', label: '80/20', font_size: 24, position_y: 40, box_width: 88, box_height: 72 },
+];
+
 function createDefaultStudio() {
   return {
     library_collapsed: false,
@@ -118,7 +125,7 @@ function createDefaultStudio() {
       style: 'oracao',
       generated_text: '',
       font_family: 'Playfair Display',
-      font_size: 58,
+      font_size: 36,
       line_height: 1.08,
       letter_spacing: 0,
       color: '#ffffff',
@@ -552,6 +559,21 @@ function TheForge2() {
       const next = typeof updater === 'function' ? updater(current) : updater;
       return next;
     });
+  };
+
+  const applyTextFramePreset = (preset) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      text_overlay: {
+        ...current.text_overlay,
+        font_size: preset.font_size,
+        position_y: preset.position_y,
+        box_width: preset.box_width,
+        box_height: preset.box_height,
+        position_x: 50,
+        align: 'center',
+      },
+    }));
   };
 
   const toggleLibrary = () => {
@@ -1063,8 +1085,22 @@ function TheForge2() {
             </div>
             {!textControlsCollapsed && (
               <>
+                <div className="forge2-text-frame-presets">
+                  <span>Escrita ajustada</span>
+                  <div>
+                    {TEXT_FRAME_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyTextFramePreset(preset)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="forge2-slider-grid forge2-preview-sliders">
-                  <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="24" max="150" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+                  <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
                   <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
                   <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
                   <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>

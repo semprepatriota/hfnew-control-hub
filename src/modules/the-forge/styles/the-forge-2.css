@@ -745,6 +745,33 @@
   margin-top: 0;
 }
 
+.forge2-text-frame-presets {
+  display: grid;
+  gap: 8px;
+}
+
+.forge2-text-frame-presets > span {
+  color: var(--forge2-soft);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.forge2-text-frame-presets > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.forge2-text-frame-presets button {
+  min-height: 34px;
+  padding: 8px 10px !important;
+  border-color: rgba(99, 224, 255, 0.34) !important;
+  background: rgba(20, 52, 72, 0.78) !important;
+  color: #e7fbff !important;
+  font-weight: 900;
+}
+
 .forge2-preview-sliders {
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
