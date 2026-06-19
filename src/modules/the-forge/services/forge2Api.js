@@ -24,12 +24,12 @@ function sanitizeStudioForApi(studio) {
     ...studio,
     text_overlay: {
       ...(studio.text_overlay || {}),
-      topic: limitText(studio.text_overlay?.topic, 400),
+      topic: limitText(studio.text_overlay?.topic, 600),
     },
     production_items: (studio.production_items || []).map((item) => ({
       ...item,
       title: limitText(item.title, 180),
-      topic: limitText(item.topic || item.title, 400),
+      topic: limitText(item.topic || item.title, 600),
     })),
   };
 }
