@@ -228,6 +228,20 @@
   background: rgba(4, 8, 14, 0.42);
 }
 
+.forge2-production-scroll-top {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 16px;
+  border: 1px solid rgba(57, 255, 20, 0.38);
+  border-radius: 999px;
+  background: rgba(4, 8, 14, 0.42);
+}
+
+.forge2-production-scroll-spacer {
+  width: 1320px;
+  height: 1px;
+}
+
 .forge2-production-table {
   width: 100%;
   min-width: 1320px;
@@ -261,6 +275,26 @@
   width: 42px;
 }
 
+.forge2-production-table th:nth-child(2),
+.forge2-production-table td:nth-child(2) {
+  min-width: 260px;
+}
+
+.forge2-production-table th:nth-child(3),
+.forge2-production-table td:nth-child(3) {
+  min-width: 560px;
+}
+
+.forge2-production-table th:nth-child(4),
+.forge2-production-table td:nth-child(4) {
+  min-width: 220px;
+}
+
+.forge2-production-table th:nth-child(5),
+.forge2-production-table td:nth-child(5) {
+  min-width: 150px;
+}
+
 .forge2-production-table input,
 .forge2-production-table select,
 .forge2-production-table textarea {
@@ -274,7 +308,8 @@
 }
 
 .forge2-production-table textarea {
-  min-width: 210px;
+  min-width: 520px;
+  min-height: 96px;
   resize: vertical;
 }
 

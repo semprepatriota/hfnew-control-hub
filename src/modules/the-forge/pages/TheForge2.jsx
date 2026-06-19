@@ -251,7 +251,16 @@ function parseProductionImportText(text) {
     .map((block, index) => {
       const lines = block.content.split('\n').map((line) => line.trim()).filter(Boolean);
       const title = (lines[0] || `Publicação ${index + 1}`).replace(/^[#*\s-]+/, '').slice(0, 180);
-      const rawText = lines.slice(1).join('\n\n') || title;
+      const normalizeTitle = (value) => (value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/gi, '')
+        .toLowerCase();
+      const bodyLines = lines.slice(1);
+      if (bodyLines.length && normalizeTitle(bodyLines[0]) === normalizeTitle(title)) {
+        bodyLines.shift();
+      }
+      const rawText = bodyLines.join('\n\n') || title;
       const fullText = `${title}\n\n${rawText}`.trim();
       return {
         slot: block.slot >= 1 && block.slot <= 90 ? block.slot : index + 1,
@@ -338,6 +347,8 @@ function TheForge2() {
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const previewStageRef = useRef(null);
+  const productionScrollTopRef = useRef(null);
+  const productionTableWrapRef = useRef(null);
 
   const runAction = async (label, action) => {
     setBusyAction(label);
@@ -750,6 +761,17 @@ function TheForge2() {
   const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
   const productionItems = normalizeProductionItems(studio.production_items);
 
+  const syncProductionScroll = (source) => {
+    const top = productionScrollTopRef.current;
+    const table = productionTableWrapRef.current;
+    if (!top || !table) return;
+    if (source === 'top') {
+      table.scrollLeft = top.scrollLeft;
+    } else {
+      top.scrollLeft = table.scrollLeft;
+    }
+  };
+
   const updateProductionItem = (slot, patch) => {
     updateStudioLocal((current) => ({
       ...current,
@@ -915,19 +937,27 @@ function TheForge2() {
               </button>
             </div>
 
-            <div className="forge2-production-table-wrap">
+            <div
+              className="forge2-production-scroll-top"
+              ref={productionScrollTopRef}
+              onScroll={() => syncProductionScroll('top')}
+            >
+              <div className="forge2-production-scroll-spacer" />
+            </div>
+
+            <div
+              className="forge2-production-table-wrap"
+              ref={productionTableWrapRef}
+              onScroll={() => syncProductionScroll('table')}
+            >
               <table className="forge2-production-table">
                 <thead>
                   <tr>
                     <th>Nº</th>
                     <th>Título</th>
                     <th>Texto bruto</th>
-                    <th>Texto tratado</th>
                     <th>Tema</th>
                     <th>Status</th>
-                    <th>Vídeo base</th>
-                    <th>Estilo</th>
-                    <th>Agendamento</th>
                     <th>Ação</th>
                   </tr>
                 </thead>
@@ -939,10 +969,7 @@ function TheForge2() {
                         <input value={item.title} onChange={(event) => updateProductionItem(item.slot, { title: event.target.value, topic: event.target.value })} />
                       </td>
                       <td>
-                        <textarea rows={2} value={item.raw_text} onChange={(event) => updateProductionItem(item.slot, { raw_text: event.target.value })} />
-                      </td>
-                      <td>
-                        <textarea rows={2} value={item.treated_text} onChange={(event) => updateProductionItem(item.slot, { treated_text: event.target.value })} />
+                        <textarea rows={4} value={item.raw_text} onChange={(event) => updateProductionItem(item.slot, { raw_text: event.target.value })} />
                       </td>
                       <td>
                         <input value={item.topic} onChange={(event) => updateProductionItem(item.slot, { topic: event.target.value })} />
@@ -957,20 +984,6 @@ function TheForge2() {
                           <option value="renderizado">Renderizado</option>
                           <option value="agendado">Agendado</option>
                         </select>
-                      </td>
-                      <td>
-                        <input value={item.base_video} onChange={(event) => updateProductionItem(item.slot, { base_video: event.target.value })} />
-                      </td>
-                      <td>
-                        <select value={item.style} onChange={(event) => updateProductionItem(item.slot, { style: event.target.value })}>
-                          <option value="oracao">Oração</option>
-                          <option value="frase_dia">Frase do dia</option>
-                          <option value="historia_motivacional">História</option>
-                          <option value="motivacional">Motivacional</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input type="datetime-local" value={item.schedule_at} onChange={(event) => updateProductionItem(item.slot, { schedule_at: event.target.value })} />
                       </td>
                       <td>
                         <div className="forge2-production-actions">
