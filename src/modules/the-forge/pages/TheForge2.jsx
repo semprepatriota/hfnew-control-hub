@@ -147,8 +147,55 @@ function createDefaultStudio() {
       { id: 'preset_2', label: 'Preset 2', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'frase_dia' },
       { id: 'preset_3', label: 'Preset 3', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'motivacional' },
     ],
+    production_table_collapsed: false,
+    production_import_text: '',
+    production_items: createEmptyProductionItems(),
     preview_muted: false,
     preview_loop: true,
+  };
+}
+
+function createEmptyProductionItems() {
+  return Array.from({ length: 90 }, (_, index) => ({
+    slot: index + 1,
+    title: '',
+    raw_text: '',
+    treated_text: '',
+    topic: '',
+    status: 'vazio',
+    base_video: '',
+    style: 'oracao',
+    schedule_at: '',
+  }));
+}
+
+function normalizeProductionItems(items = []) {
+  const bySlot = new Map((items || []).map((item) => [Number(item.slot), item]));
+  return createEmptyProductionItems().map((empty) => ({
+    ...empty,
+    ...(bySlot.get(empty.slot) || {}),
+    slot: empty.slot,
+  }));
+}
+
+function normalizeStudio(studio) {
+  const defaults = createDefaultStudio();
+  const next = studio || defaults;
+  return {
+    ...defaults,
+    ...next,
+    text_overlay: {
+      ...defaults.text_overlay,
+      ...(next.text_overlay || {}),
+    },
+    publication: {
+      ...defaults.publication,
+      ...(next.publication || {}),
+    },
+    presets: next.presets || defaults.presets,
+    production_items: normalizeProductionItems(next.production_items),
+    production_import_text: next.production_import_text || '',
+    production_table_collapsed: Boolean(next.production_table_collapsed),
   };
 }
 
@@ -174,6 +221,57 @@ function hexToRgba(hex, opacity) {
 
 function clampPercent(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Number(value) || 0));
+}
+
+function inferProductionStyle(text) {
+  const value = (text || '').toLowerCase();
+  if (value.includes('oração') || value.includes('oracao') || value.includes('amém') || value.includes('amem')) {
+    return 'oracao';
+  }
+  if (value.includes('história') || value.includes('historia')) {
+    return 'historia_motivacional';
+  }
+  if (value.includes('motiv')) {
+    return 'motivacional';
+  }
+  return 'frase_dia';
+}
+
+function parseProductionImportText(text) {
+  const source = (text || '').replace(/\r\n/g, '\n').trim();
+  if (!source) return [];
+  const matches = [...source.matchAll(/(?:^|\n)\s*(\d{1,3})[.)-]\s+(.+?)(?=\n\s*\d{1,3}[.)-]\s+|\s*$)/gs)];
+  const blocks = matches.length
+    ? matches.map((match) => ({ slot: Number(match[1]), content: match[2].trim() }))
+    : source.split(/\n{2,}/).map((content, index) => ({ slot: index + 1, content: content.trim() }));
+
+  return blocks
+    .filter((block) => block.content)
+    .slice(0, 90)
+    .map((block, index) => {
+      const lines = block.content.split('\n').map((line) => line.trim()).filter(Boolean);
+      const title = (lines[0] || `Publicação ${index + 1}`).replace(/^[#*\s-]+/, '').slice(0, 180);
+      const rawText = lines.slice(1).join('\n\n') || title;
+      const fullText = `${title}\n\n${rawText}`.trim();
+      return {
+        slot: block.slot >= 1 && block.slot <= 90 ? block.slot : index + 1,
+        title,
+        raw_text: rawText,
+        treated_text: rawText,
+        topic: title,
+        status: 'pronto',
+        base_video: '',
+        style: inferProductionStyle(fullText),
+        schedule_at: '',
+      };
+    });
+}
+
+function productionItemText(item) {
+  return [item?.title, item?.treated_text || item?.raw_text]
+    .filter(Boolean)
+    .join('\n\n')
+    .trim();
 }
 
 function ProjectCard({ item, active, onClick, onDelete }) {
@@ -271,7 +369,7 @@ function TheForge2() {
     setSelectedProjectId(projectId);
     setProject(projectData.project || null);
     setLastRender(projectData.edit_plan?.render_settings?.studio_last_render || null);
-    setStudio(studioData.studio || createDefaultStudio());
+    setStudio(normalizeStudio(studioData.studio || createDefaultStudio()));
     setCopyAgent((current) => ({
       ...current,
       ...agentData,
@@ -296,7 +394,7 @@ function TheForge2() {
   const persistStudio = async (nextStudio, successMessage = 'Configuração do estúdio salva.') => {
     if (!selectedProjectId) return;
     const data = await saveForge2StudioConfig(selectedProjectId, nextStudio);
-    setStudio(data.studio);
+    setStudio(normalizeStudio(data.studio));
     setMessage(successMessage);
   };
 
@@ -392,7 +490,7 @@ function TheForge2() {
         style: studio.text_overlay.style,
         target_seconds: targetSeconds,
       });
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setMessage(`Texto gerado via ${data.generated.source} com alvo de ${targetSeconds}s.`);
     });
   };
@@ -402,7 +500,7 @@ function TheForge2() {
     await runAction('generate-publication', async () => {
       const saved = await saveForge2StudioConfig(selectedProjectId, studio);
       const data = await generateForge2Publication(selectedProjectId, saved.studio);
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setMessage('Publicação gerada com Gerador FORGE.');
     });
   };
@@ -411,7 +509,7 @@ function TheForge2() {
     if (!selectedProjectId || !baseUploadFile) return;
     await runAction('upload-base', async () => {
       const data = await uploadForge2BaseVideo(selectedProjectId, baseUploadFile, libraryTab);
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setBaseUploadFile(null);
       setMessage('Vídeo base adicionado à biblioteca.');
     });
@@ -421,7 +519,7 @@ function TheForge2() {
     if (!selectedProjectId || !gifUploadFile) return;
     await runAction('upload-gif', async () => {
       const data = await uploadForge2Gif(selectedProjectId, gifUploadFile);
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setGifUploadFile(null);
       setMessage('GIF adicionado ao projeto.');
     });
@@ -431,7 +529,7 @@ function TheForge2() {
     if (!selectedProjectId || !musicUploadFile) return;
     await runAction('upload-music', async () => {
       const data = await uploadForge2Music(selectedProjectId, musicUploadFile);
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setMusicUploadFile(null);
       setMessage('Faixa de música adicionada.');
     });
@@ -460,7 +558,7 @@ function TheForge2() {
     if (!selectedProjectId || !assetId) return;
     await runAction('remove-asset', async () => {
       const data = await removeForge2Asset(selectedProjectId, assetKind, assetId);
-      setStudio(data.studio);
+      setStudio(normalizeStudio(data.studio));
       setLastRender(null);
       setMessage('Item removido da biblioteca.');
     });
@@ -611,7 +709,7 @@ function TheForge2() {
     await runAction('render-forge2', async () => {
       await saveForge2StudioConfig(selectedProjectId, studio);
       const data = await renderForge2Studio(selectedProjectId);
-      setStudio(data.studio || studio);
+      setStudio(normalizeStudio(data.studio || studio));
       setProject(data.project || project);
       setLastRender(data.render);
       setMessage('Render final do Forge 2.0 concluído.');
@@ -650,6 +748,110 @@ function TheForge2() {
 
   const renderAspectClass = studio.output_aspect_ratio === '1:1' ? 'square' : 'vertical';
   const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
+  const productionItems = normalizeProductionItems(studio.production_items);
+
+  const updateProductionItem = (slot, patch) => {
+    updateStudioLocal((current) => ({
+      ...current,
+      production_items: normalizeProductionItems(current.production_items).map((item) => (
+        item.slot === slot ? { ...item, ...patch } : item
+      )),
+    }));
+  };
+
+  const handleImportProductionTable = async () => {
+    const parsed = parseProductionImportText(studio.production_import_text);
+    if (!parsed.length) {
+      setError('Cole as publicações enumeradas antes de inserir na tabela.');
+      return;
+    }
+    await runAction('import-production-table', async () => {
+      const importedBySlot = new Map(parsed.map((item, index) => [item.slot || index + 1, { ...item, slot: item.slot || index + 1 }]));
+      const nextStudio = {
+        ...studio,
+        production_items: createEmptyProductionItems().map((empty) => importedBySlot.get(empty.slot) || empty),
+      };
+      await persistStudio(nextStudio, `${parsed.length} publicações inseridas na tabela.`);
+    });
+  };
+
+  const handleUseProductionItem = (item) => {
+    const text = productionItemText(item);
+    if (!text) {
+      setError('Essa linha ainda não tem conteúdo.');
+      return;
+    }
+    updateStudioLocal((current) => ({
+      ...current,
+      text_overlay: {
+        ...current.text_overlay,
+        topic: item.topic || item.title,
+        style: item.style || current.text_overlay.style,
+        generated_text: item.treated_text || item.raw_text,
+      },
+      publication: {
+        ...current.publication,
+        title: item.title || current.publication.title,
+        schedule_at: item.schedule_at || current.publication.schedule_at,
+      },
+      production_items: normalizeProductionItems(current.production_items).map((entry) => (
+        entry.slot === item.slot ? { ...entry, status: 'em_edicao' } : entry
+      )),
+    }));
+    setMessage(`Publicação ${item.slot} enviada para Frase e enquadramento.`);
+  };
+
+  const handleGenerateProductionItem = async (item) => {
+    const text = productionItemText(item);
+    if (!selectedProjectId || !text) {
+      setError('Selecione um projeto e uma linha com conteúdo.');
+      return;
+    }
+    await runAction(`generate-production-${item.slot}`, async () => {
+      const preparedStudio = {
+        ...studio,
+        text_overlay: {
+          ...studio.text_overlay,
+          topic: item.topic || item.title,
+          style: item.style || studio.text_overlay.style,
+          generated_text: item.treated_text || item.raw_text,
+        },
+        publication: {
+          ...studio.publication,
+          title: item.title || studio.publication.title,
+          schedule_at: item.schedule_at || studio.publication.schedule_at,
+        },
+        production_items: productionItems.map((entry) => (
+          entry.slot === item.slot ? { ...entry, status: 'gerando' } : entry
+        )),
+      };
+      await saveForge2StudioConfig(selectedProjectId, preparedStudio);
+      const data = await generateForge2Copy(selectedProjectId, {
+        topic: text,
+        style: item.style || studio.text_overlay.style,
+        target_seconds: Math.max(18, Math.min(45, Math.round(Number(selectedBaseAsset?.duration || 24)))),
+      });
+      const generatedText = data.studio?.text_overlay?.generated_text || '';
+      const finalStudio = {
+        ...normalizeStudio(data.studio),
+        production_items: normalizeProductionItems(data.studio?.production_items).map((entry) => (
+          entry.slot === item.slot
+            ? {
+                ...entry,
+                title: item.title,
+                raw_text: item.raw_text,
+                treated_text: generatedText || entry.treated_text,
+                topic: item.topic || item.title,
+                style: item.style,
+                status: 'gerado',
+                schedule_at: item.schedule_at,
+              }
+            : entry
+        )),
+      };
+      await persistStudio(finalStudio, `Publicação ${item.slot} gerada com Gerador FORGE.`);
+    });
+  };
 
   return (
     <div className="forge2-page forge2-page-rebuilt">
@@ -670,6 +872,123 @@ function TheForge2() {
         {FORGE2_ITEMS.map((item, index) => (
           <span key={item}><strong>{index + 1}.</strong> {item}</span>
         ))}
+      </section>
+
+      <section className={`forge2-panel forge2-production-panel ${studio.production_table_collapsed ? 'collapsed' : ''}`}>
+        <div className="forge2-panel-header">
+          <div>
+            <h2>Tabela de Produção</h2>
+            <span className="forge2-panel-subtitle">90 espaços para organizar publicações e enviar direto ao Forge.</span>
+          </div>
+          <div className="forge2-production-header-actions">
+            <button type="button" onClick={() => persistStudio(studio, 'Tabela de produção salva.')} disabled={!selectedProjectId || Boolean(busyAction)}>
+              <Save size={16} />
+              Salvar tabela
+            </button>
+            <button
+              type="button"
+              onClick={() => updateStudioLocal((current) => ({ ...current, production_table_collapsed: !current.production_table_collapsed }))}
+            >
+              {studio.production_table_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {!studio.production_table_collapsed && (
+          <div className="forge2-production-body">
+            <div className="forge2-production-import">
+              <label>
+                <span>Colar publicações enumeradas</span>
+                <textarea
+                  rows={7}
+                  value={studio.production_import_text || ''}
+                  placeholder={'14. Oração a São Peregrino\n\nORAÇÃO A SÃO PEREGRINO\n\nÓ glorioso São Peregrino...'}
+                  onChange={(event) => updateStudioLocal((current) => ({
+                    ...current,
+                    production_import_text: event.target.value,
+                  }))}
+                />
+              </label>
+              <button type="button" className="forge2-primary-action" onClick={handleImportProductionTable} disabled={Boolean(busyAction)}>
+                <Sparkles size={16} />
+                Inserir na tabela
+              </button>
+            </div>
+
+            <div className="forge2-production-table-wrap">
+              <table className="forge2-production-table">
+                <thead>
+                  <tr>
+                    <th>Nº</th>
+                    <th>Título</th>
+                    <th>Texto bruto</th>
+                    <th>Texto tratado</th>
+                    <th>Tema</th>
+                    <th>Status</th>
+                    <th>Vídeo base</th>
+                    <th>Estilo</th>
+                    <th>Agendamento</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productionItems.map((item) => (
+                    <tr key={item.slot} className={productionItemText(item) ? 'filled' : ''}>
+                      <td>{item.slot}</td>
+                      <td>
+                        <input value={item.title} onChange={(event) => updateProductionItem(item.slot, { title: event.target.value, topic: event.target.value })} />
+                      </td>
+                      <td>
+                        <textarea rows={2} value={item.raw_text} onChange={(event) => updateProductionItem(item.slot, { raw_text: event.target.value })} />
+                      </td>
+                      <td>
+                        <textarea rows={2} value={item.treated_text} onChange={(event) => updateProductionItem(item.slot, { treated_text: event.target.value })} />
+                      </td>
+                      <td>
+                        <input value={item.topic} onChange={(event) => updateProductionItem(item.slot, { topic: event.target.value })} />
+                      </td>
+                      <td>
+                        <select value={item.status} onChange={(event) => updateProductionItem(item.slot, { status: event.target.value })}>
+                          <option value="vazio">Vazio</option>
+                          <option value="pronto">Pronto</option>
+                          <option value="em_edicao">Em edição</option>
+                          <option value="gerando">Gerando</option>
+                          <option value="gerado">Gerado</option>
+                          <option value="renderizado">Renderizado</option>
+                          <option value="agendado">Agendado</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input value={item.base_video} onChange={(event) => updateProductionItem(item.slot, { base_video: event.target.value })} />
+                      </td>
+                      <td>
+                        <select value={item.style} onChange={(event) => updateProductionItem(item.slot, { style: event.target.value })}>
+                          <option value="oracao">Oração</option>
+                          <option value="frase_dia">Frase do dia</option>
+                          <option value="historia_motivacional">História</option>
+                          <option value="motivacional">Motivacional</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="datetime-local" value={item.schedule_at} onChange={(event) => updateProductionItem(item.slot, { schedule_at: event.target.value })} />
+                      </td>
+                      <td>
+                        <div className="forge2-production-actions">
+                          <button type="button" onClick={() => handleUseProductionItem(item)} disabled={!productionItemText(item)}>
+                            Usar no Forge
+                          </button>
+                          <button type="button" onClick={() => handleGenerateProductionItem(item)} disabled={!selectedProjectId || !productionItemText(item) || Boolean(busyAction)}>
+                            Gerar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="forge2-shell">

@@ -178,6 +178,117 @@
   padding-bottom: 12px;
 }
 
+.forge2-production-panel {
+  margin-bottom: 18px;
+}
+
+.forge2-production-panel.collapsed {
+  padding-bottom: 12px;
+}
+
+.forge2-production-header-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.forge2-production-body {
+  display: grid;
+  gap: 14px;
+}
+
+.forge2-production-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.forge2-production-import label {
+  display: grid;
+  gap: 7px;
+}
+
+.forge2-production-import span {
+  color: var(--forge2-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.forge2-production-import textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.forge2-production-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--forge2-line);
+  border-radius: 14px;
+  max-height: 560px;
+  background: rgba(4, 8, 14, 0.42);
+}
+
+.forge2-production-table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.forge2-production-table th,
+.forge2-production-table td {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 8px;
+  vertical-align: top;
+}
+
+.forge2-production-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  color: var(--forge2-ink);
+  background: rgba(7, 12, 22, 0.96);
+}
+
+.forge2-production-table tr.filled {
+  background: rgba(30, 64, 175, 0.08);
+}
+
+.forge2-production-table td:first-child {
+  color: var(--forge2-soft);
+  font-weight: 900;
+  width: 42px;
+}
+
+.forge2-production-table input,
+.forge2-production-table select,
+.forge2-production-table textarea {
+  width: 100%;
+  min-width: 120px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(9, 14, 24, 0.92);
+  color: var(--forge2-ink);
+}
+
+.forge2-production-table textarea {
+  min-width: 210px;
+  resize: vertical;
+}
+
+.forge2-production-actions {
+  display: grid;
+  gap: 7px;
+  min-width: 120px;
+}
+
+.forge2-production-actions button {
+  padding: 8px 10px !important;
+  min-height: 32px;
+}
+
 .forge2-agent-box-top {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
