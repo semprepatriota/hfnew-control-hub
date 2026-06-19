@@ -628,8 +628,9 @@
 
 .forge2-preview-stage {
   position: relative;
-  width: min(100%, 640px);
+  width: min(100%, 340px);
   max-width: 100%;
+  max-height: 560px;
   margin: 0 auto;
   border-radius: 24px;
   overflow: hidden;
@@ -1038,8 +1039,9 @@
 
 .forge2-render-preview-stage {
   position: relative;
-  width: min(100%, 360px);
+  width: min(100%, 340px);
   max-width: 100%;
+  max-height: 560px;
   margin: 0 auto;
   overflow: hidden;
   border-radius: 18px;
@@ -1293,7 +1295,8 @@
     grid-template-columns: 1fr;
   }
 
-  .forge2-preview-stage {
+  .forge2-preview-stage,
+  .forge2-render-preview-stage {
     max-width: 720px;
     margin: 0 auto;
   }
@@ -1326,5 +1329,10 @@
   .forge2-presets-grid,
   .forge2-preset-actions {
     grid-template-columns: 1fr;
+  }
+
+  .forge2-preview-stage,
+  .forge2-render-preview-stage {
+    max-height: 400px;
   }
 }
