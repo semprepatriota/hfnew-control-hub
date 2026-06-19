@@ -846,64 +846,30 @@ function TheForge2() {
     }
   };
 
-  const handleGenerateProductionItem = async (item) => {
-    const text = productionItemText(item);
-    if (!selectedProjectId || !text) {
-      setError('Selecione um projeto e uma linha com conteúdo.');
+  const handleDeleteProductionItem = async (slot) => {
+    const currentItems = normalizeProductionItems(studio.production_items);
+    const item = currentItems.find((entry) => entry.slot === slot);
+    if (!item || !productionItemText(item)) {
+      setError('Essa linha já está vazia.');
       return;
     }
-    await runAction(`generate-production-${item.slot}`, async () => {
-      const preparedStudio = {
-        ...studio,
-        text_overlay: {
-          ...studio.text_overlay,
-          topic: item.topic || item.title,
-          style: item.style || studio.text_overlay.style,
-          generated_text: item.treated_text || item.raw_text,
-        },
-        publication: {
-          ...studio.publication,
-          title: item.title || studio.publication.title,
-          schedule_at: item.schedule_at || studio.publication.schedule_at,
-        },
-        production_items: productionItems.map((entry) => (
-          entry.slot === item.slot ? { ...entry, status: 'gerando' } : entry
-        )),
-      };
-      await saveForge2StudioConfig(selectedProjectId, preparedStudio);
-      const data = await generateForge2Copy(selectedProjectId, {
-        topic: [
-          'MODO TABELA DE PRODUÇÃO.',
-          'Reescreva e melhore o conteúdo abaixo seguindo o mesmo tema e intenção.',
-          'Não copie literalmente. Não encurte demais. Não seja genérico.',
-          'Mantenha linguagem forte, envolvente, emocional e pronta para vídeo curto.',
-          'Preserve nomes, santos, fatos, personagens e sentido central.',
-          '',
-          text,
-        ].join('\n'),
-        style: item.style || studio.text_overlay.style,
-        target_seconds: 45,
+    const compactItems = currentItems
+      .filter((entry) => entry.slot !== slot)
+      .filter((entry) => productionItemText(entry))
+      .map((entry, index) => ({ ...entry, slot: index + 1 }));
+    const nextItems = createEmptyProductionItems().map((empty, index) => compactItems[index] || empty);
+    const nextStudio = {
+      ...studio,
+      production_items: nextItems,
+    };
+    if (selectedProjectId) {
+      await runAction(`delete-production-${slot}`, async () => {
+        await persistStudio(nextStudio, `Publicação ${slot} excluída. As linhas abaixo subiram automaticamente.`);
       });
-      const generatedText = data.studio?.text_overlay?.generated_text || '';
-      const finalStudio = {
-        ...normalizeStudio(data.studio),
-        production_items: normalizeProductionItems(data.studio?.production_items).map((entry) => (
-          entry.slot === item.slot
-            ? {
-                ...entry,
-                title: item.title,
-                raw_text: item.raw_text,
-                treated_text: generatedText || entry.treated_text,
-                topic: item.topic || item.title,
-                style: item.style,
-                status: 'gerado',
-                schedule_at: item.schedule_at,
-              }
-            : entry
-        )),
-      };
-      await persistStudio(finalStudio, `Publicação ${item.slot} gerada com Gerador FORGE.`);
-    });
+    } else {
+      setStudio(nextStudio);
+      setMessage(`Publicação ${slot} excluída. As linhas abaixo subiram automaticamente.`);
+    }
   };
 
   return (
@@ -995,7 +961,21 @@ function TheForge2() {
                 <tbody>
                   {productionItems.map((item) => (
                     <tr key={item.slot} className={productionItemText(item) ? 'filled' : ''}>
-                      <td>{item.slot}</td>
+                      <td>
+                        <div className="forge2-production-index">
+                          <button
+                            type="button"
+                            className="forge2-production-delete"
+                            onClick={() => handleDeleteProductionItem(item.slot)}
+                            disabled={!productionItemText(item) || Boolean(busyAction)}
+                            aria-label={`Excluir publicação ${item.slot}`}
+                            title="Excluir publicação e subir as próximas"
+                          >
+                            X
+                          </button>
+                          <span>{item.slot}</span>
+                        </div>
+                      </td>
                       <td>
                         <input value={item.title} onChange={(event) => updateProductionItem(item.slot, { title: event.target.value, topic: event.target.value })} />
                       </td>
@@ -1020,9 +1000,6 @@ function TheForge2() {
                         <div className="forge2-production-actions">
                           <button type="button" onClick={() => handleUseProductionItem(item)} disabled={!productionItemText(item)}>
                             Usar no Forge
-                          </button>
-                          <button type="button" onClick={() => handleGenerateProductionItem(item)} disabled={!selectedProjectId || !productionItemText(item) || Boolean(busyAction)}>
-                            Melhorar texto
                           </button>
                         </div>
                       </td>

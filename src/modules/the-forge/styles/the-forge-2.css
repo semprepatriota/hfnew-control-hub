@@ -307,7 +307,37 @@
 .forge2-production-table td:first-child {
   color: var(--forge2-soft);
   font-weight: 900;
-  width: 42px;
+  width: 68px;
+}
+
+.forge2-production-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 56px;
+}
+
+.forge2-production-delete {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-height: 18px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(248, 113, 113, 0.75) !important;
+  background: rgba(127, 29, 29, 0.84) !important;
+  color: #fecaca !important;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.forge2-production-delete:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
 }
 
 .forge2-production-table th:nth-child(2),
