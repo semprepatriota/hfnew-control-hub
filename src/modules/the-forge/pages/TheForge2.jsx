@@ -849,9 +849,17 @@ function TheForge2() {
       };
       await saveForge2StudioConfig(selectedProjectId, preparedStudio);
       const data = await generateForge2Copy(selectedProjectId, {
-        topic: text,
+        topic: [
+          'MODO TABELA DE PRODUÇÃO.',
+          'Reescreva e melhore o conteúdo abaixo seguindo o mesmo tema e intenção.',
+          'Não copie literalmente. Não encurte demais. Não seja genérico.',
+          'Mantenha linguagem forte, envolvente, emocional e pronta para vídeo curto.',
+          'Preserve nomes, santos, fatos, personagens e sentido central.',
+          '',
+          text,
+        ].join('\n'),
         style: item.style || studio.text_overlay.style,
-        target_seconds: Math.max(18, Math.min(45, Math.round(Number(selectedBaseAsset?.duration || 24)))),
+        target_seconds: 45,
       });
       const generatedText = data.studio?.text_overlay?.generated_text || '';
       const finalStudio = {
@@ -988,10 +996,10 @@ function TheForge2() {
                       <td>
                         <div className="forge2-production-actions">
                           <button type="button" onClick={() => handleUseProductionItem(item)} disabled={!productionItemText(item)}>
-                            Usar no Forge
+                            Puxar da Tabela {item.slot}/90
                           </button>
                           <button type="button" onClick={() => handleGenerateProductionItem(item)} disabled={!selectedProjectId || !productionItemText(item) || Boolean(busyAction)}>
-                            Gerar
+                            Melhorar texto
                           </button>
                         </div>
                       </td>
