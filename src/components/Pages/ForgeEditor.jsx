@@ -1241,7 +1241,9 @@ function ForgeEditor() {
     }
     setRenderResult(null);
     setImageProductionItems((current) => normalizeForge7030ImageTable(
-      current.map((entry) => (entry.id === item.id ? { ...entry, status: 'em_edicao' } : entry))
+      current
+        .filter((entry) => entry.status !== 'renderizado' || entry.id === item.id)
+        .map((entry) => (entry.id === item.id ? { ...entry, status: 'em_edicao' } : entry))
     ));
     setActiveImageProductionItemId(item.id);
     setImageProductionMessage(`Imagem ${item.slot}/60 puxada para o Forge 70/30.`);
@@ -1941,6 +1943,7 @@ function ForgeEditor() {
               : entry
           ))
         ));
+        setImageProductionMessage('Render concluído. Ao puxar o próximo post, a imagem renderizada sai da tabela automaticamente.');
       }
     } catch (err) {
       setError(err.message);
