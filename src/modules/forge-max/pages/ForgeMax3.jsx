@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Clapperboard,
+  ChevronDown,
+  ChevronUp,
   Film,
   FolderOpen,
   Layers3,
@@ -42,6 +44,8 @@ function ForgeMax3() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
+  const [structureCollapsed, setStructureCollapsed] = useState(false);
   const inputRef = useRef(null);
 
   const assets = project?.assets || [];
@@ -167,34 +171,39 @@ function ForgeMax3() {
       </section>
 
       <section className="forge-max-workspace">
-        <section className="forge-max-panel forge-max-library-panel">
+        <section className={`forge-max-panel forge-max-library-panel ${libraryCollapsed ? 'collapsed' : ''}`}>
           <div className="forge-max-panel-header">
             <div>
               <span className="forge-max-section-icon"><FolderOpen size={17} /></span>
               <h2>Biblioteca de Vídeos</h2>
               <p>Até {maxLibraryItems} clipes. Passe o mouse para revisar antes de selecionar.</p>
             </div>
-            <label className={`forge-max-upload ${availableSlots && project ? '' : 'disabled'}`}>
-              <Upload size={16} />
-              Adicionar vídeos
-              <input
-                ref={inputRef}
-                type="file"
-                accept="video/*"
-                multiple
-                disabled={!availableSlots || !project || Boolean(busy)}
-                onChange={handleFiles}
-              />
-            </label>
+            <div className="forge-max-panel-actions">
+              <label className={`forge-max-upload ${availableSlots && project ? '' : 'disabled'}`}>
+                <Upload size={16} />
+                Adicionar vídeos
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  disabled={!availableSlots || !project || Boolean(busy)}
+                  onChange={handleFiles}
+                />
+              </label>
+              <button type="button" className="forge-max-collapse" onClick={() => setLibraryCollapsed((current) => !current)} aria-label={libraryCollapsed ? 'Abrir biblioteca' : 'Recolher biblioteca'}>
+                {libraryCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+              </button>
+            </div>
           </div>
 
-          {!assets.length ? (
+          {!libraryCollapsed && !assets.length ? (
             <div className="forge-max-library-empty">
               <Film size={30} />
               <strong>Nenhum vídeo selecionado</strong>
               <span>Adicione vídeos para montar a biblioteca do projeto.</span>
             </div>
-          ) : (
+          ) : !libraryCollapsed ? (
             <div className="forge-max-library-grid">
               {assets.map((asset, index) => (
                 <article key={asset.id} className={`forge-max-library-card ${asset.id === selectedAssetId ? 'selected' : ''}`}>
@@ -251,28 +260,35 @@ function ForgeMax3() {
           </div>
         </section>
 
-        <section className="forge-max-panel forge-max-roadmap-panel">
+        <section className={`forge-max-panel forge-max-roadmap-panel ${structureCollapsed ? 'collapsed' : ''}`}>
           <div className="forge-max-panel-header">
             <div>
               <span className="forge-max-section-icon"><Layers3 size={17} /></span>
               <h2>Estrutura da Edição</h2>
               <p>Esta fase não altera renderização nem APIs existentes.</p>
             </div>
+            <button type="button" className="forge-max-collapse" onClick={() => setStructureCollapsed((current) => !current)} aria-label={structureCollapsed ? 'Abrir estrutura de edição' : 'Recolher estrutura de edição'}>
+              {structureCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+            </button>
           </div>
-          <div className="forge-max-track-list">
-            <span><b>V1</b> Vídeos principais</span>
-            <span><b>V2</b> União de clipes</span>
-            <span><b>V3</b> Imagens e B-roll</span>
-            <span><b>V4</b> GIFs e overlays</span>
-            <span><b>TXT</b> Títulos e textos</span>
-            <span><b>SUB</b> Legendas sincronizadas</span>
-            <span><b>A1</b> Áudio original</span>
-            <span><b>A2</b> Música de fundo</span>
-          </div>
-          <div className="forge-max-phase-note">
-            <Trash2 size={16} />
-            <span>Nada é enviado ou renderizado nesta fase. A biblioteca é visual e local ao navegador.</span>
-          </div>
+          {!structureCollapsed && (
+            <>
+              <div className="forge-max-track-list">
+                <span><b>V1</b> Vídeos principais</span>
+                <span><b>V2</b> União de clipes</span>
+                <span><b>V3</b> Imagens e B-roll</span>
+                <span><b>V4</b> GIFs e overlays</span>
+                <span><b>TXT</b> Títulos e textos</span>
+                <span><b>SUB</b> Legendas sincronizadas</span>
+                <span><b>A1</b> Áudio original</span>
+                <span><b>A2</b> Música de fundo</span>
+              </div>
+              <div className="forge-max-phase-note">
+                <Trash2 size={16} />
+                <span>Nada é enviado ou renderizado nesta fase. A biblioteca é visual e local ao navegador.</span>
+              </div>
+            </>
+          )}
         </section>
       </section>
 

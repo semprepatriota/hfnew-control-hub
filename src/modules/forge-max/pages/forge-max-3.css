@@ -433,6 +433,31 @@
   color: var(--max-green);
 }
 
+.forge-max-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forge-max-collapse {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+  border: 1px solid var(--max-line);
+  border-radius: 6px;
+  color: var(--max-blue);
+  background: #0a0f17;
+  cursor: pointer;
+}
+
+.forge-max-library-panel.collapsed,
+.forge-max-roadmap-panel.collapsed {
+  min-height: 0;
+}
+
 .forge-max-toast {
   position: fixed;
   right: 20px;
