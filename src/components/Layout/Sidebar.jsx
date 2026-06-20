@@ -68,8 +68,8 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 6,
-      label: 'Forge Easy Editor',
-      path: '/the-forge/editor',
+      label: 'Forge Max 3.0',
+      path: '/forge-max',
       icon: LayoutPanelLeft,
       color: 'neon-green'
     },
