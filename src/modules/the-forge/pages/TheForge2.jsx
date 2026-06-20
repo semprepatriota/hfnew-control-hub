@@ -41,6 +41,7 @@ import {
   generateForge2Copy,
   generateForge2Publication,
   renderForge2Studio,
+  getForge2RenderStatus,
   scheduleForge2Render,
   publishForge2ToYouTube,
 } from '../services/forge2Api';
@@ -739,9 +740,41 @@ function TheForge2() {
     await runAction('render-forge2', async () => {
       await saveForge2StudioConfig(selectedProjectId, studio);
       const data = await renderForge2Studio(selectedProjectId);
-      setStudio(normalizeStudio(data.studio || studio));
-      setProject(data.project || project);
-      setLastRender(data.render);
+      const jobId = data.job?.id;
+      if (!jobId) {
+        throw new Error('A fila de renderização não retornou um identificador de trabalho.');
+      }
+
+      setMessage(data.job?.message || 'Render enviado para a fila exclusiva do Forge 2.0.');
+      let completedJob = null;
+      for (let attempt = 1; attempt <= 390; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        const statusData = await getForge2RenderStatus(selectedProjectId);
+        const job = statusData.job || {};
+        if (job.id && job.id !== jobId && ['queued', 'running'].includes(job.status)) {
+          throw new Error('Outro render do Forge 2.0 assumiu a fila deste projeto.');
+        }
+        if (job.status === 'completed') {
+          completedJob = job;
+          break;
+        }
+        if (job.status === 'failed') {
+          throw new Error(job.message || 'O render do Forge 2.0 falhou.');
+        }
+        setMessage(job.message || `Render do Forge 2.0 em andamento. Verificação ${attempt}.`);
+      }
+
+      if (!completedJob?.render) {
+        throw new Error('A renderização excedeu o tempo de acompanhamento. O trabalho foi preservado; atualize a página para consultar o status.');
+      }
+
+      const [studioData, projectData] = await Promise.all([
+        getForge2StudioConfig(selectedProjectId),
+        getForge2Project(selectedProjectId),
+      ]);
+      setStudio(normalizeStudio(studioData.studio || studio));
+      setProject(projectData.project || project);
+      setLastRender(completedJob.render);
       setMessage('Render final do Forge 2.0 concluído.');
     });
   };

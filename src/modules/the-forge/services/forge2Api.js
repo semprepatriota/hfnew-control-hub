@@ -197,6 +197,12 @@ export async function renderForge2Studio(projectId) {
   }));
 }
 
+export async function getForge2RenderStatus(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/render-status`), {
+    cache: 'no-store',
+  }));
+}
+
 export async function scheduleForge2Render(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge2/projects/${encodeURIComponent(projectId)}/schedule`), {
     method: 'POST',
