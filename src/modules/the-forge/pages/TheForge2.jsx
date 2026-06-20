@@ -150,6 +150,9 @@ function createDefaultStudio() {
     production_table_collapsed: false,
     production_import_text: '',
     production_items: createEmptyProductionItems(),
+    production_active_slot: 0,
+    render_counter_events: [],
+    render_count_24h: 0,
     preview_muted: false,
     preview_loop: true,
   };
@@ -817,6 +820,7 @@ function TheForge2() {
     production_items: normalizeProductionItems(current.production_items).map((entry) => (
       entry.slot === item.slot ? { ...entry, status: 'em_edicao' } : entry
     )),
+    production_active_slot: item.slot,
   });
 
   const handleImportProductionTable = async () => {
@@ -1215,6 +1219,13 @@ function TheForge2() {
                   <Sparkles size={15} />
                   Puxar da Tabela {nextProductionPullSlot}/90
                 </button>
+                <div
+                  className="forge2-render-counter"
+                  title="Vídeos renderizados nas últimas 24 horas"
+                  aria-label={`${studio.render_count_24h || 0} vídeos renderizados nas últimas 24 horas`}
+                >
+                  {Math.min(Number(studio.render_count_24h) || 0, 100)}
+                </div>
                 <button type="button" onClick={toggleLibrary}>
                   {studio.library_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
                 </button>
