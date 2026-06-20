@@ -44,6 +44,14 @@ export async function deleteForgeMaxVideo(projectId, assetId) {
   }));
 }
 
+export async function updateForgeMaxTimeline(projectId, clips) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/timeline`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clips }),
+  }));
+}
+
 export function forgeMaxFileUrl(path) {
   return apiUrl(path);
 }

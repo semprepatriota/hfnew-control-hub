@@ -107,7 +107,9 @@ const TEXT_ANIMATION_SPEEDS = [
 
 function createDefaultStudio() {
   return {
+    projects_collapsed: false,
     library_collapsed: false,
+    media_collapsed: false,
     selected_base_asset_id: '',
     output_aspect_ratio: '9:16',
     base_videos_vertical: [],
@@ -148,7 +150,7 @@ function createDefaultStudio() {
       { id: 'preset_2', label: 'Preset 2', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'frase_dia' },
       { id: 'preset_3', label: 'Preset 3', gif_asset_id: '', music_asset_id: '', volume: 0.7, text_style: 'motivacional' },
     ],
-    production_table_collapsed: false,
+    production_table_collapsed: true,
     production_import_text: '',
     production_items: createEmptyProductionItems(),
     production_active_slot: 0,
@@ -199,7 +201,9 @@ function normalizeStudio(studio) {
     presets: next.presets || defaults.presets,
     production_items: normalizeProductionItems(next.production_items),
     production_import_text: next.production_import_text || '',
+    projects_collapsed: Boolean(next.projects_collapsed),
     production_table_collapsed: Boolean(next.production_table_collapsed),
+    media_collapsed: Boolean(next.media_collapsed),
   };
 }
 
@@ -389,7 +393,10 @@ function TheForge2() {
     setSelectedProjectId(projectId);
     setProject(projectData.project || null);
     setLastRender(projectData.edit_plan?.render_settings?.studio_last_render || null);
-    setStudio(normalizeStudio(studioData.studio || createDefaultStudio()));
+    setStudio((current) => ({
+      ...normalizeStudio(studioData.studio || createDefaultStudio()),
+      production_table_collapsed: true,
+    }));
     setCopyAgent((current) => ({
       ...current,
       ...agentData,
@@ -564,6 +571,14 @@ function TheForge2() {
 
   const toggleLibrary = () => {
     updateStudioLocal((current) => ({ ...current, library_collapsed: !current.library_collapsed }));
+  };
+
+  const toggleProjectsPanel = () => {
+    updateStudioLocal((current) => ({ ...current, projects_collapsed: !current.projects_collapsed }));
+  };
+
+  const toggleMediaPanel = () => {
+    updateStudioLocal((current) => ({ ...current, media_collapsed: !current.media_collapsed }));
   };
 
   const selectBaseAsset = (asset, aspectRatio) => {
@@ -1069,32 +1084,41 @@ function TheForge2() {
 
       <section className="forge2-shell">
         <aside className="forge2-left-rail">
-          <section className="forge2-panel">
+          <section className={`forge2-panel forge2-projects-panel ${studio.projects_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <h2>Projetos</h2>
-              <button type="button" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busyAction)}>
-                <RefreshCw size={16} />
-              </button>
+              <div className="forge2-panel-header-actions">
+                <button type="button" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busyAction)}>
+                  <RefreshCw size={16} />
+                </button>
+                <button type="button" onClick={toggleProjectsPanel}>
+                  {studio.projects_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                </button>
+              </div>
             </div>
-            <div className="forge2-create-box">
-              <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} placeholder="Nome do projeto" />
-              <textarea value={newProjectDescription} onChange={(event) => setNewProjectDescription(event.target.value)} placeholder="Descrição do projeto" rows={3} />
-              <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busyAction)}>
-                <Plus size={16} />
-                Criar projeto
-              </button>
-            </div>
-            <div className="forge2-project-list">
-              {projects.map((item) => (
-                <ProjectCard
-                  key={item.id}
-                  item={item}
-                  active={item.id === selectedProjectId}
-                  onClick={() => runAction('load-project', () => loadProject(item.id))}
-                  onDelete={() => handleDeleteProject(item.id)}
-                />
-              ))}
-            </div>
+            {!studio.projects_collapsed && (
+              <>
+                <div className="forge2-create-box">
+                  <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} placeholder="Nome do projeto" />
+                  <textarea value={newProjectDescription} onChange={(event) => setNewProjectDescription(event.target.value)} placeholder="Descrição do projeto" rows={3} />
+                  <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busyAction)}>
+                    <Plus size={16} />
+                    Criar projeto
+                  </button>
+                </div>
+                <div className="forge2-project-list">
+                  {projects.map((item) => (
+                    <ProjectCard
+                      key={item.id}
+                      item={item}
+                      active={item.id === selectedProjectId}
+                      onClick={() => runAction('load-project', () => loadProject(item.id))}
+                      onDelete={() => handleDeleteProject(item.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </section>
 
           <section className={`forge2-text-controls forge2-text-controls-side ${textControlsCollapsed ? 'collapsed' : ''}`}>
@@ -1117,123 +1141,132 @@ function TheForge2() {
             )}
           </section>
 
-          <section className="forge2-panel forge2-media-panel">
+          <section className={`forge2-panel forge2-media-panel ${studio.media_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
                 <ImagePlus size={16} />
                 <h2>GIFs e música</h2>
               </div>
+              <button type="button" onClick={toggleMediaPanel}>
+                {studio.media_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+              </button>
             </div>
 
-            <div className="forge2-inline-upload compact-stack">
-              <label className="forge2-file-input compact">
-                <ImagePlus size={16} />
-                <span>{gifUploadFile ? gifUploadFile.name : 'Adicionar GIF'}</span>
-                <input type="file" accept=".gif,.webp,.png" onChange={(event) => setGifUploadFile(event.target.files?.[0] || null)} />
-              </label>
-              <button type="button" onClick={handleGifUpload} disabled={!selectedProjectId || !gifUploadFile || Boolean(busyAction)}>Enviar GIF</button>
-            </div>
-
-            <div className="forge2-asset-mini-list">
-              {(studio.gif_overlays || []).map((asset) => (
-                <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
-                  <button type="button" className="forge2-asset-mini-select" onClick={() => toggleGifEnabled(asset.id)}>
-                    <img src={forge2FileUrl(asset.url)} alt="" />
-                    <div><strong>{asset.filename}</strong><span>{asset.enabled ? 'Ativo no preview' : 'Clique para usar'}</span></div>
-                  </button>
-                  <button
-                    type="button"
-                    className="forge2-asset-mini-delete"
-                    aria-label={`Excluir ${asset.filename}`}
-                    onClick={() => removeAsset('gif', asset.id)}
-                  >
-                    ×
-                  </button>
+            {!studio.media_collapsed && (
+              <>
+                <div className="forge2-inline-upload compact-stack">
+                  <label className="forge2-file-input compact">
+                    <ImagePlus size={16} />
+                    <span>{gifUploadFile ? gifUploadFile.name : 'Adicionar GIF'}</span>
+                    <input type="file" accept=".gif,.webp,.png" onChange={(event) => setGifUploadFile(event.target.files?.[0] || null)} />
+                  </label>
+                  <button type="button" onClick={handleGifUpload} disabled={!selectedProjectId || !gifUploadFile || Boolean(busyAction)}>Enviar GIF</button>
                 </div>
-              ))}
-            </div>
 
-            {activeGif && (
-              <label className="forge2-volume-slider">
-                <span>Tamanho do GIF {Math.round((activeGif.overlay_scale || 1) * 100)}%</span>
-                <input
-                  type="range"
-                  min="20"
-                  max="300"
-                  value={Math.round((activeGif.overlay_scale || 1) * 100)}
-                  onChange={(event) => updateActiveGif({ overlay_scale: Number(event.target.value) / 100 })}
-                />
-              </label>
-            )}
-
-            <div className="forge2-inline-upload compact-stack">
-              <label className="forge2-file-input compact">
-                <AudioLines size={16} />
-                <span>{musicUploadFile ? musicUploadFile.name : 'Adicionar música'}</span>
-                <input type="file" accept=".mp3,.wav,.m4a,.aac,.ogg,audio/*" onChange={(event) => setMusicUploadFile(event.target.files?.[0] || null)} />
-              </label>
-              <button type="button" onClick={handleMusicUpload} disabled={!selectedProjectId || !musicUploadFile || Boolean(busyAction)}>Enviar áudio</button>
-            </div>
-
-            <div className="forge2-asset-mini-list audio">
-              {(studio.music_tracks || []).map((asset) => (
-                <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
-                  <button type="button" className="forge2-asset-mini-select" onClick={() => toggleMusicEnabled(asset.id)}>
-                    <div><strong>{asset.filename}</strong><span>{assetDurationLabel(asset)}</span></div>
-                  </button>
-                  <button
-                    type="button"
-                    className="forge2-asset-mini-delete"
-                    aria-label={`Excluir ${asset.filename}`}
-                    onClick={() => removeAsset('music', asset.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {activeMusic && (
-              <label className="forge2-volume-slider">
-                <span>Volume da faixa {Math.round((activeMusic.volume || 0) * 100)}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="120"
-                  value={Math.round((activeMusic.volume || 0) * 100)}
-                  onChange={(event) => updateStudioLocal((current) => ({
-                    ...current,
-                    music_tracks: current.music_tracks.map((item) => (
-                      item.id === activeMusic.id
-                        ? { ...item, volume: Number(event.target.value) / 100 }
-                        : item
-                    )),
-                  }))}
-                />
-              </label>
-            )}
-
-            <div className="forge2-presets-block">
-              <div className="forge2-presets-header">
-                <strong>Combinações salvas</strong>
-                <button type="button" onClick={() => persistStudio(studio, 'Ajustes de mídia salvos.')} disabled={!selectedProjectId || Boolean(busyAction)}>
-                  <Save size={16} />
-                  Salvar
-                </button>
-              </div>
-              <div className="forge2-presets-grid">
-                {(studio.presets || []).map((preset) => (
-                  <div key={preset.id} className="forge2-preset-card">
-                    <strong>{preset.label}</strong>
-                    <span>{preset.text_style || 'sem estilo'}</span>
-                    <div className="forge2-preset-actions">
-                      <button type="button" onClick={() => applyPresetSlot(preset.id)}>Aplicar</button>
-                      <button type="button" onClick={() => savePresetSlot(preset.id)}>Salvar</button>
+                <div className="forge2-asset-mini-list">
+                  {(studio.gif_overlays || []).map((asset) => (
+                    <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
+                      <button type="button" className="forge2-asset-mini-select" onClick={() => toggleGifEnabled(asset.id)}>
+                        <img src={forge2FileUrl(asset.url)} alt="" />
+                        <div><strong>{asset.filename}</strong><span>{asset.enabled ? 'Ativo no preview' : 'Clique para usar'}</span></div>
+                      </button>
+                      <button
+                        type="button"
+                        className="forge2-asset-mini-delete"
+                        aria-label={`Excluir ${asset.filename}`}
+                        onClick={() => removeAsset('gif', asset.id)}
+                      >
+                        ×
+                      </button>
                     </div>
+                  ))}
+                </div>
+
+                <div className="forge2-fine-controls">
+                  {activeGif && (
+                    <label className="forge2-volume-slider">
+                      <span>Tamanho do GIF {Math.round((activeGif.overlay_scale || 1) * 100)}%</span>
+                      <input
+                        type="range"
+                        min="20"
+                        max="300"
+                        value={Math.round((activeGif.overlay_scale || 1) * 100)}
+                        onChange={(event) => updateActiveGif({ overlay_scale: Number(event.target.value) / 100 })}
+                      />
+                    </label>
+                  )}
+
+                  <div className="forge2-inline-upload compact-stack">
+                    <label className="forge2-file-input compact">
+                      <AudioLines size={16} />
+                      <span>{musicUploadFile ? musicUploadFile.name : 'Adicionar música'}</span>
+                      <input type="file" accept=".mp3,.wav,.m4a,.aac,.ogg,audio/*" onChange={(event) => setMusicUploadFile(event.target.files?.[0] || null)} />
+                    </label>
+                    <button type="button" onClick={handleMusicUpload} disabled={!selectedProjectId || !musicUploadFile || Boolean(busyAction)}>Enviar áudio</button>
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  <div className="forge2-asset-mini-list audio">
+                    {(studio.music_tracks || []).map((asset) => (
+                      <div key={asset.id} className={`forge2-asset-mini-card ${asset.enabled ? 'active' : ''}`}>
+                        <button type="button" className="forge2-asset-mini-select" onClick={() => toggleMusicEnabled(asset.id)}>
+                          <div><strong>{asset.filename}</strong><span>{assetDurationLabel(asset)}</span></div>
+                        </button>
+                        <button
+                          type="button"
+                          className="forge2-asset-mini-delete"
+                          aria-label={`Excluir ${asset.filename}`}
+                          onClick={() => removeAsset('music', asset.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {activeMusic && (
+                    <label className="forge2-volume-slider">
+                      <span>Volume da faixa {Math.round((activeMusic.volume || 0) * 100)}%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="120"
+                        value={Math.round((activeMusic.volume || 0) * 100)}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          music_tracks: current.music_tracks.map((item) => (
+                            item.id === activeMusic.id
+                              ? { ...item, volume: Number(event.target.value) / 100 }
+                              : item
+                          )),
+                        }))}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="forge2-presets-block">
+                  <div className="forge2-presets-header">
+                    <strong>Combinações salvas</strong>
+                    <button type="button" onClick={() => persistStudio(studio, 'Ajustes de mídia salvos.')} disabled={!selectedProjectId || Boolean(busyAction)}>
+                      <Save size={16} />
+                      Salvar
+                    </button>
+                  </div>
+                  <div className="forge2-presets-grid">
+                    {(studio.presets || []).map((preset) => (
+                      <div key={preset.id} className="forge2-preset-card">
+                        <strong>{preset.label}</strong>
+                        <span>{preset.text_style || 'sem estilo'}</span>
+                        <div className="forge2-preset-actions">
+                          <button type="button" onClick={() => applyPresetSlot(preset.id)}>Aplicar</button>
+                          <button type="button" onClick={() => savePresetSlot(preset.id)}>Salvar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </section>
         </aside>
 

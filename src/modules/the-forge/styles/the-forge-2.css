@@ -119,6 +119,12 @@
   margin-bottom: 14px;
 }
 
+.forge2-panel-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .forge2-panel-header h2 {
   margin: 0;
   font-size: 18px;
@@ -219,6 +225,18 @@
 
 .forge2-production-panel.collapsed {
   padding-bottom: 12px;
+}
+
+.forge2-projects-panel.collapsed .forge2-create-box,
+.forge2-projects-panel.collapsed .forge2-project-list {
+  display: none;
+}
+
+.forge2-media-panel.collapsed .forge2-inline-upload,
+.forge2-media-panel.collapsed .forge2-asset-mini-list,
+.forge2-media-panel.collapsed .forge2-fine-controls,
+.forge2-media-panel.collapsed .forge2-presets-block {
+  display: none;
 }
 
 .forge2-production-header-actions {
@@ -466,6 +484,12 @@
 .forge2-asset-mini-list {
   display: grid;
   gap: 10px;
+}
+
+.forge2-fine-controls {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .forge2-project-card {
