@@ -22,7 +22,9 @@ import {
   getForgeMaxProject,
   listForgeMaxProjects,
   uploadForgeMaxVideo,
+  updateForgeMaxTimeline,
 } from '../services/forgeMaxApi';
+import ForgeMaxTimeline from '../components/ForgeMaxTimeline';
 import './forge-max-3.css';
 
 const MAX_LIBRARY_ITEMS = 20;
@@ -40,6 +42,7 @@ function ForgeMax3() {
   const [project, setProject] = useState(null);
   const [newProjectTitle, setNewProjectTitle] = useState('Projeto Forge Max');
   const [selectedAssetId, setSelectedAssetId] = useState('');
+  const [selectedTimelineClipId, setSelectedTimelineClipId] = useState('');
   const [health, setHealth] = useState(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -47,9 +50,15 @@ function ForgeMax3() {
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [structureCollapsed, setStructureCollapsed] = useState(false);
   const inputRef = useRef(null);
+  const previewVideoRef = useRef(null);
 
   const assets = project?.assets || [];
   const selectedAsset = assets.find((item) => item.id === selectedAssetId) || null;
+  const timelineClips = project?.timeline?.clips || [];
+  const selectedTimelineClip = timelineClips.find((item) => item.id === selectedTimelineClipId) || null;
+  const previewAsset = selectedTimelineClip
+    ? assets.find((item) => item.id === selectedTimelineClip.asset_id) || selectedAsset
+    : selectedAsset;
   const maxLibraryItems = health?.max_library_assets || MAX_LIBRARY_ITEMS;
   const availableSlots = Math.max(maxLibraryItems - assets.length, 0);
 
@@ -72,6 +81,7 @@ function ForgeMax3() {
     const data = await getForgeMaxProject(projectId);
     setProject(data);
     setSelectedAssetId((current) => data.assets.some((asset) => asset.id === current) ? current : (data.assets[0]?.id || ''));
+    setSelectedTimelineClipId((current) => data.timeline?.clips?.some((clip) => clip.id === current) ? current : '');
   };
 
   const refreshProjects = async () => {
@@ -96,6 +106,7 @@ function ForgeMax3() {
       const created = await createForgeMaxProject(newProjectTitle.trim());
       setProject(created);
       setSelectedAssetId('');
+      setSelectedTimelineClipId('');
       await refreshProjects();
       setMessage('Projeto Forge Max criado. Agora envie até 20 vídeos para a biblioteca.');
     });
@@ -125,9 +136,77 @@ function ForgeMax3() {
       const updated = await deleteForgeMaxVideo(project.project.id, assetId);
       setProject(updated);
       setSelectedAssetId((current) => (current === assetId ? (updated.assets[0]?.id || '') : current));
+      setSelectedTimelineClipId((current) => updated.timeline?.clips?.some((clip) => clip.id === current) ? current : '');
       await refreshProjects();
       setMessage('Vídeo removido da biblioteca do projeto.');
     });
+  };
+
+  const saveTimeline = async (nextClips, successMessage) => {
+    if (!project?.project?.id) return;
+    await runAction('save-timeline', async () => {
+      const updated = await updateForgeMaxTimeline(
+        project.project.id,
+        nextClips.map((clip) => ({
+          id: clip.id,
+          asset_id: clip.asset_id,
+          start_seconds: Number(clip.start_seconds) || 0,
+          end_seconds: Number(clip.end_seconds) || 0,
+        })),
+      );
+      setProject(updated);
+      setSelectedTimelineClipId((current) => updated.timeline?.clips?.some((clip) => clip.id === current)
+        ? current
+        : (updated.timeline?.clips?.[0]?.id || ''));
+      setMessage(successMessage);
+    });
+  };
+
+  const addSelectedToTimeline = async () => {
+    if (!selectedAsset) {
+      setError('Selecione um vídeo da biblioteca antes de adicionar à timeline.');
+      return;
+    }
+    await saveTimeline([
+      ...timelineClips,
+      { asset_id: selectedAsset.id, start_seconds: 0, end_seconds: selectedAsset.duration },
+    ], 'Vídeo adicionado à timeline.');
+  };
+
+  const updateTimelineClip = async (clipId, values) => {
+    await saveTimeline(
+      timelineClips.map((clip) => (clip.id === clipId ? { ...clip, ...values } : clip)),
+      'Corte da timeline salvo.',
+    );
+  };
+
+  const moveTimelineClip = async (clipId, direction) => {
+    const index = timelineClips.findIndex((clip) => clip.id === clipId);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= timelineClips.length) return;
+    const next = [...timelineClips];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    await saveTimeline(next, 'Ordem da timeline atualizada.');
+  };
+
+  const removeTimelineClip = async (clipId) => {
+    await saveTimeline(timelineClips.filter((clip) => clip.id !== clipId), 'Clipe removido da timeline.');
+  };
+
+  const selectTimelineClip = (clip) => {
+    setSelectedTimelineClipId(clip.id);
+    setSelectedAssetId(clip.asset_id);
+  };
+
+  const handlePreviewLoaded = (event) => {
+    if (!selectedTimelineClip) return;
+    event.currentTarget.currentTime = Math.min(selectedTimelineClip.start_seconds, event.currentTarget.duration || 0);
+  };
+
+  const handlePreviewTimeUpdate = (event) => {
+    if (!selectedTimelineClip || event.currentTarget.currentTime < selectedTimelineClip.end_seconds) return;
+    event.currentTarget.pause();
+    event.currentTarget.currentTime = selectedTimelineClip.start_seconds;
   };
 
   const handleHoverStart = (event) => {
@@ -208,7 +287,10 @@ function ForgeMax3() {
               <div className="forge-max-library-grid">
                 {assets.map((asset, index) => (
                   <article key={asset.id} className={`forge-max-library-card ${asset.id === selectedAssetId ? 'selected' : ''}`}>
-                    <button type="button" className="forge-max-library-preview" onClick={() => setSelectedAssetId(asset.id)}>
+                    <button type="button" className="forge-max-library-preview" onClick={() => {
+                      setSelectedAssetId(asset.id);
+                      setSelectedTimelineClipId('');
+                    }}>
                       <video
                         src={forgeMaxFileUrl(asset.url)}
                         muted
@@ -246,8 +328,16 @@ function ForgeMax3() {
           </div>
 
           <div className="forge-max-preview-stage">
-            {selectedAsset ? (
-              <video src={forgeMaxFileUrl(selectedAsset.url)} controls playsInline className="forge-max-preview-video" />
+            {previewAsset ? (
+              <video
+                ref={previewVideoRef}
+                src={forgeMaxFileUrl(previewAsset.url)}
+                controls
+                playsInline
+                className="forge-max-preview-video"
+                onLoadedMetadata={handlePreviewLoaded}
+                onTimeUpdate={handlePreviewTimeUpdate}
+              />
             ) : (
               <div className="forge-max-preview-empty">
                 <Layers3 size={38} />
@@ -257,9 +347,12 @@ function ForgeMax3() {
             )}
           </div>
           <div className="forge-max-preview-caption">
-            <span>Prévia vertical protegida</span>
-            <strong>{selectedAsset?.filename || 'Nenhum clipe selecionado'}</strong>
+            <span>{selectedTimelineClip ? `Trecho ${formatDuration(selectedTimelineClip.start_seconds)} - ${formatDuration(selectedTimelineClip.end_seconds)}` : 'Prévia vertical protegida'}</span>
+            <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
           </div>
+          <button type="button" className="forge-max-add-timeline" onClick={addSelectedToTimeline} disabled={!selectedAsset || Boolean(busy)}>
+            <Plus size={16} /> Adicionar selecionado à timeline
+          </button>
         </section>
 
         <section className={`forge-max-panel forge-max-roadmap-panel ${structureCollapsed ? 'collapsed' : ''}`}>
