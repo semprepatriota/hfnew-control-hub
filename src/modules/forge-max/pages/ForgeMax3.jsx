@@ -197,39 +197,41 @@ function ForgeMax3() {
             </div>
           </div>
 
-          {!libraryCollapsed && !assets.length ? (
-            <div className="forge-max-library-empty">
-              <Film size={30} />
-              <strong>Nenhum vídeo selecionado</strong>
-              <span>Adicione vídeos para montar a biblioteca do projeto.</span>
-            </div>
-          ) : !libraryCollapsed ? (
-            <div className="forge-max-library-grid">
-              {assets.map((asset, index) => (
-                <article key={asset.id} className={`forge-max-library-card ${asset.id === selectedAssetId ? 'selected' : ''}`}>
-                  <button type="button" className="forge-max-library-preview" onClick={() => setSelectedAssetId(asset.id)}>
-                    <video
-                      src={forgeMaxFileUrl(asset.url)}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      onMouseEnter={handleHoverStart}
-                      onMouseLeave={handleHoverEnd}
-                    />
-                    <span className="forge-max-card-index">{String(index + 1).padStart(2, '0')}</span>
-                    {asset.id === selectedAssetId && <span className="forge-max-card-selected">Selecionado</span>}
-                    <span className="forge-max-card-play"><Play size={15} fill="currentColor" /></span>
-                  </button>
-                  <div className="forge-max-card-meta">
-                    <strong title={asset.filename}>{asset.filename}</strong>
-                    <span>{asset.width ? `${asset.width}×${asset.height}` : 'Detectando'} · {formatDuration(asset.duration)}</span>
-                  </div>
-                  <button type="button" className="forge-max-card-delete" onClick={() => removeAsset(asset.id)} disabled={Boolean(busy)} aria-label={`Excluir ${asset.filename}`} title="Excluir da biblioteca">
-                    <X size={15} />
-                  </button>
-                </article>
-              ))}
-            </div>
+          {!libraryCollapsed && (
+            !assets.length ? (
+              <div className="forge-max-library-empty">
+                <Film size={30} />
+                <strong>Nenhum vídeo selecionado</strong>
+                <span>Adicione vídeos para montar a biblioteca do projeto.</span>
+              </div>
+            ) : (
+              <div className="forge-max-library-grid">
+                {assets.map((asset, index) => (
+                  <article key={asset.id} className={`forge-max-library-card ${asset.id === selectedAssetId ? 'selected' : ''}`}>
+                    <button type="button" className="forge-max-library-preview" onClick={() => setSelectedAssetId(asset.id)}>
+                      <video
+                        src={forgeMaxFileUrl(asset.url)}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        onMouseEnter={handleHoverStart}
+                        onMouseLeave={handleHoverEnd}
+                      />
+                      <span className="forge-max-card-index">{String(index + 1).padStart(2, '0')}</span>
+                      {asset.id === selectedAssetId && <span className="forge-max-card-selected">Selecionado</span>}
+                      <span className="forge-max-card-play"><Play size={15} fill="currentColor" /></span>
+                    </button>
+                    <div className="forge-max-card-meta">
+                      <strong title={asset.filename}>{asset.filename}</strong>
+                      <span>{asset.width ? `${asset.width}×${asset.height}` : 'Detectando'} · {formatDuration(asset.duration)}</span>
+                    </div>
+                    <button type="button" className="forge-max-card-delete" onClick={() => removeAsset(asset.id)} disabled={Boolean(busy)} aria-label={`Excluir ${asset.filename}`} title="Excluir da biblioteca">
+                      <X size={15} />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )
           )}
         </section>
 
