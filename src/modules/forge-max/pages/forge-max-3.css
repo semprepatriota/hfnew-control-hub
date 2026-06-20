@@ -65,6 +65,65 @@
   text-align: right;
 }
 
+.forge-max-project-bar {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: var(--max-panel);
+}
+
+.forge-max-project-bar label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--max-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-project-bar select,
+.forge-max-project-bar input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--max-line);
+  border-radius: 5px;
+  outline: none;
+  color: var(--max-ink);
+  background: #0a0f17;
+}
+
+.forge-max-project-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(120, 186, 255, 0.75);
+  border-radius: 5px;
+  color: #e9f5ff;
+  background: #1f5e96;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.forge-max-project-bar button:disabled,
+.forge-max-card-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.forge-max-project-bar .forge-max-refresh {
+  width: 38px;
+  padding: 0;
+}
+
 .forge-max-header-status span,
 .forge-max-header-status small,
 .forge-max-header-status strong {
@@ -374,6 +433,38 @@
   color: var(--max-green);
 }
 
+.forge-max-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 11px 14px;
+  border: 1px solid rgba(119, 231, 180, 0.6);
+  border-radius: 6px;
+  color: #effff8;
+  background: #0d3026;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.34);
+  font-size: 13px;
+}
+
+.forge-max-toast.error {
+  border-color: rgba(255, 111, 111, 0.7);
+  color: #fff3f3;
+  background: #481923;
+}
+
+.forge-max-spin {
+  animation: forge-max-spin 0.9s linear infinite;
+}
+
+@keyframes forge-max-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 1120px) {
   .forge-max-workspace {
     grid-template-columns: 1fr;
@@ -407,5 +498,13 @@
 
   .forge-max-library-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forge-max-project-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .forge-max-project-bar .forge-max-refresh {
+    width: 100%;
   }
 }

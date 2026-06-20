@@ -4,11 +4,23 @@ import {
   Film,
   FolderOpen,
   Layers3,
+  Loader,
+  Plus,
   Play,
+  RefreshCw,
   Trash2,
   Upload,
   X,
 } from 'lucide-react';
+import {
+  createForgeMaxProject,
+  deleteForgeMaxVideo,
+  forgeMaxFileUrl,
+  getForgeMaxHealth,
+  getForgeMaxProject,
+  listForgeMaxProjects,
+  uploadForgeMaxVideo,
+} from '../services/forgeMaxApi';
 import './forge-max-3.css';
 
 const MAX_LIBRARY_ITEMS = 20;
@@ -22,60 +34,96 @@ function formatDuration(seconds) {
 }
 
 function ForgeMax3() {
-  const [assets, setAssets] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [project, setProject] = useState(null);
+  const [newProjectTitle, setNewProjectTitle] = useState('Projeto Forge Max');
   const [selectedAssetId, setSelectedAssetId] = useState('');
+  const [health, setHealth] = useState(null);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const inputRef = useRef(null);
-  const assetUrlsRef = useRef(new Set());
 
+  const assets = project?.assets || [];
   const selectedAsset = assets.find((item) => item.id === selectedAssetId) || null;
-  const availableSlots = Math.max(MAX_LIBRARY_ITEMS - assets.length, 0);
+  const maxLibraryItems = health?.max_library_assets || MAX_LIBRARY_ITEMS;
+  const availableSlots = Math.max(maxLibraryItems - assets.length, 0);
 
-  useEffect(() => () => {
-    assetUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    assetUrlsRef.current.clear();
+  const runAction = async (label, action) => {
+    setBusy(label);
+    setError('');
+    setMessage('');
+    try {
+      return await action();
+    } catch (err) {
+      setError(err.message || 'Falha no Forge Max 3.0');
+      return null;
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const loadProject = async (projectId) => {
+    if (!projectId) return;
+    const data = await getForgeMaxProject(projectId);
+    setProject(data);
+    setSelectedAssetId((current) => data.assets.some((asset) => asset.id === current) ? current : (data.assets[0]?.id || ''));
+  };
+
+  const refreshProjects = async () => {
+    const data = await listForgeMaxProjects();
+    setProjects(data.projects || []);
+    return data.projects || [];
+  };
+
+  useEffect(() => {
+    runAction('bootstrap', async () => {
+      const [healthData, projectList] = await Promise.all([getForgeMaxHealth(), refreshProjects()]);
+      setHealth(healthData);
+      if (projectList[0]?.project?.id) {
+        await loadProject(projectList[0].project.id);
+      }
+    });
   }, []);
 
-  const handleFiles = (event) => {
-    const incoming = Array.from(event.target.files || []).filter((file) => file.type.startsWith('video/'));
-    if (!incoming.length || !availableSlots) return;
-
-    const additions = incoming.slice(0, availableSlots).map((file) => {
-      const url = URL.createObjectURL(file);
-      assetUrlsRef.current.add(url);
-      return {
-        id: `max_${crypto.randomUUID()}`,
-        name: file.name,
-        url,
-        duration: 0,
-        width: 0,
-        height: 0,
-      };
+  const handleCreateProject = async () => {
+    if (!newProjectTitle.trim()) return;
+    await runAction('create-project', async () => {
+      const created = await createForgeMaxProject(newProjectTitle.trim());
+      setProject(created);
+      setSelectedAssetId('');
+      await refreshProjects();
+      setMessage('Projeto Forge Max criado. Agora envie até 20 vídeos para a biblioteca.');
     });
+  };
 
-    setAssets((current) => [...current, ...additions]);
-    setSelectedAssetId((current) => current || additions[0]?.id || '');
+  const handleFiles = async (event) => {
+    const incoming = Array.from(event.target.files || []).filter((file) => (
+      file.type.startsWith('video/') || /\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(file.name)
+    ));
+    if (!incoming.length || !availableSlots || !project?.project?.id) return;
     event.target.value = '';
-  };
-
-  const handleAssetMetadata = (assetId, event) => {
-    const video = event.currentTarget;
-    setAssets((current) => current.map((asset) => (
-      asset.id === assetId
-        ? { ...asset, duration: video.duration, width: video.videoWidth, height: video.videoHeight }
-        : asset
-    )));
-  };
-
-  const removeAsset = (assetId) => {
-    setAssets((current) => {
-      const item = current.find((asset) => asset.id === assetId);
-      if (item) {
-        URL.revokeObjectURL(item.url);
-        assetUrlsRef.current.delete(item.url);
+    await runAction('upload-library', async () => {
+      let updated = project;
+      for (const file of incoming.slice(0, availableSlots)) {
+        updated = await uploadForgeMaxVideo(project.project.id, file);
       }
-      return current.filter((asset) => asset.id !== assetId);
+      setProject(updated);
+      setSelectedAssetId((current) => current || updated.assets[0]?.id || '');
+      await refreshProjects();
+      setMessage(`${incoming.slice(0, availableSlots).length} vídeo(s) salvo(s) na biblioteca do projeto.`);
     });
-    setSelectedAssetId((current) => (current === assetId ? '' : current));
+  };
+
+  const removeAsset = async (assetId) => {
+    if (!project?.project?.id) return;
+    await runAction('delete-asset', async () => {
+      const updated = await deleteForgeMaxVideo(project.project.id, assetId);
+      setProject(updated);
+      setSelectedAssetId((current) => (current === assetId ? (updated.assets[0]?.id || '') : current));
+      await refreshProjects();
+      setMessage('Vídeo removido da biblioteca do projeto.');
+    });
   };
 
   const handleHoverStart = (event) => {
@@ -97,10 +145,26 @@ function ForgeMax3() {
         </div>
         <div className="forge-max-header-status">
           <span>Biblioteca</span>
-          <strong>{assets.length}/{MAX_LIBRARY_ITEMS}</strong>
-          <small>vídeos nesta sessão</small>
+          <strong>{assets.length}/{maxLibraryItems}</strong>
+          <small>vídeos no projeto</small>
         </div>
       </header>
+
+      <section className="forge-max-project-bar">
+        <label>
+          <span>Projeto ativo</span>
+          <select value={project?.project?.id || ''} onChange={(event) => runAction('load-project', () => loadProject(event.target.value))} disabled={Boolean(busy)}>
+            <option value="">Selecione um projeto</option>
+            {projects.map((item) => <option key={item.project.id} value={item.project.id}>{item.project.title}</option>)}
+          </select>
+        </label>
+        <label className="forge-max-new-project">
+          <span>Novo projeto</span>
+          <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} maxLength={140} />
+        </label>
+        <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busy)}><Plus size={16} /> Criar projeto</button>
+        <button type="button" className="forge-max-refresh" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busy)} aria-label="Atualizar projetos"><RefreshCw size={16} /></button>
+      </section>
 
       <section className="forge-max-workspace">
         <section className="forge-max-panel forge-max-library-panel">
@@ -108,9 +172,9 @@ function ForgeMax3() {
             <div>
               <span className="forge-max-section-icon"><FolderOpen size={17} /></span>
               <h2>Biblioteca de Vídeos</h2>
-              <p>Até 20 clipes. Passe o mouse para revisar antes de selecionar.</p>
+              <p>Até {maxLibraryItems} clipes. Passe o mouse para revisar antes de selecionar.</p>
             </div>
-            <label className={`forge-max-upload ${availableSlots ? '' : 'disabled'}`}>
+            <label className={`forge-max-upload ${availableSlots && project ? '' : 'disabled'}`}>
               <Upload size={16} />
               Adicionar vídeos
               <input
@@ -118,7 +182,7 @@ function ForgeMax3() {
                 type="file"
                 accept="video/*"
                 multiple
-                disabled={!availableSlots}
+                disabled={!availableSlots || !project || Boolean(busy)}
                 onChange={handleFiles}
               />
             </label>
@@ -136,11 +200,10 @@ function ForgeMax3() {
                 <article key={asset.id} className={`forge-max-library-card ${asset.id === selectedAssetId ? 'selected' : ''}`}>
                   <button type="button" className="forge-max-library-preview" onClick={() => setSelectedAssetId(asset.id)}>
                     <video
-                      src={asset.url}
+                      src={forgeMaxFileUrl(asset.url)}
                       muted
                       playsInline
                       preload="metadata"
-                      onLoadedMetadata={(event) => handleAssetMetadata(asset.id, event)}
                       onMouseEnter={handleHoverStart}
                       onMouseLeave={handleHoverEnd}
                     />
@@ -149,10 +212,10 @@ function ForgeMax3() {
                     <span className="forge-max-card-play"><Play size={15} fill="currentColor" /></span>
                   </button>
                   <div className="forge-max-card-meta">
-                    <strong title={asset.name}>{asset.name}</strong>
+                    <strong title={asset.filename}>{asset.filename}</strong>
                     <span>{asset.width ? `${asset.width}×${asset.height}` : 'Detectando'} · {formatDuration(asset.duration)}</span>
                   </div>
-                  <button type="button" className="forge-max-card-delete" onClick={() => removeAsset(asset.id)} aria-label={`Excluir ${asset.name}`} title="Excluir da biblioteca">
+                  <button type="button" className="forge-max-card-delete" onClick={() => removeAsset(asset.id)} disabled={Boolean(busy)} aria-label={`Excluir ${asset.filename}`} title="Excluir da biblioteca">
                     <X size={15} />
                   </button>
                 </article>
@@ -173,7 +236,7 @@ function ForgeMax3() {
 
           <div className="forge-max-preview-stage">
             {selectedAsset ? (
-              <video src={selectedAsset.url} controls playsInline className="forge-max-preview-video" />
+              <video src={forgeMaxFileUrl(selectedAsset.url)} controls playsInline className="forge-max-preview-video" />
             ) : (
               <div className="forge-max-preview-empty">
                 <Layers3 size={38} />
@@ -184,7 +247,7 @@ function ForgeMax3() {
           </div>
           <div className="forge-max-preview-caption">
             <span>Prévia vertical protegida</span>
-            <strong>{selectedAsset?.name || 'Nenhum clipe selecionado'}</strong>
+            <strong>{selectedAsset?.filename || 'Nenhum clipe selecionado'}</strong>
           </div>
         </section>
 
@@ -212,6 +275,13 @@ function ForgeMax3() {
           </div>
         </section>
       </section>
+
+      {(busy || error || message) && (
+        <div className={`forge-max-toast ${error ? 'error' : ''}`}>
+          {busy && <Loader size={16} className="forge-max-spin" />}
+          <span>{error || message || 'Processando...'}</span>
+        </div>
+      )}
     </div>
   );
 }
