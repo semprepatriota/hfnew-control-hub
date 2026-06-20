@@ -489,7 +489,7 @@
 .forge2-fine-controls {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .forge2-project-card {

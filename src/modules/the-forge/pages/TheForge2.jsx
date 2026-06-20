@@ -1154,6 +1154,41 @@ function TheForge2() {
 
             {!studio.media_collapsed && (
               <>
+                <div className="forge2-fine-controls">
+                  {activeGif && (
+                    <label className="forge2-volume-slider">
+                      <span>Tamanho do GIF {Math.round((activeGif.overlay_scale || 1) * 100)}%</span>
+                      <input
+                        type="range"
+                        min="20"
+                        max="300"
+                        value={Math.round((activeGif.overlay_scale || 1) * 100)}
+                        onChange={(event) => updateActiveGif({ overlay_scale: Number(event.target.value) / 100 })}
+                      />
+                    </label>
+                  )}
+
+                  {activeMusic && (
+                    <label className="forge2-volume-slider">
+                      <span>Volume da faixa {Math.round((activeMusic.volume || 0) * 100)}%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="120"
+                        value={Math.round((activeMusic.volume || 0) * 100)}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          music_tracks: current.music_tracks.map((item) => (
+                            item.id === activeMusic.id
+                              ? { ...item, volume: Number(event.target.value) / 100 }
+                              : item
+                          )),
+                        }))}
+                      />
+                    </label>
+                  )}
+                </div>
+
                 <div className="forge2-inline-upload compact-stack">
                   <label className="forge2-file-input compact">
                     <ImagePlus size={16} />
@@ -1183,19 +1218,6 @@ function TheForge2() {
                 </div>
 
                 <div className="forge2-fine-controls">
-                  {activeGif && (
-                    <label className="forge2-volume-slider">
-                      <span>Tamanho do GIF {Math.round((activeGif.overlay_scale || 1) * 100)}%</span>
-                      <input
-                        type="range"
-                        min="20"
-                        max="300"
-                        value={Math.round((activeGif.overlay_scale || 1) * 100)}
-                        onChange={(event) => updateActiveGif({ overlay_scale: Number(event.target.value) / 100 })}
-                      />
-                    </label>
-                  )}
-
                   <div className="forge2-inline-upload compact-stack">
                     <label className="forge2-file-input compact">
                       <AudioLines size={16} />
@@ -1222,26 +1244,6 @@ function TheForge2() {
                       </div>
                     ))}
                   </div>
-
-                  {activeMusic && (
-                    <label className="forge2-volume-slider">
-                      <span>Volume da faixa {Math.round((activeMusic.volume || 0) * 100)}%</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="120"
-                        value={Math.round((activeMusic.volume || 0) * 100)}
-                        onChange={(event) => updateStudioLocal((current) => ({
-                          ...current,
-                          music_tracks: current.music_tracks.map((item) => (
-                            item.id === activeMusic.id
-                              ? { ...item, volume: Number(event.target.value) / 100 }
-                              : item
-                          )),
-                        }))}
-                      />
-                    </label>
-                  )}
                 </div>
 
                 <div className="forge2-presets-block">
