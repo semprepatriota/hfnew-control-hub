@@ -775,7 +775,9 @@ function TheForge2() {
       setStudio(normalizeStudio(studioData.studio || studio));
       setProject(projectData.project || project);
       setLastRender(completedJob.render);
-      setMessage('Render final do Forge 2.0 concluído.');
+      setMessage(completedJob.render.gif_applied
+        ? 'Render final concluído com GIF aplicado.'
+        : 'Render final do Forge 2.0 concluído.');
     });
   };
 
