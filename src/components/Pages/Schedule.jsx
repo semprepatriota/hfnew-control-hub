@@ -525,12 +525,13 @@ function Schedule() {
                   <h3>{item.title}</h3>
                 </div>
 
-                <SourceBadge
-                  label={itemConfig.label}
-                  detail={destination.label}
-                  tone={group.platformClass}
-                  compact
-                />
+                  <SourceBadge
+                    label={itemConfig.label}
+                    detail={destination.label}
+                    tone={group.platformClass}
+                    compact
+                    officialAsset={itemConfig.label === 'YouTube'}
+                  />
 
                 {item.description && <p>{item.description}</p>}
                 {(item.attempts || item.failed_at) && (
@@ -636,12 +637,13 @@ function Schedule() {
                       <h3>{item.title}</h3>
                     </div>
 
-                    <SourceBadge
-                      label={itemConfig.label}
-                      detail={destination.label}
-                      tone={group.platformClass}
-                      compact
-                    />
+                     <SourceBadge
+                        label={itemConfig.label}
+                        detail={destination.label}
+                        tone={group.platformClass}
+                        compact
+                        officialAsset={itemConfig.label === 'YouTube'}
+                      />
 
                     <div className={`schedule-history-status ${getStatusInfo(item.status).className}`}>
                       {getStatusInfo(item.status).label}

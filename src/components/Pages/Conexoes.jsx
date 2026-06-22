@@ -544,7 +544,7 @@ function Conexoes() {
       <div className="conexoes-grid">
         <div className="conexao-card youtube youtube-wide">
           <div className="card-header">
-            <SourceBadge label="YouTube" detail="Conexões" />
+            <SourceBadge label="YouTube" detail="Conexões" officialAsset />
             <div className="card-title-group">
               <h2>YouTube</h2>
               <span>{hasYoutube ? `${youtubeChannels.length} canal(is) conectado(s)` : 'Nenhum canal conectado'}</span>

@@ -14,6 +14,13 @@
   font-weight: 700;
 }
 
+.source-badge__official-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex: 0 0 20px;
+}
+
 .source-badge span {
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -30,6 +37,11 @@
   min-height: 24px;
   padding: 4px 7px;
   font-size: 10px;
+}
+
+.source-badge.compact .source-badge__official-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .source-badge.tone-youtube {
