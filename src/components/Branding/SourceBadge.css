@@ -14,11 +14,6 @@
   font-weight: 700;
 }
 
-.source-badge svg {
-  flex: 0 0 auto;
-  color: currentColor;
-}
-
 .source-badge span {
   text-transform: uppercase;
   letter-spacing: 0.06em;

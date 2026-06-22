@@ -13,7 +13,6 @@ import {
   RotateCcw,
   Save,
   Trash2,
-  Video,
 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
 import SourceBadge from '../Branding/SourceBadge';
@@ -254,12 +253,12 @@ function Schedule() {
 
   const getPlatformConfig = (platform = 'youtube') => {
     if (platform === 'instagram') {
-      return { label: 'Instagram', icon: Instagram, className: 'instagram' };
+      return { label: 'Instagram', icon: Instagram, className: 'instagram', showIcon: true };
     }
     if (platform === 'facebook') {
-      return { label: 'Facebook', icon: Facebook, className: 'facebook' };
+      return { label: 'Facebook', icon: Facebook, className: 'facebook', showIcon: true };
     }
-    return { label: 'YouTube', icon: Video, className: 'youtube' };
+    return { label: 'YouTube', icon: null, className: 'youtube', showIcon: false };
   };
 
   const getDestinationInfo = useCallback((item) => {
@@ -425,12 +424,13 @@ function Schedule() {
       ) : (
         <div className="schedule-groups">
           {groupedItems.map((group) => {
-            const PlatformIcon = getPlatformConfig(group.platform).icon;
+            const platformConfig = getPlatformConfig(group.platform);
+            const PlatformIcon = platformConfig.icon;
             return (
               <section className={`schedule-group ${group.platformClass}`} key={group.key}>
                 <div className="schedule-group-header">
                   <div className="schedule-group-title">
-                    <PlatformIcon size={20} />
+                    {platformConfig.showIcon && PlatformIcon ? <PlatformIcon size={20} /> : null}
                     <div>
                       <h2>{group.platformLabel}</h2>
                       <span>{group.destinationLabel}</span>
@@ -519,9 +519,9 @@ function Schedule() {
                 })()}
               </div>
 
-              <div className="schedule-main">
-                <div className="schedule-title-row">
-                  <ItemIcon size={18} />
+                <div className="schedule-main">
+                  <div className="schedule-title-row">
+                  {itemConfig.showIcon && ItemIcon ? <ItemIcon size={18} /> : null}
                   <h3>{item.title}</h3>
                 </div>
 
@@ -632,7 +632,7 @@ function Schedule() {
                 <article className="schedule-history-item" key={item.id}>
                   <div className="schedule-history-item__main">
                     <div className="schedule-title-row">
-                      <ItemIcon size={18} />
+                      {itemConfig.showIcon && ItemIcon ? <ItemIcon size={18} /> : null}
                       <h3>{item.title}</h3>
                     </div>
 

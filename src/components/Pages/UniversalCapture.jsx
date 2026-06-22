@@ -36,7 +36,7 @@ function UniversalCapture() {
     { name: 'Shopee', icon: 'SHOP' },
     { name: 'Instagram', icon: 'IG' },
     { name: 'TikTok', icon: 'TT' },
-    { name: 'YouTube', icon: 'YT' },
+    { name: 'YouTube', icon: '' },
     { name: 'Pinterest', icon: 'PIN' },
     { name: 'Facebook', icon: 'FB' },
     { name: 'X/Twitter', icon: 'X' },
@@ -224,7 +224,7 @@ function UniversalCapture() {
       <div className="supported-platforms">
         {supportedPlatforms.map((platform) => (
           <div key={platform.name} className="platform-badge">
-            <span className="platform-emoji">{platform.icon}</span>
+            {platform.icon ? <span className="platform-emoji">{platform.icon}</span> : null}
             <span className="platform-name">{platform.name}</span>
           </div>
         ))}
