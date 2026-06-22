@@ -629,7 +629,7 @@
   line-height: 1.4;
 }
 
-.youtube-style-preview {
+.platform-media-preview {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -639,7 +639,7 @@
   border-radius: 8px;
 }
 
-.youtube-preview-media {
+.platform-preview-media {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
@@ -647,15 +647,15 @@
   border-radius: 6px;
 }
 
-.youtube-preview-media img,
-.youtube-preview-media video {
+.platform-preview-media img,
+.platform-preview-media video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.youtube-preview-empty {
+.platform-preview-empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -680,22 +680,22 @@
   background: #000;
 }
 
-.youtube-preview-meta {
+.platform-preview-meta {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
-.youtube-preview-meta strong {
+.platform-preview-meta strong {
   color: #ffffff;
   font-size: 13px;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.youtube-preview-meta span,
-.youtube-preview-meta p {
+.platform-preview-meta span,
+.platform-preview-meta p {
   margin: 0;
   color: rgba(255, 255, 255, 0.58);
   font-size: 12px;
@@ -762,7 +762,7 @@
 
 @media (max-width: 1024px) {
   .instagram-panel,
-  .youtube-style-preview,
+  .platform-media-preview,
   .instagram-format-box {
     padding: 12px;
   }

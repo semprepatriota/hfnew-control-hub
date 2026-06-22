@@ -913,8 +913,8 @@ function FacebookPublisher() {
             </div>
           </div>
 
-          <div className="youtube-style-preview facebook-preview">
-            <div className="youtube-preview-media">
+          <div className="platform-media-preview facebook-preview">
+            <div className="platform-preview-media">
               {previewMedia.type === 'video' && previewMedia.url ? (
                 <video src={previewMedia.url} controls muted playsInline />
               ) : previewMedia.type === 'image' && previewMedia.url ? (
@@ -928,12 +928,12 @@ function FacebookPublisher() {
                   ))}
                 </div>
               ) : (
-                <div className="youtube-preview-empty">
+                <div className="platform-preview-empty">
                   {mediaType === 'link' ? <LinkIcon size={28} /> : <Facebook size={28} />}
                 </div>
               )}
             </div>
-            <div className="youtube-preview-meta">
+            <div className="platform-preview-meta">
               <strong>{metadataTitle.trim() || message.trim().slice(0, 90) || `Facebook ${mediaType}`}</strong>
               <span>{selectedPage ? selectedPage.page_name : 'Página Facebook'}</span>
               <p>{previewMedia.label}</p>

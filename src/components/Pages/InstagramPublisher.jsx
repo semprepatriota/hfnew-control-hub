@@ -878,8 +878,8 @@ function InstagramPublisher() {
             </div>
           </div>
 
-          <div className="youtube-style-preview">
-            <div className="youtube-preview-media">
+          <div className="platform-media-preview">
+            <div className="platform-preview-media">
               {previewMedia.type === 'video' && previewMedia.url ? (
                 <video src={previewMedia.url} controls muted playsInline />
               ) : previewMedia.type === 'image' && previewMedia.url ? (
@@ -897,12 +897,12 @@ function InstagramPublisher() {
                   ))}
                 </div>
               ) : (
-                <div className="youtube-preview-empty">
+                <div className="platform-preview-empty">
                   <Image size={28} />
                 </div>
               )}
             </div>
-            <div className="youtube-preview-meta">
+            <div className="platform-preview-meta">
               <strong>{metadataTitle.trim() || caption.trim().slice(0, 90) || `Instagram ${mediaType}`}</strong>
               <span>{selectedProfile ? `@${selectedProfile.username || selectedProfile.profile_name}` : 'Perfil Instagram'}</span>
               <p>{previewMedia.label}</p>

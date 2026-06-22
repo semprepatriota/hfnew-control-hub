@@ -79,7 +79,7 @@
   background: rgba(0, 102, 255, 0.12);
 }
 
-.facebook-preview .youtube-preview-empty {
+.facebook-preview .platform-preview-empty {
   background: linear-gradient(135deg, rgba(0, 102, 255, 0.12), rgba(0, 0, 0, 0.2));
 }
 
