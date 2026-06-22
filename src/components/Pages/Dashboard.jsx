@@ -7,7 +7,7 @@ import {
   Sparkles,
   TrendingUp,
   Zap,
-  Youtube,
+  Video,
   Instagram,
   Facebook,
   MessageCircle,
@@ -25,7 +25,7 @@ function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const apiPanels = [
-    { label: 'YouTube Data API', detail: 'Upload, agendamento, status do vídeo e leitura operacional do canal conectado.', icon: Youtube, tone: 'red' },
+    { label: 'YouTube Data API', detail: 'Upload, agendamento, status do vídeo e leitura operacional do canal conectado.', icon: Video, tone: 'red' },
     { label: 'Google OAuth', detail: 'Autenticação segura dos usuários e autorização dos canais usados no painel.', icon: KeyRound, tone: 'blue' },
     { label: 'Instagram Graph', detail: 'Publicação, leitura de perfil profissional e integração com ativos da Meta.', icon: Instagram, tone: 'pink' },
     { label: 'Facebook Pages', detail: 'Gerenciamento de páginas, posts e ativos conectados para distribuição social.', icon: Facebook, tone: 'blue' },

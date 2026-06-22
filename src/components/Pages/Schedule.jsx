@@ -13,9 +13,10 @@ import {
   RotateCcw,
   Save,
   Trash2,
-  Youtube,
+  Video,
 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
+import SourceBadge from '../Branding/SourceBadge';
 import './Pages.css';
 import './Schedule.css';
 
@@ -258,7 +259,7 @@ function Schedule() {
     if (platform === 'facebook') {
       return { label: 'Facebook', icon: Facebook, className: 'facebook' };
     }
-    return { label: 'YouTube', icon: Youtube, className: 'youtube' };
+    return { label: 'YouTube', icon: Video, className: 'youtube' };
   };
 
   const getDestinationInfo = useCallback((item) => {
@@ -524,10 +525,12 @@ function Schedule() {
                   <h3>{item.title}</h3>
                 </div>
 
-                <div className={`schedule-destination-badge ${itemConfig.className}`}>
-                  <span>{itemConfig.label}</span>
-                  <strong>{destination.label}</strong>
-                </div>
+                <SourceBadge
+                  label={itemConfig.label}
+                  detail={destination.label}
+                  tone={group.platformClass}
+                  compact
+                />
 
                 {item.description && <p>{item.description}</p>}
                 {(item.attempts || item.failed_at) && (
@@ -633,10 +636,12 @@ function Schedule() {
                       <h3>{item.title}</h3>
                     </div>
 
-                    <div className={`schedule-destination-badge ${itemConfig.className}`}>
-                      <span>{itemConfig.label}</span>
-                      <strong>{destination.label}</strong>
-                    </div>
+                    <SourceBadge
+                      label={itemConfig.label}
+                      detail={destination.label}
+                      tone={group.platformClass}
+                      compact
+                    />
 
                     <div className={`schedule-history-status ${getStatusInfo(item.status).className}`}>
                       {getStatusInfo(item.status).label}

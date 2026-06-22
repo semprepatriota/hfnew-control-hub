@@ -1,0 +1,50 @@
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.source-badge svg {
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.source-badge span {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.54);
+}
+
+.source-badge strong {
+  color: #fff;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.source-badge.compact {
+  min-height: 24px;
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+.source-badge.tone-youtube {
+  border-color: rgba(255, 77, 77, 0.24);
+}
+
+.source-badge.tone-instagram {
+  border-color: rgba(255, 45, 120, 0.28);
+}
+
+.source-badge.tone-facebook {
+  border-color: rgba(0, 102, 255, 0.28);
+}

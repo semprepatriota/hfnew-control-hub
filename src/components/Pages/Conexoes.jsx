@@ -12,9 +12,9 @@ import {
   Save,
   Settings2,
   X,
-  Youtube,
 } from 'lucide-react';
 import { apiUrl } from '../../config/api';
+import SourceBadge from '../Branding/SourceBadge';
 import './Conexoes.css';
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
@@ -544,7 +544,7 @@ function Conexoes() {
       <div className="conexoes-grid">
         <div className="conexao-card youtube youtube-wide">
           <div className="card-header">
-            <div className="icon-container"><Youtube size={32} /></div>
+            <SourceBadge label="YouTube" detail="Conexões" />
             <div className="card-title-group">
               <h2>YouTube</h2>
               <span>{hasYoutube ? `${youtubeChannels.length} canal(is) conectado(s)` : 'Nenhum canal conectado'}</span>
