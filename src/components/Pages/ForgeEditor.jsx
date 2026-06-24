@@ -671,7 +671,6 @@ function ForgeEditor() {
   const ratioLockRef = useRef({ top: 70, bottom: 30 });
   const restoredDraftKeyRef = useRef('');
   const previewRootRef = useRef(null);
-  const cropDraftRef = useRef({ top: 10, bottom: 10 });
 
   // Estados de dados
   const [avatarVideos, setAvatarVideos] = useState([]);
@@ -1114,7 +1113,6 @@ function ForgeEditor() {
     const top = Math.max(0, Math.min(40, Number(topValue) || 0));
     const bottom = Math.max(0, Math.min(40, Number(bottomValue) || 0));
     const center = Math.max(0, Math.min(100, (top + (100 - bottom)) / 2));
-    cropDraftRef.current = { top, bottom };
 
     const previewRoot = previewRootRef.current;
     if (previewRoot) {
@@ -1122,13 +1120,6 @@ function ForgeEditor() {
       previewRoot.style.setProperty('--forge-guide-bottom', `${bottom}%`);
       previewRoot.style.setProperty('--forge-image-position-y', `${center}%`);
     }
-  }, []);
-
-  const commitPreviewCropStyle = useCallback(() => {
-    const { top, bottom } = cropDraftRef.current;
-    setImageCropX(top);
-    setImageCropY(bottom);
-    setRenderResult(null);
   }, []);
 
   useEffect(() => {
@@ -2661,7 +2652,6 @@ function ForgeEditor() {
     setError('');
 
     try {
-      const { top, bottom } = cropDraftRef.current;
       const response = await fetch(apiUrl('/api/forge/crop-image'), {
         method: 'POST',
         headers: {
@@ -2669,8 +2659,8 @@ function ForgeEditor() {
         },
         body: JSON.stringify({
           screenshot_path: imagePath,
-          top_percent: top,
-          bottom_percent: bottom,
+          top_percent: topGuidePercent,
+          bottom_percent: bottomGuidePercent,
         }),
       });
 
@@ -2683,9 +2673,6 @@ function ForgeEditor() {
       const nextImageUrl = apiUrl(data.image_url);
       setImageFit('cover');
       setRenderResult(null);
-      setImageCropX(top);
-      setImageCropY(bottom);
-      applyPreviewCropStyle(top, bottom);
       setScreenshotPath(nextImageUrl);
       setSelectedImagePaths((prev) => {
         if (!prev.length) return [nextImageUrl];
@@ -4364,18 +4351,19 @@ function ForgeEditor() {
                         Linha de cima {topGuidePercent}%
                         <div className="range-control">
                           <input
-                            key={`crop-top-${imageCropX}`}
                             type="range"
                             min="0"
                             max="40"
                             step="1"
-                            defaultValue={imageCropX}
-                            onInput={(e) => applyPreviewCropStyle(e.target.value, cropDraftRef.current.bottom)}
-                            onPointerUp={commitPreviewCropStyle}
-                            onMouseUp={commitPreviewCropStyle}
-                            onTouchEnd={commitPreviewCropStyle}
-                            onBlur={commitPreviewCropStyle}
-                            onKeyUp={commitPreviewCropStyle}
+                            value={imageCropX}
+                            onInput={(e) => {
+                              setImageCropX(parseInt(e.target.value, 10));
+                              setRenderResult(null);
+                            }}
+                            onChange={(e) => {
+                              setImageCropX(parseInt(e.target.value, 10));
+                              setRenderResult(null);
+                            }}
                             className="slider"
                             aria-label="Ajustar linha de cima"
                           />
@@ -4386,18 +4374,19 @@ function ForgeEditor() {
                         Linha de baixo {bottomGuidePercent}%
                         <div className="range-control">
                           <input
-                            key={`crop-bottom-${imageCropY}`}
                             type="range"
                             min="0"
                             max="40"
                             step="1"
-                            defaultValue={imageCropY}
-                            onInput={(e) => applyPreviewCropStyle(cropDraftRef.current.top, e.target.value)}
-                            onPointerUp={commitPreviewCropStyle}
-                            onMouseUp={commitPreviewCropStyle}
-                            onTouchEnd={commitPreviewCropStyle}
-                            onBlur={commitPreviewCropStyle}
-                            onKeyUp={commitPreviewCropStyle}
+                            value={imageCropY}
+                            onInput={(e) => {
+                              setImageCropY(parseInt(e.target.value, 10));
+                              setRenderResult(null);
+                            }}
+                            onChange={(e) => {
+                              setImageCropY(parseInt(e.target.value, 10));
+                              setRenderResult(null);
+                            }}
                             className="slider"
                             aria-label="Ajustar linha de baixo"
                           />
