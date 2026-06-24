@@ -2662,11 +2662,43 @@ function ForgeEditor() {
 
     try {
       const { top, bottom } = cropDraftRef.current;
+      const response = await fetch(apiUrl('/api/forge/crop-image'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          screenshot_path: imagePath,
+          top_percent: top,
+          bottom_percent: bottom,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao cortar imagem');
+      }
+
+      const data = await response.json();
+      const nextImageUrl = apiUrl(data.image_url);
       setImageFit('cover');
       setRenderResult(null);
       setImageCropX(top);
       setImageCropY(bottom);
       applyPreviewCropStyle(top, bottom);
+      setScreenshotPath(nextImageUrl);
+      setSelectedImagePaths((prev) => {
+        if (!prev.length) return [nextImageUrl];
+        const next = [...prev];
+        next[0] = nextImageUrl;
+        return next;
+      });
+      setSelectedImageUploadPaths((prev) => {
+        if (!prev.length) return [nextImageUrl];
+        const next = [...prev];
+        next[0] = nextImageUrl;
+        return next;
+      });
     } catch (err) {
       setError(err.message);
     } finally {
