@@ -1043,6 +1043,22 @@ function ForgeEditor() {
     }
   }, [slideshowMode, selectedImagePaths, screenshotPath]);
 
+  useEffect(() => {
+    if (!slideshowMode || !selectedImagePaths.length) return;
+    const firstSetting = normalizeSlideshowSettingsClient(slideshowImageSettings, selectedImagePaths.length)[0];
+    if (!firstSetting) return;
+
+    if (imageFit !== firstSetting.fit) {
+      setImageFit(firstSetting.fit);
+    }
+    if (imageCropX !== firstSetting.top_percent) {
+      setImageCropX(firstSetting.top_percent);
+    }
+    if (imageCropY !== firstSetting.bottom_percent) {
+      setImageCropY(firstSetting.bottom_percent);
+    }
+  }, [slideshowMode, selectedImagePaths.length, slideshowImageSettings, imageFit, imageCropX, imageCropY]);
+
   const toLocalDateTimeValue = (date) => {
     const pad = (value) => String(value).padStart(2, '0');
     return [
@@ -2086,6 +2102,20 @@ function ForgeEditor() {
     });
   };
 
+  const syncMainPreviewCropToFirstSlideshowImage = useCallback((patch = {}) => {
+    if (!slideshowMode || !selectedImagePaths.length) return;
+    setSlideshowImageSettings((prev) => {
+      const normalized = normalizeSlideshowSettingsClient(prev, selectedImagePaths.length);
+      normalized[0] = {
+        ...normalized[0],
+        fit: patch.fit || normalized[0].fit || imageFit,
+        top_percent: patch.top_percent ?? normalized[0].top_percent ?? imageCropX,
+        bottom_percent: patch.bottom_percent ?? normalized[0].bottom_percent ?? imageCropY,
+      };
+      return normalized;
+    });
+  }, [slideshowMode, selectedImagePaths.length, imageFit, imageCropX, imageCropY]);
+
   const applyFirstSlideshowCropToAll = () => {
     setSlideshowImageSettings((prev) => {
       const normalized = normalizeSlideshowSettingsClient(prev, selectedImagePaths.length);
@@ -2099,6 +2129,25 @@ function ForgeEditor() {
       }));
     });
   };
+
+  const applyMainPreviewCropToAll = useCallback(() => {
+    if (!slideshowMode || !selectedImagePaths.length) return;
+    const nextFit = imageFit === 'cover' ? 'cover' : 'contain';
+    syncMainPreviewCropToFirstSlideshowImage({
+      fit: nextFit,
+      top_percent: imageCropX,
+      bottom_percent: imageCropY,
+    });
+    setSlideshowImageSettings((prev) => {
+      const normalized = normalizeSlideshowSettingsClient(prev, selectedImagePaths.length);
+      return normalized.map((item) => ({
+        ...item,
+        fit: nextFit,
+        top_percent: imageCropX,
+        bottom_percent: imageCropY,
+      }));
+    });
+  }, [slideshowMode, selectedImagePaths.length, imageFit, imageCropX, imageCropY, syncMainPreviewCropToFirstSlideshowImage]);
 
   const removeSlideshowImageAt = (indexToRemove) => {
     setSelectedImagePaths((prev) => {
@@ -2709,6 +2758,11 @@ function ForgeEditor() {
       const nextImageUrl = apiUrl(data.image_url);
       setImageFit('cover');
       setRenderResult(null);
+      syncMainPreviewCropToFirstSlideshowImage({
+        fit: 'cover',
+        top_percent: topGuidePercent,
+        bottom_percent: bottomGuidePercent,
+      });
       setScreenshotPath(nextImageUrl);
       setSelectedImagePaths((prev) => {
         if (!prev.length) return [nextImageUrl];
@@ -4392,14 +4446,20 @@ function ForgeEditor() {
                     <button
                       type="button"
                       className={imageFit === 'contain' ? 'active' : ''}
-                      onClick={() => setImageFit('contain')}
+                      onClick={() => {
+                        setImageFit('contain');
+                        syncMainPreviewCropToFirstSlideshowImage({ fit: 'contain' });
+                      }}
                     >
                       Inteira
                     </button>
                     <button
                       type="button"
                       className={imageFit === 'cover' ? 'active' : ''}
-                      onClick={() => setImageFit('cover')}
+                      onClick={() => {
+                        setImageFit('cover');
+                        syncMainPreviewCropToFirstSlideshowImage({ fit: 'cover' });
+                      }}
                     >
                       Cortar laterais
                     </button>
@@ -4416,11 +4476,15 @@ function ForgeEditor() {
                             step="1"
                             value={imageCropX}
                             onInput={(e) => {
-                              setImageCropX(parseInt(e.target.value, 10));
+                              const nextValue = parseInt(e.target.value, 10);
+                              setImageCropX(nextValue);
+                              syncMainPreviewCropToFirstSlideshowImage({ top_percent: nextValue });
                               setRenderResult(null);
                             }}
                             onChange={(e) => {
-                              setImageCropX(parseInt(e.target.value, 10));
+                              const nextValue = parseInt(e.target.value, 10);
+                              setImageCropX(nextValue);
+                              syncMainPreviewCropToFirstSlideshowImage({ top_percent: nextValue });
                               setRenderResult(null);
                             }}
                             className="slider"
@@ -4439,11 +4503,15 @@ function ForgeEditor() {
                             step="1"
                             value={imageCropY}
                             onInput={(e) => {
-                              setImageCropY(parseInt(e.target.value, 10));
+                              const nextValue = parseInt(e.target.value, 10);
+                              setImageCropY(nextValue);
+                              syncMainPreviewCropToFirstSlideshowImage({ bottom_percent: nextValue });
                               setRenderResult(null);
                             }}
                             onChange={(e) => {
-                              setImageCropY(parseInt(e.target.value, 10));
+                              const nextValue = parseInt(e.target.value, 10);
+                              setImageCropY(nextValue);
+                              syncMainPreviewCropToFirstSlideshowImage({ bottom_percent: nextValue });
                               setRenderResult(null);
                             }}
                             className="slider"
@@ -4467,6 +4535,15 @@ function ForgeEditor() {
                           'Cortar imagem'
                         )}
                       </button>
+                      {slideshowMode && selectedImagePaths.length > 1 && (
+                        <button
+                          type="button"
+                          className="image-crop-apply-button"
+                          onClick={applyMainPreviewCropToAll}
+                        >
+                          Replicar 1° em todas
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
