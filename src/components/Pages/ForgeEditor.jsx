@@ -1139,7 +1139,7 @@ function ForgeEditor() {
       };
 
       safeStorageSet(draftKey, JSON.stringify(draftPayload), { pruneDrafts: true });
-    }, 220);
+    }, 1200);
 
     return () => window.clearTimeout(saveDraftTimer);
   }, [
@@ -3650,7 +3650,7 @@ function ForgeEditor() {
                             muted
                             loop
                             playsInline
-                            preload="metadata"
+                            preload="none"
                             className="local-video-preview"
                             onMouseEnter={playLocalPreview}
                             onMouseLeave={resetLocalPreview}
@@ -3806,7 +3806,7 @@ function ForgeEditor() {
                           muted
                           loop
                           playsInline
-                          preload="metadata"
+                          preload="none"
                           className="local-video-preview"
                           onMouseEnter={playLocalPreview}
                           onMouseLeave={resetLocalPreview}

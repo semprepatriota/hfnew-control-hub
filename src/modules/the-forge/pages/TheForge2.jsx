@@ -315,7 +315,7 @@ function LibraryAssetCard({ asset, selected, onSelect, onDelete }) {
   return (
     <div className={`forge2-library-card ${selected ? 'selected' : ''}`}>
       <button type="button" className="forge2-library-select" onClick={onSelect}>
-        <video src={forge2FileUrl(asset.url)} muted playsInline preload="metadata" />
+        <video src={forge2FileUrl(asset.url)} muted playsInline preload="none" />
         <div>
           <strong>{asset.filename}</strong>
           <span>{asset.width ? `${asset.width}x${asset.height}` : asset.aspect_ratio}</span>
