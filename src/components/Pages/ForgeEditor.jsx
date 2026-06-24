@@ -68,6 +68,13 @@ const normalizeSlideshowSettingsClient = (settings, count) => {
   });
 };
 
+const getSlideshowObjectPosition = (setting) => {
+  const top = Math.max(0, Math.min(40, Number(setting?.top_percent) || 0));
+  const bottom = Math.max(0, Math.min(40, Number(setting?.bottom_percent) || 0));
+  const center = Math.max(0, Math.min(100, (top + (100 - bottom)) / 2));
+  return `50% ${center}%`;
+};
+
 const moveArrayItem = (items, fromIndex, toIndex) => {
   if (!Array.isArray(items) || !items.length) return items;
   if (toIndex < 0 || toIndex >= items.length) return items;
@@ -2079,6 +2086,35 @@ function ForgeEditor() {
     });
   };
 
+  const applyFirstSlideshowCropToAll = () => {
+    setSlideshowImageSettings((prev) => {
+      const normalized = normalizeSlideshowSettingsClient(prev, selectedImagePaths.length);
+      if (!normalized.length) return normalized;
+      const first = normalized[0];
+      return normalized.map((item, index) => (index === 0 ? item : {
+        ...item,
+        fit: first.fit,
+        top_percent: first.top_percent,
+        bottom_percent: first.bottom_percent,
+      }));
+    });
+  };
+
+  const removeSlideshowImageAt = (indexToRemove) => {
+    setSelectedImagePaths((prev) => {
+      const removed = prev[indexToRemove];
+      if (typeof removed === 'string' && removed.startsWith('blob:')) {
+        URL.revokeObjectURL(removed);
+      }
+      const next = prev.filter((_, index) => index !== indexToRemove);
+      setScreenshotPath(next[0] || '');
+      return next;
+    });
+    setSelectedImageUploadPaths((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setSlideshowImageSettings((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setRenderResult(null);
+  };
+
   useEffect(() => {
     setSlideshowImageSettings((prev) => normalizeSlideshowSettingsClient(prev, selectedImagePaths.length));
   }, [selectedImagePaths.length]);
@@ -3088,10 +3124,24 @@ function ForgeEditor() {
                 {selectedImagePaths.map((path, index) => (
                   <div key={`${path}-${index}`} className="slideshow-preview-item">
                     <div className="slideshow-preview-media">
+                      <button
+                        type="button"
+                        className="slideshow-delete-button"
+                        onClick={() => removeSlideshowImageAt(index)}
+                        title="Excluir imagem"
+                        aria-label={`Excluir imagem ${index + 1}`}
+                      >
+                        <X size={11} />
+                      </button>
                       <img
                         src={path}
                         alt={`Slide ${index + 1}`}
-                        style={{ objectFit: slideshowPreviewSettings[index]?.fit === 'cover' ? 'cover' : 'contain' }}
+                        style={{
+                          objectFit: slideshowPreviewSettings[index]?.fit === 'cover' ? 'cover' : 'contain',
+                          objectPosition: slideshowPreviewSettings[index]?.fit === 'cover'
+                            ? getSlideshowObjectPosition(slideshowPreviewSettings[index])
+                            : '50% 50%',
+                        }}
                       />
                     </div>
                     <span>{index + 1}</span>
@@ -3143,6 +3193,15 @@ function ForgeEditor() {
                           Corte
                         </button>
                       </div>
+                      {index === 0 && (
+                        <button
+                          type="button"
+                          className="slideshow-apply-all-button"
+                          onClick={applyFirstSlideshowCropToAll}
+                        >
+                          Replicar 1ª em todas
+                        </button>
+                      )}
                       {slideshowPreviewSettings[index]?.fit === 'cover' && (
                         <div className="slideshow-crop-controls">
                           <label>
