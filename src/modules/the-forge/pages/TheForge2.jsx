@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines,
   Bot,
@@ -311,7 +311,7 @@ function ProjectCard({ item, active, onClick, onDelete }) {
   );
 }
 
-function LibraryAssetCard({ asset, selected, onSelect, onDelete }) {
+const LibraryAssetCard = memo(function LibraryAssetCard({ asset, selected, onSelect, onDelete }) {
   return (
     <div className={`forge2-library-card ${selected ? 'selected' : ''}`}>
       <button type="button" className="forge2-library-select" onClick={onSelect}>
@@ -331,7 +331,7 @@ function LibraryAssetCard({ asset, selected, onSelect, onDelete }) {
       </div>
     </div>
   );
-}
+});
 
 function TheForge2() {
   const [projects, setProjects] = useState([]);
@@ -828,6 +828,15 @@ function TheForge2() {
 
   const renderAspectClass = studio.output_aspect_ratio === '1:1' ? 'square' : 'vertical';
   const activeLibrary = libraryTab === '9:16' ? studio.base_videos_vertical || [] : studio.base_videos_square || [];
+  const activeLibraryCards = useMemo(() => activeLibrary.map((asset) => (
+    <LibraryAssetCard
+      key={asset.id}
+      asset={asset}
+      selected={studio.selected_base_asset_id === asset.id}
+      onSelect={() => selectBaseAsset(asset, libraryTab)}
+      onDelete={() => removeAsset('base-video', asset.id)}
+    />
+  )), [activeLibrary, libraryTab, studio.selected_base_asset_id]);
   const productionItems = normalizeProductionItems(studio.production_items);
   const nextProductionPullItem = productionItems.find((item) => (
     productionItemText(item) && !['em_edicao', 'gerando', 'gerado', 'renderizado', 'agendado'].includes(item.status)
@@ -1320,17 +1329,7 @@ function TheForge2() {
                   </button>
                 </div>
 
-                <div className="forge2-library-grid">
-                  {activeLibrary.map((asset) => (
-                    <LibraryAssetCard
-                      key={asset.id}
-                      asset={asset}
-                      selected={studio.selected_base_asset_id === asset.id}
-                      onSelect={() => selectBaseAsset(asset, libraryTab)}
-                      onDelete={() => removeAsset('base-video', asset.id)}
-                    />
-                  ))}
-                </div>
+                <div className="forge2-library-grid">{activeLibraryCards}</div>
               </div>
             )}
           </section>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Sliders,
   Play,
@@ -937,6 +937,21 @@ function ForgeEditor() {
     return `${FORGE_DRAFT_KEY_PREFIX}${resolvedChannelId}`;
   }, [libraryChannelId]);
 
+  const compactSavedMedia = useCallback((media) => {
+    if (!media) return null;
+    return {
+      filename: media.filename || '',
+      path: media.path || '',
+      url: media.url || '',
+      channel_id: media.channel_id || '',
+      duration: Number(media.duration || 0),
+      aspect_ratio: media.aspect_ratio || '',
+      display_name: media.display_name || '',
+      media_type: media.media_type || '',
+      thumbnail: media.thumbnail || '',
+    };
+  }, []);
+
   const topGuidePercent = Math.max(0, Math.min(40, imageCropX));
   const bottomGuidePercent = Math.max(0, Math.min(40, imageCropY));
   const verticalCenterPercent = Math.max(
@@ -1112,7 +1127,7 @@ function ForgeEditor() {
         avatarSpeechCollapsed,
         avatarEngineCollapsed,
         screenshotPath: safeScreenshotPath,
-        selectedImagePaths: safeImagePaths.length ? safeImagePaths : selectedImageUploadPaths,
+        selectedImagePaths: selectedImageUploadPaths.length ? selectedImageUploadPaths : safeImagePaths,
         selectedImageUploadPaths,
         slideshowImageSettings: normalizeSlideshowSettingsClient(
           slideshowImageSettings,
@@ -1121,14 +1136,14 @@ function ForgeEditor() {
         slideshowMode,
         slideshowStyle,
         socialImageUrl,
-        selectedVideo,
-        selectedAudio,
+        selectedVideo: compactSavedMedia(selectedVideo),
+        selectedAudio: compactSavedMedia(selectedAudio),
         effectsEnabled,
         effectsMode,
         effectsPreset,
         transitionFrequency,
         effectPreviewOpen,
-        renderResult,
+        renderResult: null,
         metadataTitle,
         metadataDescription,
         metadataHashtags,
@@ -1139,7 +1154,7 @@ function ForgeEditor() {
       };
 
       safeStorageSet(draftKey, JSON.stringify(draftPayload), { pruneDrafts: true });
-    }, 1200);
+    }, 2200);
 
     return () => window.clearTimeout(saveDraftTimer);
   }, [
@@ -1188,6 +1203,7 @@ function ForgeEditor() {
     topRatio,
     transitionFrequency,
     videoFit,
+    compactSavedMedia,
   ]);
 
   const clearForgeDraft = useCallback(() => {
@@ -1746,20 +1762,223 @@ function ForgeEditor() {
     event.currentTarget.currentTime = 0;
   };
 
-  const shortVideoName = (filename = '') => {
+  const avatarLibraryCards = useMemo(() => avatarVideos.map((video) => (
+    <div
+      key={video.filename}
+      className={`video-card-with-checkbox local-video-card ${selectedVideo?.filename === video.filename ? 'selected' : ''}`}
+      onClick={() => setSelectedVideo(video)}
+      title={video.filename}
+    >
+      <div className="local-video-preview-wrap">
+        {video.media_type === 'image' ? (
+          <img
+            src={getSelectedVideoSource(video)}
+            alt={video.display_name || 'Avatar'}
+            className="local-video-preview"
+          />
+        ) : (
+          <video
+            src={getSelectedVideoSource(video)}
+            muted
+            loop
+            playsInline
+            preload="none"
+            className="local-video-preview"
+            onMouseEnter={playLocalPreview}
+            onMouseLeave={resetLocalPreview}
+          />
+        )}
+        <div className="local-video-overlay">
+          <span className="local-video-duration">{video.media_type === 'image' ? 'IMG' : `${video.duration.toFixed(1)}s`}</span>
+          <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
+            {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
+          </span>
+          <strong>{video.display_name || shortVideoName(video.filename)}</strong>
+        </div>
+        {selectedVideo?.filename === video.filename && (
+          <div className="local-selected-mark">
+            <Check size={14} />
+          </div>
+        )}
+        {selectedVideo?.filename === video.filename && (
+          <button
+            type="button"
+            className="local-selected-clear"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedVideo(null);
+            }}
+            title="Desmarcar avatar"
+            aria-label="Desmarcar avatar selecionado"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+      <div className="checkbox-wrapper">
+        <input
+          type="radio"
+          name="selected-video"
+          id={`avatar-video-${video.filename}`}
+          checked={selectedVideo?.filename === video.filename}
+          onChange={() => setSelectedVideo(video)}
+          onClick={(event) => event.stopPropagation()}
+          className="video-checkbox"
+        />
+        <label htmlFor={`avatar-video-${video.filename}`} className="checkbox-label">
+          Selecionar
+        </label>
+      </div>
+      <button
+        onClick={(event) => {
+          event.stopPropagation();
+          handleDeleteAvatarVideo(video.filename);
+        }}
+        disabled={deletingAvatarFile === video.filename}
+        className="delete-video-button"
+        title="Deletar avatar"
+      >
+        {deletingAvatarFile === video.filename ? (
+          <Loader size={14} className="spinner" />
+        ) : (
+          <Trash2 size={14} />
+        )}
+      </button>
+    </div>
+  )), [avatarVideos, deletingAvatarFile, getSelectedVideoSource, handleDeleteAvatarVideo, playLocalPreview, resetLocalPreview, selectedVideo?.filename]);
+
+  const localVideoCards = useMemo(() => localVideos.map((video) => (
+    <div
+      key={video.filename}
+      className={`video-card-with-checkbox local-video-card ${selectedVideo?.filename === video.filename ? 'selected' : ''}`}
+      onClick={() => setSelectedVideo(video)}
+      title={video.filename}
+    >
+      <div className="local-video-preview-wrap">
+        <video
+          src={getSelectedVideoSource(video)}
+          muted
+          loop
+          playsInline
+          preload="none"
+          className="local-video-preview"
+          onMouseEnter={playLocalPreview}
+          onMouseLeave={resetLocalPreview}
+        />
+        <div className="local-video-overlay">
+          <span className="local-video-duration">{video.duration.toFixed(1)}s</span>
+          <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
+            {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
+          </span>
+          <strong>{getLocalVideoDisplayName(video)}</strong>
+        </div>
+        {selectedVideo?.filename === video.filename && (
+          <div className="local-selected-mark">
+            <Check size={14} />
+          </div>
+        )}
+        {selectedVideo?.filename === video.filename && (
+          <button
+            type="button"
+            className="local-selected-clear"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedVideo(null);
+            }}
+            title="Desmarcar vídeo"
+            aria-label="Desmarcar vídeo selecionado"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+      <div className="checkbox-wrapper">
+        <input
+          type="radio"
+          name="selected-video"
+          id={`local-video-${video.filename}`}
+          checked={selectedVideo?.filename === video.filename}
+          onChange={() => setSelectedVideo(video)}
+          onClick={(event) => event.stopPropagation()}
+          className="video-checkbox"
+        />
+        <label htmlFor={`local-video-${video.filename}`} className="checkbox-label">
+          Selecionar
+        </label>
+      </div>
+      <div className="local-video-name-editor">
+        {editingLocalVideoName === video.filename ? (
+          <>
+            <input
+              type="text"
+              value={localVideoLabels[video.filename] || ''}
+              placeholder="Nome do vídeo"
+              maxLength={80}
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => updateLocalVideoDisplayName(video.filename, event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === 'Escape') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setEditingLocalVideoName('');
+                }
+              }}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditingLocalVideoName('');
+              }}
+            >
+              OK
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setEditingLocalVideoName(video.filename);
+            }}
+          >
+            Editar nome
+          </button>
+        )}
+      </div>
+      <button
+        onClick={(event) => {
+          event.stopPropagation();
+          handleDeleteVideo(video.filename);
+        }}
+        disabled={deletingVideoFile === video.filename}
+        className="delete-video-button"
+        title="Deletar vídeo"
+      >
+        {deletingVideoFile === video.filename ? (
+          <Loader size={14} className="spinner" />
+        ) : (
+          <Trash2 size={14} />
+        )}
+      </button>
+    </div>
+  )), [deletingVideoFile, editingLocalVideoName, getLocalVideoDisplayName, getSelectedVideoSource, handleDeleteVideo, localVideoLabels, localVideos, playLocalPreview, resetLocalPreview, selectedVideo?.filename]);
+
+  function shortVideoName(filename = '') {
     if (filename.length <= 26) return filename;
     return `${filename.slice(0, 12)}...${filename.slice(-10)}`;
-  };
+  }
 
-  const getLocalVideoDisplayName = (videoOrFilename = '') => {
+  function getLocalVideoDisplayName(videoOrFilename = '') {
     const filename = typeof videoOrFilename === 'string'
       ? videoOrFilename
       : (videoOrFilename?.filename || '');
     const customName = localVideoLabels[filename];
     return (customName || '').trim() || shortVideoName(filename);
-  };
+  }
 
-  const updateLocalVideoDisplayName = (filename, value) => {
+  function updateLocalVideoDisplayName(filename, value) {
     const nextName = value.trim();
     setLocalVideoLabels((current) => {
       const next = { ...current };
@@ -1770,7 +1989,7 @@ function ForgeEditor() {
       }
       return next;
     });
-  };
+  }
 
   const getUploadedImageName = () => {
     const renderSource = slideshowMode
@@ -3629,92 +3848,7 @@ function ForgeEditor() {
                   </label>
                 </div>
 
-                <div className="videos-grid-10">
-                  {avatarVideos.map((video) => (
-                    <div
-                      key={video.filename}
-                      className={`video-card-with-checkbox local-video-card ${selectedVideo?.filename === video.filename ? 'selected' : ''}`}
-                      onClick={() => setSelectedVideo(video)}
-                      title={video.filename}
-                    >
-                      <div className="local-video-preview-wrap">
-                        {video.media_type === 'image' ? (
-                          <img
-                            src={getSelectedVideoSource(video)}
-                            alt={video.display_name || 'Avatar'}
-                            className="local-video-preview"
-                          />
-                        ) : (
-                          <video
-                            src={getSelectedVideoSource(video)}
-                            muted
-                            loop
-                            playsInline
-                            preload="none"
-                            className="local-video-preview"
-                            onMouseEnter={playLocalPreview}
-                            onMouseLeave={resetLocalPreview}
-                          />
-                        )}
-                        <div className="local-video-overlay">
-                          <span className="local-video-duration">{video.media_type === 'image' ? 'IMG' : `${video.duration.toFixed(1)}s`}</span>
-                          <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
-                            {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
-                          </span>
-                          <strong>{video.display_name || shortVideoName(video.filename)}</strong>
-                        </div>
-                        {selectedVideo?.filename === video.filename && (
-                          <div className="local-selected-mark">
-                            <Check size={14} />
-                          </div>
-                        )}
-                        {selectedVideo?.filename === video.filename && (
-                          <button
-                            type="button"
-                            className="local-selected-clear"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedVideo(null);
-                            }}
-                            title="Desmarcar avatar"
-                            aria-label="Desmarcar avatar selecionado"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="checkbox-wrapper">
-                        <input
-                          type="radio"
-                          name="selected-video"
-                          id={`avatar-video-${video.filename}`}
-                          checked={selectedVideo?.filename === video.filename}
-                          onChange={() => setSelectedVideo(video)}
-                          onClick={(event) => event.stopPropagation()}
-                          className="video-checkbox"
-                        />
-                        <label htmlFor={`avatar-video-${video.filename}`} className="checkbox-label">
-                          Selecionar
-                        </label>
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteAvatarVideo(video.filename);
-                        }}
-                        disabled={deletingAvatarFile === video.filename}
-                        className="delete-video-button"
-                        title="Deletar avatar"
-                      >
-                        {deletingAvatarFile === video.filename ? (
-                          <Loader size={14} className="spinner" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <div className="videos-grid-10">{avatarLibraryCards}</div>
 
                 {selectedVideo && backgroundMode === 'avatar' && (
                   <div className="video-selected-preview-small">
@@ -3792,125 +3926,7 @@ function ForgeEditor() {
                 </div>
 
                 {/* Grid de Vídeos */}
-                <div className="videos-grid-10">
-                  {localVideos.map((video) => (
-                    <div
-                      key={video.filename}
-                      className={`video-card-with-checkbox local-video-card ${selectedVideo?.filename === video.filename ? 'selected' : ''}`}
-                      onClick={() => setSelectedVideo(video)}
-                      title={video.filename}
-                    >
-                      <div className="local-video-preview-wrap">
-                        <video
-                          src={getSelectedVideoSource(video)}
-                          muted
-                          loop
-                          playsInline
-                          preload="none"
-                          className="local-video-preview"
-                          onMouseEnter={playLocalPreview}
-                          onMouseLeave={resetLocalPreview}
-                        />
-                        <div className="local-video-overlay">
-                          <span className="local-video-duration">{video.duration.toFixed(1)}s</span>
-                          <span className={`local-video-ratio ${video.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
-                            {video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
-                          </span>
-                          <strong>{getLocalVideoDisplayName(video)}</strong>
-                        </div>
-                        {selectedVideo?.filename === video.filename && (
-                          <div className="local-selected-mark">
-                            <Check size={14} />
-                          </div>
-                        )}
-                        {selectedVideo?.filename === video.filename && (
-                          <button
-                            type="button"
-                            className="local-selected-clear"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedVideo(null);
-                            }}
-                            title="Desmarcar vídeo"
-                            aria-label="Desmarcar vídeo selecionado"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="checkbox-wrapper">
-                        <input
-                          type="radio"
-                          name="selected-video"
-                          id={`local-video-${video.filename}`}
-                          checked={selectedVideo?.filename === video.filename}
-                          onChange={() => setSelectedVideo(video)}
-                          onClick={(event) => event.stopPropagation()}
-                          className="video-checkbox"
-                        />
-                        <label htmlFor={`local-video-${video.filename}`} className="checkbox-label">
-                          Selecionar
-                        </label>
-                      </div>
-                      <div className="local-video-name-editor">
-                        {editingLocalVideoName === video.filename ? (
-                          <>
-                            <input
-                              type="text"
-                              value={localVideoLabels[video.filename] || ''}
-                              placeholder="Nome do vídeo"
-                              maxLength={80}
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => updateLocalVideoDisplayName(video.filename, event.target.value)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === 'Escape') {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  setEditingLocalVideoName('');
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setEditingLocalVideoName('');
-                              }}
-                            >
-                              OK
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setEditingLocalVideoName(video.filename);
-                            }}
-                          >
-                            Editar nome
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteVideo(video.filename);
-                        }}
-                        disabled={deletingVideoFile === video.filename}
-                        className="delete-video-button"
-                        title="Deletar vídeo"
-                      >
-                        {deletingVideoFile === video.filename ? (
-                          <Loader size={14} className="spinner" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <div className="videos-grid-10">{localVideoCards}</div>
 
                 {/* Preview Thumbnail do Vídeo Selecionado */}
                 {selectedVideo && backgroundMode === 'local' && (
