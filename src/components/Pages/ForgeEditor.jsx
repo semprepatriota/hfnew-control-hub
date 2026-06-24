@@ -2116,20 +2116,6 @@ function ForgeEditor() {
     });
   }, [slideshowMode, selectedImagePaths.length, imageFit, imageCropX, imageCropY]);
 
-  const applyFirstSlideshowCropToAll = () => {
-    setSlideshowImageSettings((prev) => {
-      const normalized = normalizeSlideshowSettingsClient(prev, selectedImagePaths.length);
-      if (!normalized.length) return normalized;
-      const first = normalized[0];
-      return normalized.map((item, index) => (index === 0 ? item : {
-        ...item,
-        fit: first.fit,
-        top_percent: first.top_percent,
-        bottom_percent: first.bottom_percent,
-      }));
-    });
-  };
-
   const applyMainPreviewCropToAll = useCallback(() => {
     if (!slideshowMode || !selectedImagePaths.length) return;
     const nextFit = imageFit === 'cover' ? 'cover' : 'contain';
@@ -2147,6 +2133,7 @@ function ForgeEditor() {
         bottom_percent: imageCropY,
       }));
     });
+    setRenderResult(null);
   }, [slideshowMode, selectedImagePaths.length, imageFit, imageCropX, imageCropY, syncMainPreviewCropToFirstSlideshowImage]);
 
   const removeSlideshowImageAt = (indexToRemove) => {
@@ -3251,7 +3238,7 @@ function ForgeEditor() {
                         <button
                           type="button"
                           className="slideshow-apply-all-button"
-                          onClick={applyFirstSlideshowCropToAll}
+                          onClick={applyMainPreviewCropToAll}
                         >
                           Replicar 1ª em todas
                         </button>
