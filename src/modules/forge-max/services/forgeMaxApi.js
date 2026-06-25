@@ -29,10 +29,25 @@ export async function getForgeMaxProject(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}`), { cache: 'no-store' }));
 }
 
+export async function deleteForgeMaxProject(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function uploadForgeMaxVideo(projectId, file) {
   const formData = new FormData();
   formData.append('file', file);
   return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/assets/video`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function uploadForgeMaxMusic(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/assets/music`), {
     method: 'POST',
     body: formData,
   }));
@@ -44,11 +59,31 @@ export async function deleteForgeMaxVideo(projectId, assetId) {
   }));
 }
 
+export async function deleteForgeMaxMusic(projectId, musicId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/music/${encodeURIComponent(musicId)}`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function updateForgeMaxTimeline(projectId, clips) {
   return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/timeline`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clips }),
+  }));
+}
+
+export async function updateForgeMaxMusic(projectId, payload) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/music`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }));
+}
+
+export async function renderForgeMaxTimeline(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/render`), {
+    method: 'POST',
   }));
 }
 
