@@ -77,6 +77,11 @@
   background: var(--max-panel);
 }
 
+.forge-max-project-panel {
+  margin-top: 16px;
+  padding: 16px;
+}
+
 .forge-max-project-bar label {
   display: grid;
   gap: 5px;
@@ -143,9 +148,7 @@
 }
 
 .forge-max-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-  gap: 18px;
+  display: block;
   padding-top: 20px;
 }
 
@@ -393,6 +396,15 @@
   margin: 12px auto 0;
 }
 
+.forge-max-preview-cut-readout,
+.forge-max-inline-music-main,
+.forge-max-inline-music-actions,
+.forge-max-inline-music-header,
+.forge-max-inline-music-config {
+  display: flex;
+  align-items: center;
+}
+
 .forge-max-preview-scrubber-meta,
 .forge-max-preview-cut-actions {
   display: flex;
@@ -419,6 +431,7 @@
 }
 
 .forge-max-preview-cut-actions {
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -491,6 +504,154 @@
   color: var(--max-green);
 }
 
+.forge-max-preview-cut-readout {
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--max-muted);
+  font-size: 12px;
+}
+
+.forge-max-preview-cut-readout b {
+  color: var(--max-green);
+  margin-right: 4px;
+}
+
+.forge-max-inline-music {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 760px);
+  margin: 18px auto 0;
+  padding: 16px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: #0d1420;
+}
+
+.forge-max-inline-music-header {
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.forge-max-inline-music-header h3 {
+  display: inline;
+  margin: 0 0 0 8px;
+  font-size: 15px;
+}
+
+.forge-max-inline-music-header p,
+.forge-max-inline-music-meta span,
+.forge-max-inline-music-empty span {
+  margin: 6px 0 0;
+  color: var(--max-muted);
+  font-size: 12px;
+}
+
+.forge-max-inline-music-config {
+  gap: 14px;
+  align-items: end;
+}
+
+.forge-max-inline-music-config label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 0;
+  color: var(--max-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-inline-music-config select,
+.forge-max-inline-music-config input[type="range"] {
+  width: 100%;
+}
+
+.forge-max-inline-music-config select {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--max-line);
+  border-radius: 5px;
+  outline: none;
+  color: var(--max-ink);
+  background: #0a0f17;
+}
+
+.forge-max-inline-music-empty {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px dashed rgba(120, 186, 255, 0.34);
+  border-radius: 6px;
+}
+
+.forge-max-inline-music-list {
+  display: grid;
+  gap: 10px;
+}
+
+.forge-max-inline-music-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: var(--max-panel-strong);
+}
+
+.forge-max-inline-music-card.selected {
+  border-color: var(--max-green);
+  box-shadow: 0 0 0 1px rgba(119, 231, 180, 0.18);
+}
+
+.forge-max-inline-music-main {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forge-max-inline-music-meta {
+  min-width: 0;
+}
+
+.forge-max-inline-music-meta strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.forge-max-inline-music-actions {
+  gap: 8px;
+}
+
+.forge-max-inline-music-actions button,
+.forge-max-inline-music-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--max-line);
+  border-radius: 6px;
+  color: var(--max-ink);
+  background: #0a0f17;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.forge-max-inline-music-delete {
+  min-width: 32px;
+  padding: 0;
+  border-color: rgba(255, 111, 111, 0.34);
+  color: #ffb3b3;
+}
+
+.forge-max-inline-music-player {
+  width: 100%;
+}
+
 .forge-max-panel-actions {
   display: inline-flex;
   align-items: center;
@@ -511,132 +672,6 @@
   border: 1px solid var(--max-line);
   border-radius: 8px;
   background: var(--max-panel);
-}
-
-.forge-max-music-panel {
-  margin-top: 18px;
-  padding: 16px;
-}
-
-.forge-max-music-body,
-.forge-max-music-config,
-.forge-max-music-actions {
-  display: flex;
-}
-
-.forge-max-music-body {
-  flex-direction: column;
-  gap: 14px;
-}
-
-.forge-max-music-config {
-  gap: 14px;
-  align-items: end;
-}
-
-.forge-max-music-config label {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-  flex: 1 1 0;
-  color: var(--max-muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.forge-max-music-config select,
-.forge-max-music-config input[type="range"] {
-  width: 100%;
-}
-
-.forge-max-music-config select {
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--max-line);
-  border-radius: 5px;
-  outline: none;
-  color: var(--max-ink);
-  background: #0a0f17;
-}
-
-.forge-max-music-empty {
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border: 1px dashed rgba(120, 186, 255, 0.34);
-  border-radius: 6px;
-}
-
-.forge-max-music-empty span {
-  color: var(--max-muted);
-  font-size: 13px;
-}
-
-.forge-max-music-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
-}
-
-.forge-max-music-card {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--max-line);
-  border-radius: 8px;
-  background: var(--max-panel-strong);
-}
-
-.forge-max-music-card.selected {
-  border-color: var(--max-green);
-  box-shadow: 0 0 0 1px rgba(119, 231, 180, 0.18);
-}
-
-.forge-max-music-meta strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-.forge-max-music-meta span {
-  display: block;
-  margin-top: 4px;
-  color: var(--max-muted);
-  font-size: 11px;
-}
-
-.forge-max-music-player {
-  width: 100%;
-}
-
-.forge-max-music-actions {
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.forge-max-music-actions button,
-.forge-max-music-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--max-line);
-  border-radius: 6px;
-  color: var(--max-ink);
-  background: #0a0f17;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.forge-max-music-delete {
-  min-width: 34px;
-  padding: 0;
-  border-color: rgba(255, 111, 111, 0.34);
-  color: #ffb3b3;
 }
 
 .forge-max-render-header,
@@ -758,6 +793,12 @@
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 14px;
+}
+
+.forge-max-timeline-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .forge-max-timeline-header h2 {
@@ -1050,7 +1091,11 @@
 }
 
 .forge-max-library-panel.collapsed,
-.forge-max-roadmap-panel.collapsed {
+.forge-max-roadmap-panel.collapsed,
+.forge-max-project-panel.collapsed,
+.forge-max-render-panel.collapsed,
+.forge-max-timeline-panel.collapsed,
+.forge-max-preview-panel.collapsed {
   min-height: 0;
 }
 
@@ -1087,14 +1132,6 @@
 }
 
 @media (max-width: 1120px) {
-  .forge-max-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .forge-max-preview-panel {
-    grid-row: auto;
-  }
-
   .forge-max-render-result {
     grid-template-columns: 1fr;
   }
@@ -1106,7 +1143,9 @@
   }
 
   .forge-max-header,
-  .forge-max-panel-header {
+  .forge-max-panel-header,
+  .forge-max-inline-music-header,
+  .forge-max-inline-music-main {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -1141,11 +1180,16 @@
     width: 100%;
   }
 
-  .forge-max-music-config,
+  .forge-max-inline-music-config,
   .forge-max-timeline-slider-group,
   .forge-max-timeline-editor-header {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .forge-max-preview-cut-readout {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

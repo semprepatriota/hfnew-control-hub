@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Clock3, ListVideo, RotateCcw, Scissors, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clock3, ListVideo, RotateCcw, Scissors, X } from 'lucide-react';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -9,7 +9,18 @@ function formatDuration(seconds) {
   return `${minutes}:${String(remainder).padStart(2, '0')}`;
 }
 
-function ForgeMaxTimeline({ assets, clips, selectedClipId, busy, onSelect, onMove, onRemove, onTrim }) {
+function ForgeMaxTimeline({
+  assets,
+  clips,
+  selectedClipId,
+  busy,
+  collapsed = false,
+  onToggleCollapse,
+  onSelect,
+  onMove,
+  onRemove,
+  onTrim,
+}) {
   const totalDuration = clips.reduce((total, clip) => total + Math.max(0, clip.end_seconds - clip.start_seconds), 0);
   const selectedClip = clips.find((clip) => clip.id === selectedClipId) || clips[0] || null;
   const selectedAsset = assets.find((item) => item.id === selectedClip?.asset_id) || null;
@@ -57,25 +68,35 @@ function ForgeMaxTimeline({ assets, clips, selectedClipId, busy, onSelect, onMov
   };
 
   return (
-    <section className="forge-max-timeline-panel">
+    <section className={`forge-max-timeline-panel ${collapsed ? 'collapsed' : ''}`}>
       <div className="forge-max-timeline-header">
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>
           <h2>Timeline de Edição</h2>
           <p>Organize a ordem e os cortes. Cada alteração é salva no projeto atual.</p>
         </div>
-        <div className="forge-max-timeline-summary">
-          <Clock3 size={15} />
-          <strong>{clips.length} clipes</strong>
-          <span>{formatDuration(totalDuration)}</span>
+        <div className="forge-max-timeline-header-actions">
+          <div className="forge-max-timeline-summary">
+            <Clock3 size={15} />
+            <strong>{clips.length} clipes</strong>
+            <span>{formatDuration(totalDuration)}</span>
+          </div>
+          <button
+            type="button"
+            className="forge-max-collapse"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Abrir timeline de edição' : 'Recolher timeline de edição'}
+          >
+            {collapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+          </button>
         </div>
       </div>
 
-      {!clips.length ? (
+      {collapsed ? null : !clips.length ? (
         <div className="forge-max-timeline-empty">
           <Scissors size={26} />
           <strong>A timeline está vazia</strong>
-          <span>Selecione um vídeo da biblioteca e use “Adicionar selecionado à timeline”.</span>
+          <span>Selecione um vídeo da biblioteca, ajuste o corte no preview e use “Puxar corte para timeline”.</span>
         </div>
       ) : (
         <>
