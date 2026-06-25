@@ -733,6 +733,25 @@
   text-decoration: none;
 }
 
+.forge-max-render-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 111, 111, 0.6);
+  border-radius: 6px;
+  color: #fff2f2;
+  background: #a1222b;
+  cursor: pointer;
+}
+
+.forge-max-render-delete:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .forge-max-render-add {
   border-color: rgba(119, 231, 180, 0.75);
   background: #1f7a56;

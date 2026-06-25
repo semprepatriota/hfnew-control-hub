@@ -87,6 +87,12 @@ export async function renderForgeMaxTimeline(projectId) {
   }));
 }
 
+export async function deleteForgeMaxRender(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/render`), {
+    method: 'DELETE',
+  }));
+}
+
 export function forgeMaxFileUrl(path) {
   return apiUrl(path);
 }

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import {
   createForgeMaxProject,
+  deleteForgeMaxRender,
   deleteForgeMaxMusic,
   deleteForgeMaxProject,
   deleteForgeMaxVideo,
@@ -395,6 +396,15 @@ function ForgeMax3() {
       const render = await renderForgeMaxTimeline(project.project.id);
       await loadProject(project.project.id);
       setMessage(`Render concluído com ${render.clip_count || 0} clipes.`);
+    });
+  };
+
+  const handleDeleteRender = async () => {
+    if (!project?.project?.id || !lastRender) return;
+    await runAction('delete-render', async () => {
+      const updated = await deleteForgeMaxRender(project.project.id);
+      setProject(updated);
+      setMessage('Vídeo renderizado excluído.');
     });
   };
 
@@ -890,6 +900,16 @@ function ForgeMax3() {
               <strong>{lastRender.filename}</strong>
               <span>{lastRender.width}×{lastRender.height} · {formatDuration(lastRender.duration)} · {lastRender.clip_count || 0} clipes</span>
               <div className="forge-max-render-actions">
+                <button
+                  type="button"
+                  className="forge-max-render-delete"
+                  onClick={handleDeleteRender}
+                  disabled={Boolean(busy)}
+                  aria-label="Excluir vídeo renderizado"
+                  title="Excluir vídeo renderizado"
+                >
+                  <X size={15} />
+                </button>
                 <a href={forgeMaxFileUrl(lastRender.url)} target="_blank" rel="noreferrer" className="forge-max-download-link">
                   <Download size={15} /> Abrir MP4
                 </a>
