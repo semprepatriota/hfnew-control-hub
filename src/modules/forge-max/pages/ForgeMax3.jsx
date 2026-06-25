@@ -91,6 +91,28 @@ function ForgeMax3() {
     }
   };
 
+  const ensureActiveProject = async (preferredTitle = '') => {
+    if (project?.project?.id) {
+      return project;
+    }
+
+    const currentProjects = projects.length ? projects : await refreshProjects();
+    if (currentProjects[0]?.project?.id) {
+      const loaded = await getForgeMaxProject(currentProjects[0].project.id);
+      setProject(loaded);
+      setSelectedAssetId(loaded.assets?.[0]?.id || '');
+      setSelectedTimelineClipId(loaded.timeline?.clips?.[0]?.id || '');
+      return loaded;
+    }
+
+    const created = await createForgeMaxProject(preferredTitle.trim() || newProjectTitle.trim() || 'Projeto Forge Max');
+    setProject(created);
+    setSelectedAssetId('');
+    setSelectedTimelineClipId('');
+    await refreshProjects();
+    return created;
+  };
+
   const loadProject = async (projectId) => {
     if (!projectId) return;
     const data = await getForgeMaxProject(projectId);
@@ -123,7 +145,14 @@ function ForgeMax3() {
       setHealth(healthData);
       if (projectList[0]?.project?.id) {
         await loadProject(projectList[0].project.id);
+        return;
       }
+      const created = await createForgeMaxProject('Projeto Forge Max');
+      setProject(created);
+      setSelectedAssetId('');
+      setSelectedTimelineClipId('');
+      await refreshProjects();
+      setMessage('Projeto padrão criado. A biblioteca já está liberada para upload.');
     });
   }, []);
 
@@ -193,12 +222,13 @@ function ForgeMax3() {
     const incoming = Array.from(event.target.files || []).filter((file) => (
       file.type.startsWith('video/') || /\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(file.name)
     ));
-    if (!incoming.length || !availableSlots || !project?.project?.id) return;
+    if (!incoming.length || !availableSlots) return;
     event.target.value = '';
     await runAction('upload-library', async () => {
-      let updated = project;
+      const activeProject = await ensureActiveProject('Projeto Forge Max');
+      let updated = activeProject;
       for (const file of incoming.slice(0, availableSlots)) {
-        updated = await uploadForgeMaxVideo(project.project.id, file);
+        updated = await uploadForgeMaxVideo(activeProject.project.id, file);
       }
       setProject(updated);
       setSelectedAssetId((current) => current || updated.assets[0]?.id || '');
@@ -211,12 +241,13 @@ function ForgeMax3() {
     const incoming = Array.from(event.target.files || []).filter((file) => (
       file.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(file.name)
     ));
-    if (!incoming.length || !project?.project?.id) return;
+    if (!incoming.length) return;
     event.target.value = '';
     await runAction('upload-music', async () => {
-      let updated = project;
+      const activeProject = await ensureActiveProject('Projeto Forge Max');
+      let updated = activeProject;
       for (const file of incoming) {
-        updated = await uploadForgeMaxMusic(project.project.id, file);
+        updated = await uploadForgeMaxMusic(activeProject.project.id, file);
       }
       setProject(updated);
       setMessage(`${incoming.length} faixa(s) salva(s) no projeto.`);
@@ -453,7 +484,7 @@ function ForgeMax3() {
               <p>Até {maxLibraryItems} clipes. Passe o mouse para revisar antes de selecionar.</p>
             </div>
             <div className="forge-max-panel-actions">
-              <label className={`forge-max-upload ${availableSlots && project ? '' : 'disabled'}`}>
+              <label className={`forge-max-upload ${availableSlots ? '' : 'disabled'}`}>
                 <Upload size={16} />
                 Adicionar vídeos
                 <input
@@ -461,7 +492,7 @@ function ForgeMax3() {
                   type="file"
                   accept="video/*"
                   multiple
-                  disabled={!availableSlots || !project || Boolean(busy)}
+                  disabled={!availableSlots || Boolean(busy)}
                   onChange={handleFiles}
                 />
               </label>
@@ -618,7 +649,7 @@ function ForgeMax3() {
             <p>Selecione uma faixa extra para misturar no render final da timeline.</p>
           </div>
           <div className="forge-max-panel-actions">
-            <label className={`forge-max-upload ${project ? '' : 'disabled'}`}>
+            <label className="forge-max-upload">
               <Upload size={16} />
               Adicionar músicas
               <input
@@ -626,7 +657,7 @@ function ForgeMax3() {
                 type="file"
                 accept="audio/*"
                 multiple
-                disabled={!project || Boolean(busy)}
+                disabled={Boolean(busy)}
                 onChange={handleMusicFiles}
               />
             </label>
