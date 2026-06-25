@@ -61,6 +61,7 @@ function ForgeMax3() {
   const [projectCollapsed, setProjectCollapsed] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [musicCollapsed, setMusicCollapsed] = useState(false);
   const [renderCollapsed, setRenderCollapsed] = useState(false);
   const [structureCollapsed, setStructureCollapsed] = useState(true);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
@@ -732,90 +733,6 @@ function ForgeMax3() {
               </span>
               <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
             </div>
-            <div className="forge-max-inline-music">
-              <div className="forge-max-inline-music-header">
-                <div>
-                  <span className="forge-max-section-icon"><Music4 size={17} /></span>
-                  <h3>Trilha dentro da edição</h3>
-                  <p>Suba a música, escolha a faixa e ajuste o volume fino antes de renderizar.</p>
-                </div>
-                <label className="forge-max-upload">
-                  <Upload size={16} />
-                  Adicionar músicas
-                  <input
-                    ref={musicInputRef}
-                    type="file"
-                    accept="audio/*"
-                    multiple
-                    disabled={Boolean(busy)}
-                    onChange={handleMusicFiles}
-                  />
-                </label>
-              </div>
-              <div className="forge-max-inline-music-config">
-                <label>
-                  <span>Faixa ativa</span>
-                  <select
-                    value={musicConfig.active_music_id || ''}
-                    onChange={(event) => handleMusicConfigChange({ active_music_id: event.target.value })}
-                    disabled={Boolean(busy) || !musicTracks.length}
-                  >
-                    <option value="">Sem música extra</option>
-                    {musicTracks.map((track) => (
-                      <option key={track.id} value={track.id}>{track.filename}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Volume da música {Math.round((musicConfig.volume ?? 0.35) * 100)}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1.5"
-                    step="0.05"
-                    value={musicConfig.volume ?? 0.35}
-                    onChange={(event) => setProject((current) => current ? ({
-                      ...current,
-                      music: {
-                        ...(current.music || {}),
-                        volume: Number(event.target.value),
-                      },
-                    }) : current)}
-                    onMouseUp={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
-                    onTouchEnd={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
-                    disabled={Boolean(busy)}
-                  />
-                </label>
-              </div>
-              {!musicTracks.length ? (
-                <div className="forge-max-inline-music-empty">
-                  <strong>Nenhuma faixa adicionada</strong>
-                  <span>Suba MP3, WAV, M4A, AAC, OGG ou FLAC para usar música no render da timeline.</span>
-                </div>
-              ) : (
-                <div className="forge-max-inline-music-list">
-                  {musicTracks.map((track) => (
-                    <article key={track.id} className={`forge-max-inline-music-card ${track.id === musicConfig.active_music_id ? 'selected' : ''}`}>
-                      <div className="forge-max-inline-music-main">
-                        <div className="forge-max-inline-music-meta">
-                          <strong title={track.filename}>{track.filename}</strong>
-                          <span>{formatDuration(track.duration)} · {track.audio_codec || 'audio'}</span>
-                        </div>
-                        <div className="forge-max-inline-music-actions">
-                          <button type="button" onClick={() => handleMusicConfigChange({ active_music_id: track.id })} disabled={Boolean(busy)}>
-                            {track.id === musicConfig.active_music_id ? 'Ativa' : 'Usar'}
-                          </button>
-                          <button type="button" className="forge-max-inline-music-delete" onClick={() => handleDeleteMusic(track.id)} disabled={Boolean(busy)} aria-label={`Excluir ${track.filename}`}>
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      <audio controls preload="none" src={forgeMaxFileUrl(track.url)} className="forge-max-inline-music-player" />
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
           </>
         )}
       </section>
@@ -832,6 +749,100 @@ function ForgeMax3() {
         onRemove={removeTimelineClip}
         onTrim={updateTimelineClip}
       />
+
+      <section className={`forge-max-panel forge-max-music-panel ${musicCollapsed ? 'collapsed' : ''}`}>
+        <div className="forge-max-panel-header">
+          <div>
+            <span className="forge-max-section-icon"><Music4 size={17} /></span>
+            <h2>Trilha de Música</h2>
+            <p>Suba a música, escolha a faixa e ajuste o volume fino antes de renderizar.</p>
+          </div>
+          <div className="forge-max-panel-actions">
+            <label className="forge-max-upload">
+              <Upload size={16} />
+              Adicionar músicas
+              <input
+                ref={musicInputRef}
+                type="file"
+                accept="audio/*"
+                multiple
+                disabled={Boolean(busy)}
+                onChange={handleMusicFiles}
+              />
+            </label>
+            <button type="button" className="forge-max-collapse" onClick={() => setMusicCollapsed((current) => !current)} aria-label={musicCollapsed ? 'Abrir trilha de música' : 'Recolher trilha de música'}>
+              {musicCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+            </button>
+          </div>
+        </div>
+        {!musicCollapsed && (
+          <div className="forge-max-inline-music">
+            <div className="forge-max-inline-music-config">
+              <label>
+                <span>Faixa ativa</span>
+                <select
+                  value={musicConfig.active_music_id || ''}
+                  onChange={(event) => handleMusicConfigChange({ active_music_id: event.target.value })}
+                  disabled={Boolean(busy) || !musicTracks.length}
+                >
+                  <option value="">Sem música extra</option>
+                  {musicTracks.map((track) => (
+                    <option key={track.id} value={track.id}>{track.filename}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Volume da música {Math.round((musicConfig.volume ?? 0.35) * 100)}%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.05"
+                  value={musicConfig.volume ?? 0.35}
+                  onChange={(event) => setProject((current) => current ? ({
+                    ...current,
+                    music: {
+                      ...(current.music || {}),
+                      volume: Number(event.target.value),
+                    },
+                  }) : current)}
+                  onMouseUp={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
+                  onTouchEnd={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
+                  disabled={Boolean(busy)}
+                />
+              </label>
+            </div>
+            {!musicTracks.length ? (
+              <div className="forge-max-inline-music-empty">
+                <strong>Nenhuma faixa adicionada</strong>
+                <span>Suba MP3, WAV, M4A, AAC, OGG ou FLAC para usar música no render da timeline.</span>
+              </div>
+            ) : (
+              <div className="forge-max-inline-music-list">
+                {musicTracks.map((track) => (
+                  <article key={track.id} className={`forge-max-inline-music-card ${track.id === musicConfig.active_music_id ? 'selected' : ''}`}>
+                    <div className="forge-max-inline-music-main">
+                      <div className="forge-max-inline-music-meta">
+                        <strong title={track.filename}>{track.filename}</strong>
+                        <span>{formatDuration(track.duration)} · {track.audio_codec || 'audio'}</span>
+                      </div>
+                      <div className="forge-max-inline-music-actions">
+                        <button type="button" onClick={() => handleMusicConfigChange({ active_music_id: track.id })} disabled={Boolean(busy)}>
+                          {track.id === musicConfig.active_music_id ? 'Ativa' : 'Usar'}
+                        </button>
+                        <button type="button" className="forge-max-inline-music-delete" onClick={() => handleDeleteMusic(track.id)} disabled={Boolean(busy)} aria-label={`Excluir ${track.filename}`}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    <audio controls preload="none" src={forgeMaxFileUrl(track.url)} className="forge-max-inline-music-player" />
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       <section className={`forge-max-render-panel ${renderCollapsed ? 'collapsed' : ''}`}>
         <div className="forge-max-render-header">

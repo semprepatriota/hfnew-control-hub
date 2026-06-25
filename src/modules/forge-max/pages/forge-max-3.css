@@ -519,12 +519,12 @@
 .forge-max-inline-music {
   display: grid;
   gap: 14px;
-  width: min(100%, 760px);
-  margin: 18px auto 0;
-  padding: 16px;
-  border: 1px solid var(--max-line);
-  border-radius: 8px;
-  background: #0d1420;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .forge-max-inline-music-header {
@@ -667,6 +667,14 @@
 }
 
 .forge-max-render-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: var(--max-panel);
+}
+
+.forge-max-music-panel {
   margin-top: 18px;
   padding: 16px;
   border: 1px solid var(--max-line);
