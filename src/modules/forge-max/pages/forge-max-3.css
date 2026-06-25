@@ -439,6 +439,180 @@
   gap: 8px;
 }
 
+.forge-max-timeline-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: var(--max-panel);
+}
+
+.forge-max-timeline-header,
+.forge-max-timeline-summary,
+.forge-max-timeline-controls,
+.forge-max-timeline-clip-title,
+.forge-max-timeline-clip-meta {
+  display: flex;
+  align-items: center;
+}
+
+.forge-max-timeline-header {
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.forge-max-timeline-header h2 {
+  display: inline;
+  margin: 0 0 0 8px;
+  font-size: 16px;
+}
+
+.forge-max-timeline-header p {
+  margin: 6px 0 0;
+  color: var(--max-muted);
+  font-size: 13px;
+}
+
+.forge-max-timeline-summary {
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--max-line);
+  border-radius: 6px;
+  background: rgba(3, 6, 11, 0.28);
+  color: var(--max-muted);
+  font-size: 12px;
+}
+
+.forge-max-timeline-summary strong {
+  color: var(--max-green);
+}
+
+.forge-max-timeline-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 20px;
+  border: 1px dashed rgba(120, 186, 255, 0.34);
+  border-radius: 6px;
+  color: var(--max-muted);
+  text-align: center;
+}
+
+.forge-max-timeline-empty strong {
+  margin-top: 10px;
+  color: var(--max-ink);
+}
+
+.forge-max-timeline-empty span {
+  max-width: 320px;
+  font-size: 13px;
+}
+
+.forge-max-timeline-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.forge-max-timeline-clip {
+  min-width: 240px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: var(--max-panel-strong);
+  cursor: pointer;
+}
+
+.forge-max-timeline-clip.selected {
+  border-color: var(--max-green);
+  box-shadow: 0 0 0 1px rgba(119, 231, 180, 0.18);
+}
+
+.forge-max-timeline-clip-title {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.forge-max-timeline-clip-title span {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(5, 9, 15, 0.85);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.forge-max-timeline-clip-title strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.forge-max-timeline-clip-meta {
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--max-muted);
+  font-size: 11px;
+}
+
+.forge-max-timeline-trim {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.forge-max-timeline-trim label {
+  display: grid;
+  gap: 5px;
+  color: var(--max-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-timeline-trim input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--max-line);
+  border-radius: 5px;
+  outline: none;
+  color: var(--max-ink);
+  background: #0a0f17;
+}
+
+.forge-max-timeline-controls {
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.forge-max-timeline-controls button,
+.forge-max-timeline-remove {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--max-line);
+  border-radius: 6px;
+  color: var(--max-ink);
+  background: #0a0f17;
+  cursor: pointer;
+}
+
+.forge-max-timeline-remove {
+  border-color: rgba(255, 111, 111, 0.34);
+  color: #ffb3b3;
+}
+
 .forge-max-collapse {
   display: grid;
   place-items: center;

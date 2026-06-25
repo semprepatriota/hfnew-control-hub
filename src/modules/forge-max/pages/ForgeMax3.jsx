@@ -167,15 +167,56 @@ function ForgeMax3() {
       setError('Selecione um vídeo da biblioteca antes de adicionar à timeline.');
       return;
     }
-    await saveTimeline([
+    const nextClips = [
       ...timelineClips,
       { asset_id: selectedAsset.id, start_seconds: 0, end_seconds: selectedAsset.duration },
-    ], 'Vídeo adicionado à timeline.');
+    ];
+    if (!project?.project?.id) return;
+    await runAction('save-timeline', async () => {
+      const updated = await updateForgeMaxTimeline(
+        project.project.id,
+        nextClips.map((clip) => ({
+          id: clip.id,
+          asset_id: clip.asset_id,
+          start_seconds: Number(clip.start_seconds) || 0,
+          end_seconds: Number(clip.end_seconds) || 0,
+        })),
+      );
+      setProject(updated);
+      const newestClip = updated.timeline?.clips?.[updated.timeline.clips.length - 1];
+      setSelectedTimelineClipId(newestClip?.id || updated.timeline?.clips?.[0]?.id || '');
+      setSelectedAssetId(selectedAsset.id);
+      setMessage('Vídeo adicionado à timeline.');
+    });
   };
 
   const updateTimelineClip = async (clipId, values) => {
+    const clip = timelineClips.find((item) => item.id === clipId);
+    const asset = assets.find((item) => item.id === clip?.asset_id);
+    if (!clip || !asset) return;
+
+    const nextStartRaw = values.start_seconds !== undefined ? Number(values.start_seconds) : clip.start_seconds;
+    const nextEndRaw = values.end_seconds !== undefined ? Number(values.end_seconds) : clip.end_seconds;
+    const durationMax = Number(asset.duration) || 0;
+
+    let nextStart = Number.isFinite(nextStartRaw) ? nextStartRaw : clip.start_seconds;
+    let nextEnd = Number.isFinite(nextEndRaw) ? nextEndRaw : clip.end_seconds;
+    nextStart = Math.max(0, Math.min(durationMax, nextStart));
+    nextEnd = Math.max(0.1, Math.min(durationMax || nextEnd, nextEnd));
+    if (nextEnd <= nextStart) {
+      if (values.start_seconds !== undefined) {
+        nextEnd = Math.min(durationMax || nextStart + 0.1, nextStart + 0.1);
+      } else {
+        nextStart = Math.max(0, nextEnd - 0.1);
+      }
+    }
+
     await saveTimeline(
-      timelineClips.map((clip) => (clip.id === clipId ? { ...clip, ...values } : clip)),
+      timelineClips.map((item) => (item.id === clipId ? {
+        ...item,
+        start_seconds: nextStart,
+        end_seconds: nextEnd,
+      } : item)),
       'Corte da timeline salvo.',
     );
   };
@@ -386,6 +427,17 @@ function ForgeMax3() {
           )}
         </section>
       </section>
+
+      <ForgeMaxTimeline
+        assets={assets}
+        clips={timelineClips}
+        selectedClipId={selectedTimelineClipId}
+        busy={busy}
+        onSelect={selectTimelineClip}
+        onMove={moveTimelineClip}
+        onRemove={removeTimelineClip}
+        onTrim={updateTimelineClip}
+      />
 
       {(busy || error || message) && (
         <div className={`forge-max-toast ${error ? 'error' : ''}`}>
