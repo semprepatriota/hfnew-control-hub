@@ -162,7 +162,7 @@
 }
 
 .forge-max-preview-panel {
-  grid-row: span 2;
+  margin-top: 18px;
   padding: 16px;
 }
 
@@ -640,7 +640,8 @@
 }
 
 .forge-max-render-header,
-.forge-max-render-actions {
+.forge-max-render-actions,
+.forge-max-render-controls {
   display: flex;
   align-items: center;
 }
@@ -649,6 +650,12 @@
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 14px;
+}
+
+.forge-max-render-controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .forge-max-render-header h2 {
@@ -681,6 +688,11 @@
   font-weight: 800;
   cursor: pointer;
   text-decoration: none;
+}
+
+.forge-max-render-add {
+  border-color: rgba(119, 231, 180, 0.75);
+  background: #1f7a56;
 }
 
 .forge-max-render-button:disabled,

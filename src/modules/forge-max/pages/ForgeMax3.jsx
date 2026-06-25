@@ -60,6 +60,7 @@ function ForgeMax3() {
   const [structureCollapsed, setStructureCollapsed] = useState(false);
   const [musicCollapsed, setMusicCollapsed] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  const [assetTrimDrafts, setAssetTrimDrafts] = useState({});
   const inputRef = useRef(null);
   const musicInputRef = useRef(null);
   const previewVideoRef = useRef(null);
@@ -76,6 +77,12 @@ function ForgeMax3() {
     : selectedAsset;
   const maxLibraryItems = health?.max_library_assets || MAX_LIBRARY_ITEMS;
   const availableSlots = Math.max(maxLibraryItems - assets.length, 0);
+  const selectedAssetDraft = selectedAsset
+    ? (assetTrimDrafts[selectedAsset.id] || {
+      start_seconds: 0,
+      end_seconds: Number(selectedAsset.duration) || 0,
+    })
+    : null;
 
   const runAction = async (label, action) => {
     setBusy(label);
@@ -178,12 +185,52 @@ function ForgeMax3() {
 
     player.addEventListener('loadedmetadata', syncClipPreview, { once: true });
     return () => player.removeEventListener('loadedmetadata', syncClipPreview);
-  }, [previewAsset?.url, selectedTimelineClip?.id, selectedTimelineClip?.start_seconds]);
+  }, [previewAsset?.url, selectedTimelineClip?.id, selectedTimelineClip?.start_seconds, selectedAssetDraft?.start_seconds]);
 
   const previewRangeMin = selectedTimelineClip ? Number(selectedTimelineClip.start_seconds) || 0 : 0;
   const previewRangeMax = selectedTimelineClip
     ? Math.max(Number(selectedTimelineClip.end_seconds) || 0, previewRangeMin + 0.1)
-    : Math.max(Number(previewAsset?.duration) || 0, 0.1);
+    : Math.max(Number(selectedAssetDraft?.end_seconds) || Number(previewAsset?.duration) || 0, 0.1);
+
+  const updateAssetDraft = (assetId, patch) => {
+    const asset = assets.find((item) => item.id === assetId);
+    if (!asset) return;
+    const current = assetTrimDrafts[assetId] || {
+      start_seconds: 0,
+      end_seconds: Number(asset.duration) || 0,
+    };
+    const durationMax = Number(asset.duration) || 0;
+    let nextStart = patch.start_seconds !== undefined ? Number(patch.start_seconds) : current.start_seconds;
+    let nextEnd = patch.end_seconds !== undefined ? Number(patch.end_seconds) : current.end_seconds;
+    nextStart = Math.max(0, Math.min(durationMax, Number.isFinite(nextStart) ? nextStart : 0));
+    nextEnd = Math.max(0.1, Math.min(durationMax || nextEnd, Number.isFinite(nextEnd) ? nextEnd : durationMax || 0.1));
+    if (nextEnd <= nextStart) {
+      if (patch.start_seconds !== undefined) {
+        nextEnd = Math.min(durationMax || nextStart + 0.1, nextStart + 0.1);
+      } else {
+        nextStart = Math.max(0, nextEnd - 0.1);
+      }
+    }
+    setAssetTrimDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [assetId]: {
+        start_seconds: nextStart,
+        end_seconds: nextEnd,
+      },
+    }));
+  };
+
+  const resetAssetDraft = (assetId) => {
+    const asset = assets.find((item) => item.id === assetId);
+    if (!asset) return;
+    setAssetTrimDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [assetId]: {
+        start_seconds: 0,
+        end_seconds: Number(asset.duration) || 0,
+      },
+    }));
+  };
 
   const seekPreview = (nextTime) => {
     const player = previewVideoRef.current;
@@ -194,16 +241,22 @@ function ForgeMax3() {
   };
 
   const markPreviewBoundary = async (boundary) => {
-    if (!selectedTimelineClip) {
-      setError('Selecione um clipe da timeline antes de marcar o corte no preview.');
+    if (!previewAsset) {
+      setError('Selecione um vídeo antes de marcar o corte no preview.');
       return;
     }
     const current = Math.max(previewRangeMin, Math.min(previewRangeMax, Number(previewCurrentTime) || previewRangeMin));
-    if (boundary === 'start') {
-      await updateTimelineClip(selectedTimelineClip.id, { start_seconds: current });
+    if (selectedTimelineClip) {
+      if (boundary === 'start') {
+        await updateTimelineClip(selectedTimelineClip.id, { start_seconds: current });
+        return;
+      }
+      await updateTimelineClip(selectedTimelineClip.id, { end_seconds: current });
       return;
     }
-    await updateTimelineClip(selectedTimelineClip.id, { end_seconds: current });
+    if (!selectedAsset) return;
+    updateAssetDraft(selectedAsset.id, boundary === 'start' ? { start_seconds: current } : { end_seconds: current });
+    setMessage('Corte do preview preparado. Agora envie esse trecho para a timeline.');
   };
 
   const handleCreateProject = async () => {
@@ -291,9 +344,13 @@ function ForgeMax3() {
       setError('Selecione um vídeo da biblioteca antes de adicionar à timeline.');
       return;
     }
+    const draft = assetTrimDrafts[selectedAsset.id] || {
+      start_seconds: 0,
+      end_seconds: selectedAsset.duration,
+    };
     const nextClips = [
       ...timelineClips,
-      { asset_id: selectedAsset.id, start_seconds: 0, end_seconds: selectedAsset.duration },
+      { asset_id: selectedAsset.id, start_seconds: draft.start_seconds, end_seconds: draft.end_seconds },
     ];
     if (!project?.project?.id) return;
     await runAction('save-timeline', async () => {
@@ -310,7 +367,7 @@ function ForgeMax3() {
       const newestClip = updated.timeline?.clips?.[updated.timeline.clips.length - 1];
       setSelectedTimelineClipId(newestClip?.id || updated.timeline?.clips?.[0]?.id || '');
       setSelectedAssetId(selectedAsset.id);
-      setMessage('Vídeo adicionado à timeline.');
+      setMessage('Trecho atual enviado para a timeline.');
     });
   };
 
@@ -413,12 +470,15 @@ function ForgeMax3() {
   };
 
   const handlePreviewLoaded = (event) => {
-    if (!selectedTimelineClip) {
+    if (!selectedTimelineClip && !selectedAssetDraft) {
       event.currentTarget.currentTime = 0;
       setPreviewCurrentTime(0);
       return;
     }
-    const nextTime = Math.min(selectedTimelineClip.start_seconds, event.currentTarget.duration || 0);
+    const nextTime = Math.min(
+      selectedTimelineClip ? selectedTimelineClip.start_seconds : (selectedAssetDraft?.start_seconds || 0),
+      event.currentTarget.duration || 0,
+    );
     event.currentTarget.currentTime = nextTime;
     setPreviewCurrentTime(nextTime);
   };
@@ -426,10 +486,16 @@ function ForgeMax3() {
   const handlePreviewTimeUpdate = (event) => {
     const current = event.currentTarget.currentTime;
     setPreviewCurrentTime(current);
-    if (!selectedTimelineClip || current < selectedTimelineClip.end_seconds) return;
+    const activeEnd = selectedTimelineClip
+      ? selectedTimelineClip.end_seconds
+      : (selectedAssetDraft?.end_seconds || Number(previewAsset?.duration) || 0);
+    const activeStart = selectedTimelineClip
+      ? selectedTimelineClip.start_seconds
+      : (selectedAssetDraft?.start_seconds || 0);
+    if (!activeEnd || current < activeEnd) return;
     event.currentTarget.pause();
-    event.currentTarget.currentTime = selectedTimelineClip.start_seconds;
-    setPreviewCurrentTime(selectedTimelineClip.start_seconds);
+    event.currentTarget.currentTime = activeStart;
+    setPreviewCurrentTime(activeStart);
   };
 
   const handleHoverStart = (event) => {
@@ -543,72 +609,6 @@ function ForgeMax3() {
           )}
         </section>
 
-        <section className="forge-max-panel forge-max-preview-panel">
-          <div className="forge-max-panel-header">
-            <div>
-              <span className="forge-max-section-icon"><Clapperboard size={17} /></span>
-              <h2>Preview de Edição</h2>
-              <p>Palco fixo 9:16, igual ao The Forge 2.0.</p>
-            </div>
-            <span className="forge-max-vertical-badge">9:16 vertical</span>
-          </div>
-
-          <div className="forge-max-preview-stage">
-            {previewAsset ? (
-              <>
-                <video
-                  ref={previewVideoRef}
-                  src={forgeMaxFileUrl(previewAsset.url)}
-                  controls
-                  playsInline
-                  className="forge-max-preview-video"
-                  onLoadedMetadata={handlePreviewLoaded}
-                  onTimeUpdate={handlePreviewTimeUpdate}
-                />
-                <div className="forge-max-preview-scrubber">
-                  <div className="forge-max-preview-scrubber-meta">
-                    <strong>{selectedTimelineClip ? 'Corte direto no preview' : 'Navegação do preview'}</strong>
-                    <span>
-                      {formatDuration(previewCurrentTime)} / {formatDuration(previewRangeMax)}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={previewRangeMin}
-                    max={previewRangeMax}
-                    step="0.1"
-                    value={Math.max(previewRangeMin, Math.min(previewRangeMax, previewCurrentTime))}
-                    onChange={(event) => seekPreview(event.target.value)}
-                  />
-                  {selectedTimelineClip && (
-                    <div className="forge-max-preview-cut-actions">
-                      <button type="button" onClick={() => markPreviewBoundary('start')} disabled={Boolean(busy)}>
-                        <Scissors size={14} /> Marcar início aqui
-                      </button>
-                      <button type="button" onClick={() => markPreviewBoundary('end')} disabled={Boolean(busy)}>
-                        <Scissors size={14} /> Marcar fim aqui
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="forge-max-preview-empty">
-                <Layers3 size={38} />
-                <strong>Selecione um vídeo da biblioteca</strong>
-                <span>O corte, a timeline e os overlays entram nas próximas fases.</span>
-              </div>
-            )}
-          </div>
-          <div className="forge-max-preview-caption">
-            <span>{selectedTimelineClip ? `Trecho ${formatDuration(selectedTimelineClip.start_seconds)} - ${formatDuration(selectedTimelineClip.end_seconds)}` : 'Prévia vertical protegida'}</span>
-            <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
-          </div>
-          <button type="button" className="forge-max-add-timeline" onClick={addSelectedToTimeline} disabled={!selectedAsset || Boolean(busy)}>
-            <Plus size={16} /> Adicionar selecionado à timeline
-          </button>
-        </section>
-
         <section className={`forge-max-panel forge-max-roadmap-panel ${structureCollapsed ? 'collapsed' : ''}`}>
           <div className="forge-max-panel-header">
             <div>
@@ -639,6 +639,78 @@ function ForgeMax3() {
             </>
           )}
         </section>
+      </section>
+
+      <section className="forge-max-panel forge-max-preview-panel">
+        <div className="forge-max-panel-header">
+          <div>
+            <span className="forge-max-section-icon"><Clapperboard size={17} /></span>
+            <h2>Preview de Edição</h2>
+            <p>Palco fixo 9:16 com corte fino em tempo real antes e depois da timeline.</p>
+          </div>
+          <span className="forge-max-vertical-badge">9:16 vertical</span>
+        </div>
+
+        <div className="forge-max-preview-stage">
+          {previewAsset ? (
+            <>
+              <video
+                ref={previewVideoRef}
+                src={forgeMaxFileUrl(previewAsset.url)}
+                controls
+                playsInline
+                className="forge-max-preview-video"
+                onLoadedMetadata={handlePreviewLoaded}
+                onTimeUpdate={handlePreviewTimeUpdate}
+              />
+              <div className="forge-max-preview-scrubber">
+                <div className="forge-max-preview-scrubber-meta">
+                  <strong>{selectedTimelineClip ? 'Editando clipe da timeline' : 'Preparando corte do vídeo selecionado'}</strong>
+                  <span>
+                    {formatDuration(previewCurrentTime)} / {formatDuration(previewRangeMax)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={previewRangeMin}
+                  max={previewRangeMax}
+                  step="0.1"
+                  value={Math.max(previewRangeMin, Math.min(previewRangeMax, previewCurrentTime))}
+                  onChange={(event) => seekPreview(event.target.value)}
+                />
+                <div className="forge-max-preview-cut-actions">
+                  <button type="button" onClick={() => markPreviewBoundary('start')} disabled={Boolean(busy)}>
+                    <Scissors size={14} /> Marcar início aqui
+                  </button>
+                  <button type="button" onClick={() => markPreviewBoundary('end')} disabled={Boolean(busy)}>
+                    <Scissors size={14} /> Marcar fim aqui
+                  </button>
+                  {!selectedTimelineClip && selectedAsset && (
+                    <button type="button" onClick={() => resetAssetDraft(selectedAsset.id)} disabled={Boolean(busy)}>
+                      <RefreshCw size={14} /> Resetar corte
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="forge-max-preview-empty">
+              <Layers3 size={38} />
+              <strong>Selecione um vídeo da biblioteca</strong>
+              <span>Faça o corte preciso aqui e depois empurre o trecho para a timeline.</span>
+            </div>
+          )}
+        </div>
+        <div className="forge-max-preview-caption">
+          <span>
+            {selectedTimelineClip
+              ? `Trecho da timeline ${formatDuration(selectedTimelineClip.start_seconds)} - ${formatDuration(selectedTimelineClip.end_seconds)}`
+              : selectedAssetDraft
+                ? `Corte preparado ${formatDuration(selectedAssetDraft.start_seconds)} - ${formatDuration(selectedAssetDraft.end_seconds)}`
+                : 'Prévia vertical protegida'}
+          </span>
+          <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
+        </div>
       </section>
 
       <section className={`forge-max-panel forge-max-music-panel ${musicCollapsed ? 'collapsed' : ''}`}>
@@ -753,15 +825,26 @@ function ForgeMax3() {
             <h2>Render da Timeline</h2>
             <p>Primeiro núcleo da Fase 4: une os clipes da timeline em um MP4 vertical 9:16.</p>
           </div>
-          <button
-            type="button"
-            className="forge-max-render-button"
-            onClick={handleRenderTimeline}
-            disabled={!project?.project?.id || !timelineClips.length || Boolean(busy)}
-          >
-            {busy === 'render-timeline' ? <Loader size={16} className="forge-max-spin" /> : <Clapperboard size={16} />}
-            Renderizar timeline
-          </button>
+          <div className="forge-max-render-controls">
+            <button
+              type="button"
+              className="forge-max-render-button forge-max-render-add"
+              onClick={addSelectedToTimeline}
+              disabled={!selectedAsset || Boolean(busy)}
+            >
+              <Plus size={16} />
+              Puxar corte para timeline
+            </button>
+            <button
+              type="button"
+              className="forge-max-render-button"
+              onClick={handleRenderTimeline}
+              disabled={!project?.project?.id || !timelineClips.length || Boolean(busy)}
+            >
+              {busy === 'render-timeline' ? <Loader size={16} className="forge-max-spin" /> : <Clapperboard size={16} />}
+              Renderizar timeline
+            </button>
+          </div>
         </div>
 
         {lastRender ? (
