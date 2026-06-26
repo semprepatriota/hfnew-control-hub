@@ -89,7 +89,57 @@ const TEXT_THEMES = [
   { id: 'red_impact', label: 'Vermelho impacto', color: '#ffffff', background: '#a20f18' },
   { id: 'cinematic_neon', label: 'Cinemático Neon', color: '#eaf7ff', background: '#04101d' },
   { id: 'cinematic_bar', label: 'Tarja Cinemática', color: '#f8fbff', background: '#07111f' },
+  { id: 'devotional_orange', label: 'Devocional Laranja', color: '#f7efe5', background: '#1f1612' },
+  { id: 'devotional_list', label: 'Lista Devocional', color: '#f5f0e8', background: '#171411' },
+  { id: 'verse_gold', label: 'Versículo Dourado', color: '#f7d56a', background: '#131821' },
 ];
+
+const FORGE2_NEW_TEMPLATE_IDS = ['devotional_orange', 'devotional_list', 'verse_gold'];
+
+const TEXT_THEME_DEFAULTS = {
+  devotional_orange: {
+    font_family: 'Playfair Display',
+    font_size: 30,
+    line_height: 1.16,
+    letter_spacing: 0,
+    color: '#f7efe5',
+    shadow: true,
+    background_opacity: 0.12,
+    position_x: 50,
+    position_y: 50,
+    box_width: 84,
+    box_height: 72,
+    align: 'center',
+  },
+  devotional_list: {
+    font_family: 'Playfair Display',
+    font_size: 28,
+    line_height: 1.16,
+    letter_spacing: 0,
+    color: '#f5f0e8',
+    shadow: true,
+    background_opacity: 0.12,
+    position_x: 50,
+    position_y: 50,
+    box_width: 84,
+    box_height: 74,
+    align: 'left',
+  },
+  verse_gold: {
+    font_family: 'Playfair Display',
+    font_size: 30,
+    line_height: 1.2,
+    letter_spacing: 0,
+    color: '#f7d56a',
+    shadow: true,
+    background_opacity: 0.14,
+    position_x: 50,
+    position_y: 48,
+    box_width: 82,
+    box_height: 76,
+    align: 'center',
+  },
+};
 
 const TEXT_ANIMATIONS = [
   { id: 'none', label: 'Sem animação' },
@@ -110,6 +160,7 @@ function createDefaultStudio() {
     projects_collapsed: false,
     library_collapsed: false,
     media_collapsed: false,
+    publication_collapsed: false,
     selected_base_asset_id: '',
     output_aspect_ratio: '9:16',
     base_videos_vertical: [],
@@ -204,6 +255,7 @@ function normalizeStudio(studio) {
     projects_collapsed: Boolean(next.projects_collapsed),
     production_table_collapsed: Boolean(next.production_table_collapsed),
     media_collapsed: Boolean(next.media_collapsed),
+    publication_collapsed: Boolean(next.publication_collapsed),
   };
 }
 
@@ -214,6 +266,21 @@ function assetDurationLabel(asset) {
 
 function getTextTheme(themeId) {
   return TEXT_THEMES.find((theme) => theme.id === themeId) || TEXT_THEMES[0];
+}
+
+function getForge2NewTemplateThemes() {
+  return TEXT_THEMES.filter((theme) => FORGE2_NEW_TEMPLATE_IDS.includes(theme.id));
+}
+
+function applyTextThemeDefaults(currentOverlay, themeId) {
+  const theme = getTextTheme(themeId);
+  const overrides = TEXT_THEME_DEFAULTS[themeId] || {};
+  return {
+    ...currentOverlay,
+    ...overrides,
+    overlay_theme: themeId,
+    color: overrides.color || theme.color,
+  };
 }
 
 function hexToRgba(hex, opacity) {
@@ -358,6 +425,7 @@ function TheForge2() {
   const [message, setMessage] = useState('');
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
   const [copyPanelCollapsed, setCopyPanelCollapsed] = useState(false);
+  const [templatePanelCollapsed, setTemplatePanelCollapsed] = useState(false);
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const previewStageRef = useRef(null);
   const productionScrollTopRef = useRef(null);
@@ -437,6 +505,8 @@ function TheForge2() {
     : (studio.text_overlay?.color || textTheme.color);
   const overlayPreviewText = studio.text_overlay.generated_text || 'A frase gerada vai aparecer aqui em cima do vídeo.';
   const overlayPreviewLines = overlayPreviewText.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const overlayBodyLines = overlayPreviewLines.slice(1);
+  const newTemplateThemes = getForge2NewTemplateThemes();
 
   const handleCreateProject = async () => {
     await runAction('create-project', async () => {
@@ -1130,26 +1200,6 @@ function TheForge2() {
             )}
           </section>
 
-          <section className={`forge2-text-controls forge2-text-controls-side ${textControlsCollapsed ? 'collapsed' : ''}`}>
-            <div className="forge2-text-controls-header">
-              <strong>Ajustes da frase</strong>
-              <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
-                {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-              </button>
-            </div>
-            {!textControlsCollapsed && (
-              <>
-                <div className="forge2-slider-grid forge2-preview-sliders">
-                  <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
-                  <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
-                  <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
-                  <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
-                  <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
-                </div>
-              </>
-            )}
-          </section>
-
           <section className={`forge2-panel forge2-media-panel ${studio.media_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
@@ -1384,9 +1434,19 @@ function TheForge2() {
                       }}
                     >
                       <strong className="forge2-preview-copy-title">{overlayPreviewLines[0]}</strong>
-                      {overlayPreviewLines.slice(1).map((line, index) => (
-                        <span key={`${line}-${index}`} className="forge2-preview-copy-line">{line}</span>
-                      ))}
+                      <div className="forge2-preview-copy-body">
+                        {overlayBodyLines.map((line, index) => (
+                          <span
+                            key={`${line}-${index}`}
+                            className={[
+                              'forge2-preview-copy-line',
+                              index === overlayBodyLines.length - 1 ? 'is-last' : '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            {line}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     {activeGif && (
                       <img
@@ -1431,12 +1491,89 @@ function TheForge2() {
                 </button>
               </div>
 
-              {lastRender && (
-                <div className="forge2-render-result">
-                  <strong>Último render</strong>
-                  <span>{lastRender.filename} · {lastRender.width}x{lastRender.height} · {(lastRender.duration || 0).toFixed(1)}s</span>
+              <section className={`forge2-text-controls ${textControlsCollapsed ? 'collapsed' : ''}`}>
+                <div className="forge2-text-controls-header">
+                  <strong>Ajustes da frase</strong>
+                  <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
+                    {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
                 </div>
-              )}
+                {!textControlsCollapsed && (
+                  <div className="forge2-slider-grid forge2-preview-sliders">
+                    <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+                    <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
+                    <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
+                    <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
+                    <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
+                  </div>
+                )}
+              </section>
+
+              <section className={`forge2-panel forge2-template-panel ${templatePanelCollapsed ? 'collapsed' : ''}`}>
+                <div className="forge2-panel-header">
+                  <div className="forge2-section-title">
+                    <Type size={16} />
+                    <h2>Templates novos</h2>
+                  </div>
+                  <button type="button" onClick={() => setTemplatePanelCollapsed((current) => !current)}>
+                    {templatePanelCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                </div>
+                {!templatePanelCollapsed && (
+                  <div className="forge2-template-grid">
+                    {newTemplateThemes.map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        className={`forge2-template-card ${studio.text_overlay.overlay_theme === theme.id ? 'active' : ''}`}
+                        onClick={() => updateStudioLocal((current) => ({
+                          ...current,
+                          text_overlay: {
+                            ...applyTextThemeDefaults(current.text_overlay, theme.id),
+                          },
+                        }))}
+                      >
+                        <div className={`forge2-template-mini theme-${theme.id}`}>
+                          <strong className="forge2-template-mini-title">Exemplo</strong>
+                          <span className="forge2-template-mini-line">Prévia visual</span>
+                        </div>
+                        <em>{theme.label}</em>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="forge2-panel forge2-render-preview-panel">
+                <div className="forge2-panel-header">
+                  <div>
+                    <h2>Preview do vídeo renderizado</h2>
+                    <span className="forge2-panel-subtitle">Comparação direta com o preview de edição acima</span>
+                  </div>
+                </div>
+                {lastRender?.download_url || lastRender?.url ? (
+                  <>
+                    <div className={`forge2-render-preview-stage ${renderAspectClass}`}>
+                      <video
+                        key={lastRender.id || lastRender.filename}
+                        src={forge2FileUrl(lastRender.url || lastRender.download_url)}
+                        controls
+                        playsInline
+                        className="forge2-render-preview-video"
+                      />
+                    </div>
+                    <div className="forge2-render-result compact">
+                      <strong>Último MP4</strong>
+                      <span>{lastRender.filename} · {lastRender.width}x{lastRender.height} · {(lastRender.duration || 0).toFixed(1)}s</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="forge2-render-preview-empty">
+                    <Film size={28} />
+                    <span>Renderize um vídeo para comparar aqui.</span>
+                  </div>
+                )}
+              </section>
 
               <section className={`forge2-panel forge2-copy-panel ${copyPanelCollapsed ? 'collapsed' : ''}`}>
                 <div className="forge2-panel-header">
@@ -1494,44 +1631,13 @@ function TheForge2() {
                   </div>
                 )}
               </section>
-
-              <section className="forge2-panel forge2-render-preview-panel">
-                <div className="forge2-panel-header">
-                  <div>
-                    <h2>Preview do vídeo renderizado</h2>
-                    <span className="forge2-panel-subtitle">Comparação direta com o preview de edição acima</span>
-                  </div>
-                </div>
-                {lastRender?.download_url || lastRender?.url ? (
-                  <>
-                    <div className={`forge2-render-preview-stage ${renderAspectClass}`}>
-                      <video
-                        key={lastRender.id || lastRender.filename}
-                        src={forge2FileUrl(lastRender.url || lastRender.download_url)}
-                        controls
-                        playsInline
-                        className="forge2-render-preview-video"
-                      />
-                    </div>
-                    <div className="forge2-render-result compact">
-                      <strong>Último MP4</strong>
-                      <span>{lastRender.filename} · {lastRender.width}x{lastRender.height} · {(lastRender.duration || 0).toFixed(1)}s</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="forge2-render-preview-empty">
-                    <Film size={28} />
-                    <span>Renderize um vídeo para comparar aqui.</span>
-                  </div>
-                )}
-              </section>
             </section>
 
           </section>
         </main>
 
         <aside className="forge2-right-rail">
-          <section className="forge2-panel">
+          <section className={`forge2-panel ${studio.publication_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
                 <Wand2 size={16} />
@@ -1547,63 +1653,75 @@ function TheForge2() {
                   <Sparkles size={16} />
                   Gerador FORGE
                 </button>
+                <button
+                  type="button"
+                  className="forge2-icon-toggle"
+                  onClick={() => updateStudioLocal((current) => ({ ...current, publication_collapsed: !current.publication_collapsed }))}
+                  aria-label={studio.publication_collapsed ? 'Expandir publicação' : 'Recolher publicação'}
+                >
+                  {studio.publication_collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                </button>
                 <Film size={16} />
               </div>
             </div>
 
-            <div className="forge2-form-grid">
-              <label>
-                <span>Título</span>
-                <input value={studio.publication.title} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, title: event.target.value } }))} />
-              </label>
-              <label>
-                <span>Descrição</span>
-                <textarea rows={6} value={studio.publication.description} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, description: event.target.value } }))} />
-              </label>
-              <label>
-                <span>Hashtags</span>
-                <input value={hashtagsText} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, hashtags: event.target.value.split(/\s+/).filter(Boolean) } }))} placeholder="#oracao #frasedodia #shorts" />
-              </label>
-              <label>
-                <span>Categoria do YouTube</span>
-                <select value={studio.publication.youtube_category} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, youtube_category: event.target.value } }))}>
-                  {YOUTUBE_CATEGORIES.map((item) => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Status de privacidade</span>
-                <select value={studio.publication.privacy_status} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, privacy_status: event.target.value } }))}>
-                  <option value="private">Privado</option>
-                  <option value="public">Publico</option>
-                  <option value="unlisted">Nao listado</option>
-                </select>
-              </label>
-              <label>
-                <span>Programar para postar</span>
-                <input type="datetime-local" value={studio.publication.schedule_at} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, schedule_at: event.target.value } }))} />
-              </label>
-            </div>
+            {!studio.publication_collapsed && (
+              <>
+                <div className="forge2-form-grid">
+                  <label>
+                    <span>Título</span>
+                    <input value={studio.publication.title} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, title: event.target.value } }))} />
+                  </label>
+                  <label>
+                    <span>Descrição</span>
+                    <textarea rows={6} value={studio.publication.description} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, description: event.target.value } }))} />
+                  </label>
+                  <label>
+                    <span>Hashtags</span>
+                    <input value={hashtagsText} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, hashtags: event.target.value.split(/\s+/).filter(Boolean) } }))} placeholder="#oracao #frasedodia #shorts" />
+                  </label>
+                  <label>
+                    <span>Categoria do YouTube</span>
+                    <select value={studio.publication.youtube_category} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, youtube_category: event.target.value } }))}>
+                      {YOUTUBE_CATEGORIES.map((item) => (
+                        <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Status de privacidade</span>
+                    <select value={studio.publication.privacy_status} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, privacy_status: event.target.value } }))}>
+                      <option value="private">Privado</option>
+                      <option value="public">Publico</option>
+                      <option value="unlisted">Nao listado</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Programar para postar</span>
+                    <input type="datetime-local" value={studio.publication.schedule_at} onChange={(event) => updateStudioLocal((current) => ({ ...current, publication: { ...current.publication, schedule_at: event.target.value } }))} />
+                  </label>
+                </div>
 
-            <div className="forge2-publication-actions">
-              <button type="button" className="forge2-save-publication" onClick={handleScheduleRender} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
-                <CalendarClock size={16} />
-                Programar na agenda
-              </button>
-              <button type="button" onClick={handleDownloadRenderMp4} disabled={!lastRender}>
-                <Download size={16} />
-                Baixar vídeo MP4
-              </button>
-              <button type="button" onClick={handlePublishYouTube} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
-                <Upload size={16} />
-                Publicar no YouTube
-              </button>
-              <button type="button" onClick={handleResetRender}>
-                <Plus size={16} />
-                Criar novo render
-              </button>
-            </div>
+                <div className="forge2-publication-actions">
+                  <button type="button" className="forge2-save-publication" onClick={handleScheduleRender} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
+                    <CalendarClock size={16} />
+                    Programar na agenda
+                  </button>
+                  <button type="button" onClick={handleDownloadRenderMp4} disabled={!lastRender}>
+                    <Download size={16} />
+                    Baixar vídeo MP4
+                  </button>
+                  <button type="button" onClick={handlePublishYouTube} disabled={!selectedProjectId || !lastRender || Boolean(busyAction)}>
+                    <Upload size={16} />
+                    Publicar no YouTube
+                  </button>
+                  <button type="button" onClick={handleResetRender}>
+                    <Plus size={16} />
+                    Criar novo render
+                  </button>
+                </div>
+              </>
+            )}
           </section>
 
           <section className="forge2-panel forge2-cinematic-style-panel">
@@ -1623,9 +1741,7 @@ function TheForge2() {
                   onClick={() => updateStudioLocal((current) => ({
                     ...current,
                     text_overlay: {
-                      ...current.text_overlay,
-                      overlay_theme: theme.id,
-                      color: theme.color,
+                      ...applyTextThemeDefaults(current.text_overlay, theme.id),
                     },
                   }))}
                 >
