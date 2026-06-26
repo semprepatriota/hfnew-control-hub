@@ -430,6 +430,33 @@
   accent-color: #77e7b4;
 }
 
+.forge-max-preview-trim-visual {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(120, 186, 255, 0.12);
+}
+
+.forge-max-preview-trim-track,
+.forge-max-preview-trim-active {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.forge-max-preview-trim-track {
+  left: 0;
+  width: 100%;
+  background: rgba(120, 186, 255, 0.12);
+}
+
+.forge-max-preview-trim-active {
+  background: linear-gradient(90deg, rgba(119, 231, 180, 0.86), rgba(120, 186, 255, 0.92));
+  box-shadow: 0 0 12px rgba(119, 231, 180, 0.28);
+}
+
 .forge-max-preview-cut-actions {
   flex-wrap: wrap;
   gap: 8px;
@@ -907,6 +934,78 @@
   border-bottom: 1px solid var(--max-line);
 }
 
+.forge-max-timeline-preview-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: rgba(9, 15, 24, 0.68);
+}
+
+.forge-max-timeline-preview-header,
+.forge-max-timeline-preview-actions {
+  display: flex;
+  align-items: center;
+}
+
+.forge-max-timeline-preview-header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forge-max-timeline-preview-header strong {
+  display: block;
+  font-size: 13px;
+}
+
+.forge-max-timeline-preview-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--max-muted);
+  font-size: 12px;
+}
+
+.forge-max-timeline-preview-actions {
+  gap: 8px;
+}
+
+.forge-max-timeline-preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--max-line);
+  border-radius: 6px;
+  color: var(--max-ink);
+  background: #0a0f17;
+  cursor: pointer;
+}
+
+.forge-max-timeline-preview-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.forge-max-timeline-preview-stage {
+  width: min(100%, 300px);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border: 1px solid rgba(120, 186, 255, 0.26);
+  border-radius: 6px;
+  background: #020408;
+}
+
+.forge-max-timeline-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
 .forge-max-timeline-ruler-mark {
   position: absolute;
   bottom: 4px;
@@ -1227,7 +1326,8 @@
 
   .forge-max-inline-music-config,
   .forge-max-timeline-slider-group,
-  .forge-max-timeline-editor-header {
+  .forge-max-timeline-editor-header,
+  .forge-max-timeline-preview-header {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;

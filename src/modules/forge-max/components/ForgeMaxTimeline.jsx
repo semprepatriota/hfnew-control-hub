@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clock3, ListVideo, RotateCcw, Scissors, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clock3, ListVideo, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward, X } from 'lucide-react';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -16,6 +16,7 @@ function ForgeMaxTimeline({
   busy,
   collapsed = false,
   onToggleCollapse,
+  resolveAssetUrl,
   onSelect,
   onMove,
   onRemove,
@@ -26,6 +27,12 @@ function ForgeMaxTimeline({
   const selectedAsset = assets.find((item) => item.id === selectedClip?.asset_id) || null;
   const [draftStart, setDraftStart] = useState(0);
   const [draftEnd, setDraftEnd] = useState(0);
+  const [previewClipIndex, setPreviewClipIndex] = useState(0);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const timelinePreviewRef = useRef(null);
+
+  const previewClip = clips[previewClipIndex] || null;
+  const previewAsset = assets.find((item) => item.id === previewClip?.asset_id) || null;
 
   useEffect(() => {
     if (!selectedClip) {
@@ -36,6 +43,36 @@ function ForgeMaxTimeline({
     setDraftStart(Number(selectedClip.start_seconds) || 0);
     setDraftEnd(Number(selectedClip.end_seconds) || 0);
   }, [selectedClip?.id, selectedClip?.start_seconds, selectedClip?.end_seconds]);
+
+  useEffect(() => {
+    if (!clips.length) {
+      setPreviewClipIndex(0);
+      return;
+    }
+    if (!selectedClipId) return;
+    const nextIndex = clips.findIndex((clip) => clip.id === selectedClipId);
+    if (nextIndex >= 0) {
+      setPreviewClipIndex(nextIndex);
+    }
+  }, [clips, selectedClipId]);
+
+  useEffect(() => {
+    const player = timelinePreviewRef.current;
+    if (!player || !previewClip) return;
+
+    const syncPreview = () => {
+      const nextTime = Math.min(previewClip.start_seconds, player.duration || previewClip.start_seconds || 0);
+      player.currentTime = nextTime;
+    };
+
+    if (player.readyState >= 1) {
+      syncPreview();
+      return;
+    }
+
+    player.addEventListener('loadedmetadata', syncPreview, { once: true });
+    return () => player.removeEventListener('loadedmetadata', syncPreview);
+  }, [previewClip?.id, previewClip?.start_seconds, previewAsset?.url]);
 
   const timelineRuler = useMemo(() => {
     if (!clips.length || totalDuration <= 0) return [];
@@ -65,6 +102,50 @@ function ForgeMaxTimeline({
     if (!selectedAsset) return;
     setDraftStart(0);
     setDraftEnd(Number(selectedAsset.duration) || 0);
+  };
+
+  const stepPreviewClip = (direction) => {
+    if (!clips.length) return;
+    setPreviewClipIndex((current) => {
+      const nextIndex = Math.max(0, Math.min(clips.length - 1, current + direction));
+      return nextIndex;
+    });
+    setPreviewPlaying(false);
+  };
+
+  const toggleTimelinePreviewPlayback = async () => {
+    const player = timelinePreviewRef.current;
+    if (!player || !previewClip) return;
+    if (player.paused) {
+      await player.play().catch(() => {});
+      setPreviewPlaying(true);
+      return;
+    }
+    player.pause();
+    setPreviewPlaying(false);
+  };
+
+  const handleTimelinePreviewTimeUpdate = (event) => {
+    if (!previewClip) return;
+    const current = event.currentTarget.currentTime;
+    if (current < previewClip.end_seconds) return;
+    const nextIndex = previewClipIndex + 1;
+    if (nextIndex < clips.length) {
+      setPreviewClipIndex(nextIndex);
+      setPreviewPlaying(true);
+      return;
+    }
+    event.currentTarget.pause();
+    event.currentTarget.currentTime = previewClip.start_seconds;
+    setPreviewPlaying(false);
+  };
+
+  const handleTimelinePreviewLoaded = (event) => {
+    if (!previewClip) return;
+    event.currentTarget.currentTime = Math.min(previewClip.start_seconds, event.currentTarget.duration || previewClip.start_seconds || 0);
+    if (previewPlaying) {
+      event.currentTarget.play().catch(() => {});
+    }
   };
 
   return (
@@ -100,6 +181,44 @@ function ForgeMaxTimeline({
         </div>
       ) : (
         <>
+          {previewClip && previewAsset && (
+            <div className="forge-max-timeline-preview-panel">
+              <div className="forge-max-timeline-preview-header">
+                <div>
+                  <strong>Preview da união dos cortes</strong>
+                  <span>
+                    Clipe {previewClipIndex + 1}/{clips.length} · {previewAsset.filename}
+                    {' '}· {formatDuration(previewClip.start_seconds)} - {formatDuration(previewClip.end_seconds)}
+                  </span>
+                </div>
+                <div className="forge-max-timeline-preview-actions">
+                  <button type="button" onClick={() => stepPreviewClip(-1)} disabled={previewClipIndex === 0 || Boolean(busy)} title="Clipe anterior">
+                    <SkipBack size={14} />
+                  </button>
+                  <button type="button" onClick={toggleTimelinePreviewPlayback} disabled={Boolean(busy)} title={previewPlaying ? 'Pausar preview' : 'Reproduzir preview'}>
+                    {previewPlaying ? <Pause size={14} /> : <Play size={14} />}
+                  </button>
+                  <button type="button" onClick={() => stepPreviewClip(1)} disabled={previewClipIndex === clips.length - 1 || Boolean(busy)} title="Próximo clipe">
+                    <SkipForward size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="forge-max-timeline-preview-stage">
+                <video
+                  ref={timelinePreviewRef}
+                  src={resolveAssetUrl(previewAsset.url)}
+                  controls
+                  playsInline
+                  className="forge-max-timeline-preview-video"
+                  onLoadedMetadata={handleTimelinePreviewLoaded}
+                  onTimeUpdate={handleTimelinePreviewTimeUpdate}
+                  onPlay={() => setPreviewPlaying(true)}
+                  onPause={() => setPreviewPlaying(false)}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="forge-max-timeline-ruler">
             {timelineRuler.map((mark) => (
               <span key={mark.key} className="forge-max-timeline-ruler-mark" style={{ left: mark.left }}>

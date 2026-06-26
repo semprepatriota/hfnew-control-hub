@@ -214,6 +214,13 @@ function ForgeMax3() {
   const previewRangeMax = selectedTimelineClip
     ? Math.max(Number(selectedTimelineClip.end_seconds) || 0, previewRangeMin + 0.1)
     : Math.max(Number(selectedAssetDraft?.end_seconds) || Number(previewAsset?.duration) || 0, 0.1);
+  const previewFullDuration = Math.max(Number(previewAsset?.duration) || 0, 0.1);
+  const previewTrimStart = selectedTimelineClip ? Number(selectedTimelineClip.start_seconds) || 0 : (selectedAssetDraft?.start_seconds || 0);
+  const previewTrimEnd = selectedTimelineClip
+    ? Math.max(Number(selectedTimelineClip.end_seconds) || 0, previewTrimStart + 0.1)
+    : Math.max(Number(selectedAssetDraft?.end_seconds) || Number(previewAsset?.duration) || 0, previewTrimStart + 0.1);
+  const previewTrimLeft = `${Math.max(0, Math.min(100, (previewTrimStart / previewFullDuration) * 100))}%`;
+  const previewTrimWidth = `${Math.max(1, Math.min(100, ((previewTrimEnd - previewTrimStart) / previewFullDuration) * 100))}%`;
 
   const updateAssetDraft = (assetId, patch) => {
     const asset = assets.find((item) => item.id === assetId);
@@ -742,6 +749,13 @@ function ForgeMax3() {
                       value={Math.max(previewRangeMin, Math.min(previewRangeMax, previewCurrentTime))}
                       onChange={(event) => seekPreview(event.target.value)}
                     />
+                    <div className="forge-max-preview-trim-visual">
+                      <div className="forge-max-preview-trim-track" />
+                      <div
+                        className="forge-max-preview-trim-active"
+                        style={{ left: previewTrimLeft, width: previewTrimWidth }}
+                      />
+                    </div>
                     <div className="forge-max-preview-cut-readout">
                       <span><b>Início</b> {formatDuration(selectedTimelineClip ? selectedTimelineClip.start_seconds : (selectedAssetDraft?.start_seconds || 0))}</span>
                       <span><b>Cursor</b> {formatDuration(previewCurrentTime)}</span>
@@ -800,6 +814,7 @@ function ForgeMax3() {
         busy={busy}
         collapsed={timelineCollapsed}
         onToggleCollapse={() => setTimelineCollapsed((current) => !current)}
+        resolveAssetUrl={forgeMaxFileUrl}
         onSelect={selectTimelineClip}
         onMove={moveTimelineClip}
         onRemove={removeTimelineClip}
