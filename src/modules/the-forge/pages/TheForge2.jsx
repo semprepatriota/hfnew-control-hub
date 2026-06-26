@@ -185,6 +185,7 @@ function createDefaultStudio() {
     gif_overlays: [],
     music_tracks: [],
     text_overlay: {
+      title: '',
       topic: '',
       style: 'oracao',
       generated_text: '',
@@ -618,9 +619,9 @@ function TheForge2() {
   const overlayTextColor = studio.text_overlay?.overlay_theme === 'classic_dark' && ['#111111', '#000000'].includes((studio.text_overlay?.color || '').toLowerCase())
     ? textTheme.color
     : (studio.text_overlay?.color || textTheme.color);
+  const overlayPreviewTitle = (studio.text_overlay.title || studio.publication.title || '').trim() || 'Título do vídeo';
   const overlayPreviewText = studio.text_overlay.generated_text || 'A frase gerada vai aparecer aqui em cima do vídeo.';
-  const overlayPreviewLines = overlayPreviewText.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  const overlayBodyLines = overlayPreviewLines.slice(1);
+  const overlayBodyLines = overlayPreviewText.split(/\n+/).map((line) => line.trim()).filter(Boolean);
   const newTemplateThemes = getForge2NewTemplateThemes();
 
   const handleCreateProject = async () => {
@@ -1052,6 +1053,7 @@ function TheForge2() {
     ...current,
     text_overlay: {
       ...current.text_overlay,
+      title: item.title || current.text_overlay.title || current.publication.title,
       topic: limitText(item.topic || item.title, 600),
       style: item.style || current.text_overlay.style,
       generated_text: item.treated_text || item.raw_text,
@@ -1570,7 +1572,7 @@ function TheForge2() {
                         textShadow: studio.text_overlay.shadow ? '0 2px 18px rgba(0,0,0,0.38)' : 'none',
                       }}
                     >
-                      <strong className={`forge2-preview-copy-title title-${studio.text_overlay.title_preset || 'serif_classic'}`}>{overlayPreviewLines[0]}</strong>
+                      <strong className={`forge2-preview-copy-title title-${studio.text_overlay.title_preset || 'serif_classic'}`}>{overlayPreviewTitle}</strong>
                       <div className="forge2-preview-copy-body">
                         {overlayBodyLines.map((line, index) => (
                           <span
@@ -1714,6 +1716,17 @@ function TheForge2() {
 
                 {!copyPanelCollapsed && (
                   <div className="forge2-form-grid">
+                    <label>
+                      <span>Título do preview</span>
+                      <input
+                        value={studio.text_overlay.title || ''}
+                        onChange={(event) => updateStudioLocal((current) => ({
+                          ...current,
+                          text_overlay: { ...current.text_overlay, title: event.target.value },
+                        }))}
+                        placeholder="Título separado do texto abaixo"
+                      />
+                    </label>
                     <label>
                       <span>Tema</span>
                       <textarea

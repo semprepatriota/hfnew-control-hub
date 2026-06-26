@@ -24,6 +24,7 @@ function sanitizeStudioForApi(studio) {
     ...studio,
     text_overlay: {
       ...(studio.text_overlay || {}),
+      title: limitText(studio.text_overlay?.title, 240),
       topic: limitText(studio.text_overlay?.topic, 600),
     },
     production_items: (studio.production_items || []).map((item) => ({
