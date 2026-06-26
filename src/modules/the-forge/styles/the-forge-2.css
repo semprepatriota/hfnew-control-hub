@@ -10,6 +10,8 @@
   --forge2-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
   min-height: 100%;
   padding: 22px;
+  box-sizing: border-box;
+  overflow-x: clip;
   color: var(--forge2-ink);
   background:
     radial-gradient(circle at top left, rgba(199, 138, 44, 0.16), transparent 28%),
@@ -739,6 +741,43 @@
   font-weight: 950;
 }
 
+.forge2-preview-copy-title.title-serif_classic {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 950;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.forge2-preview-copy-title.title-news_condensed {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.forge2-preview-copy-title.title-verse_caps {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.forge2-preview-copy-title.title-impact_poster {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 0 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
+}
+
+.forge2-preview-copy-title.title-devotional_soft {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
 .forge2-preview-copy-line {
   font-size: 0.78em;
   line-height: 1.16;
@@ -784,10 +823,6 @@
   gap: 0;
 }
 
-.forge2-text-controls-side {
-  margin-top: 0;
-}
-
 .forge2-preview-panel .forge2-text-controls {
   margin-top: 10px;
 }
@@ -809,6 +844,96 @@
   font-size: 12px;
   color: var(--forge2-soft);
   font-weight: 700;
+}
+
+.forge2-title-presets-panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--forge2-line);
+  border-radius: 14px;
+  background: rgba(8, 13, 23, 0.68);
+  display: grid;
+  gap: 12px;
+}
+
+.forge2-title-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.forge2-title-preset-card {
+  display: grid;
+  gap: 6px;
+  padding: 8px !important;
+  background: rgba(9, 14, 24, 0.9) !important;
+  color: var(--forge2-ink) !important;
+  min-width: 0;
+}
+
+.forge2-title-preset-card.active {
+  border-color: rgba(66, 153, 225, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(66, 153, 225, 0.25);
+}
+
+.forge2-title-preset-card em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--forge2-soft);
+}
+
+.forge2-title-preset-mini {
+  min-height: 54px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  text-align: center;
+  line-height: 1.05;
+  overflow: hidden;
+}
+
+.forge2-title-preset-mini.preset-serif_classic {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff8f0;
+}
+
+.forge2-title-preset-mini.preset-news_condensed {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  color: #f8fbff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.forge2-title-preset-mini.preset-verse_caps {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 12px;
+  font-weight: 900;
+  color: #f7d56a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.forge2-title-preset-mini.preset-impact_poster {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000;
+}
+
+.forge2-title-preset-mini.preset-devotional_soft {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f7efe5;
+  font-style: italic;
 }
 
 .forge2-preview-style-bar {
@@ -1784,6 +1909,10 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .forge2-title-presets-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .forge2-preview-stage,
   .forge2-render-preview-stage {
     max-width: 720px;
@@ -1793,7 +1922,7 @@
 
 @media (max-width: 780px) {
   .forge2-page-rebuilt {
-    padding: 14px;
+    padding: 12px;
   }
 
   .forge2-header-rebuilt {
@@ -1822,6 +1951,22 @@
 
   .forge2-template-grid {
     grid-template-columns: 1fr;
+  }
+
+  .forge2-title-presets-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forge2-panel-header,
+  .forge2-library-header-actions,
+  .forge2-publication-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .forge2-title-preset-card,
+  .forge2-preview-action-bar button,
+  .forge2-panel button {
+    min-width: 0;
   }
 
   .forge2-preview-stage,

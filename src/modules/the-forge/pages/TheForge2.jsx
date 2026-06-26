@@ -105,6 +105,13 @@ const TEXT_COLOR_SWATCHS = [
   '#a7f3d0',
   '#d8b4fe',
 ];
+const TITLE_PRESETS = [
+  { id: 'serif_classic', label: 'Serif Clássico', sample: 'Título central' },
+  { id: 'news_condensed', label: 'News Condensado', sample: 'Urgente agora' },
+  { id: 'verse_caps', label: 'Versículo Caps', sample: 'Palavra forte' },
+  { id: 'impact_poster', label: 'Impacto Poster', sample: 'Choque total' },
+  { id: 'devotional_soft', label: 'Devocional Suave', sample: 'Ore com fé' },
+];
 
 const TEXT_THEME_DEFAULTS = {
   devotional_orange: {
@@ -184,6 +191,7 @@ function createDefaultStudio() {
       font_family: 'Playfair Display',
       font_size: 36,
       title_scale: 1.2,
+      title_preset: 'serif_classic',
       line_height: 1.08,
       letter_spacing: 0,
       color: '#ffffff',
@@ -295,7 +303,7 @@ function renderForge2TextControls(studio, updateStudioLocal, collapsed, setColla
       {!collapsed && (
         <>
           <div className="forge2-slider-grid forge2-preview-sliders">
-            <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+            <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="8" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
             <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
             <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
             <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
@@ -344,6 +352,37 @@ function renderForge2ColorPalette(studio, updateStudioLocal) {
         <span>Usar fundo fosco</span>
       </label>
     </div>
+  );
+}
+
+function renderForge2TitlePresets(studio, updateStudioLocal, collapsed, setCollapsed) {
+  return (
+    <section className={`forge2-title-presets-panel ${collapsed ? 'collapsed' : ''}`}>
+      <div className="forge2-text-controls-header">
+        <strong>Estilo do título</strong>
+        <button type="button" onClick={() => setCollapsed((current) => !current)}>
+          {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className="forge2-title-presets-grid">
+          {TITLE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`forge2-title-preset-card ${studio.text_overlay.title_preset === preset.id ? 'active' : ''}`}
+              onClick={() => updateStudioLocal((current) => ({
+                ...current,
+                text_overlay: { ...current.text_overlay, title_preset: preset.id },
+              }))}
+            >
+              <span className={`forge2-title-preset-mini preset-${preset.id}`}>{preset.sample}</span>
+              <em>{preset.label}</em>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -498,8 +537,8 @@ function TheForge2() {
   const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [sideTextControlsCollapsed, setSideTextControlsCollapsed] = useState(false);
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
+  const [titlePresetCollapsed, setTitlePresetCollapsed] = useState(false);
   const [copyPanelCollapsed, setCopyPanelCollapsed] = useState(false);
   const [templatePanelCollapsed, setTemplatePanelCollapsed] = useState(false);
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
@@ -1276,10 +1315,6 @@ function TheForge2() {
             )}
           </section>
 
-          <div className="forge2-text-controls-side">
-            {renderForge2TextControls(studio, updateStudioLocal, sideTextControlsCollapsed, setSideTextControlsCollapsed)}
-          </div>
-
           <section className={`forge2-panel forge2-media-panel ${studio.media_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
@@ -1495,6 +1530,8 @@ function TheForge2() {
                 </label>
               </div>
 
+              {renderForge2TitlePresets(studio, updateStudioLocal, titlePresetCollapsed, setTitlePresetCollapsed)}
+
               <div ref={previewStageRef} className={`forge2-preview-stage ${renderAspectClass}`}>
                 {selectedBaseAsset ? (
                   <>
@@ -1533,7 +1570,7 @@ function TheForge2() {
                         textShadow: studio.text_overlay.shadow ? '0 2px 18px rgba(0,0,0,0.38)' : 'none',
                       }}
                     >
-                      <strong className="forge2-preview-copy-title">{overlayPreviewLines[0]}</strong>
+                      <strong className={`forge2-preview-copy-title title-${studio.text_overlay.title_preset || 'serif_classic'}`}>{overlayPreviewLines[0]}</strong>
                       <div className="forge2-preview-copy-body">
                         {overlayBodyLines.map((line, index) => (
                           <span
@@ -1578,6 +1615,8 @@ function TheForge2() {
 
               {renderForge2ColorPalette(studio, updateStudioLocal)}
 
+              {renderForge2TextControls(studio, updateStudioLocal, textControlsCollapsed, setTextControlsCollapsed)}
+
               <div className="forge2-preview-action-bar">
                 <button type="button" className="forge2-primary-action" onClick={handleGenerateCopy} disabled={!selectedProjectId || Boolean(busyAction)}>
                   <Sparkles size={16} />
@@ -1592,8 +1631,6 @@ function TheForge2() {
                   Baixar vídeo MP4
                 </button>
               </div>
-
-              {renderForge2TextControls(studio, updateStudioLocal, textControlsCollapsed, setTextControlsCollapsed)}
 
               <section className={`forge2-panel forge2-template-panel ${templatePanelCollapsed ? 'collapsed' : ''}`}>
                 <div className="forge2-panel-header">
