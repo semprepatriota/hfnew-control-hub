@@ -301,25 +301,49 @@ function renderForge2TextControls(studio, updateStudioLocal, collapsed, setColla
             <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
             <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
           </div>
-          <div className="forge2-color-swatches">
-            {TEXT_COLOR_SWATCHS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`forge2-color-swatch ${((studio.text_overlay.color || '').toLowerCase() === color.toLowerCase()) ? 'active' : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => updateStudioLocal((current) => ({
-                  ...current,
-                  text_overlay: { ...current.text_overlay, color },
-                }))}
-                aria-label={`Usar cor ${color}`}
-                title={color}
-              />
-            ))}
-          </div>
         </>
       )}
     </section>
+  );
+}
+
+function renderForge2ColorPalette(studio, updateStudioLocal) {
+  const backgroundOn = Number(studio.text_overlay.background_opacity || 0) > 0;
+  return (
+    <div className="forge2-preview-style-bar">
+      <div className="forge2-color-swatches">
+        {TEXT_COLOR_SWATCHS.map((color) => (
+          <button
+            key={color}
+            type="button"
+            className={`forge2-color-swatch ${((studio.text_overlay.color || '').toLowerCase() === color.toLowerCase()) ? 'active' : ''}`}
+            style={{ '--swatch-color': color }}
+            onClick={() => updateStudioLocal((current) => ({
+              ...current,
+              text_overlay: { ...current.text_overlay, color },
+            }))}
+            aria-label={`Usar cor ${color}`}
+            title={color}
+          />
+        ))}
+      </div>
+      <label className="forge2-background-toggle">
+        <input
+          type="checkbox"
+          checked={backgroundOn}
+          onChange={(event) => updateStudioLocal((current) => ({
+            ...current,
+            text_overlay: {
+              ...current.text_overlay,
+              background_opacity: event.target.checked
+                ? ((current.text_overlay.background_opacity || 0) > 0 ? current.text_overlay.background_opacity : 0.18)
+                : 0,
+            },
+          }))}
+        />
+        <span>Usar fundo fosco</span>
+      </label>
+    </div>
   );
 }
 
@@ -1499,10 +1523,13 @@ function TheForge2() {
                         color: overlayTextColor,
                         fontFamily: studio.text_overlay.font_family,
                         fontSize: `${studio.text_overlay.font_size}px`,
-                        '--forge2-title-scale': studio.text_overlay.title_scale || 1.2,
+                        '--forge2-title-scale': String(studio.text_overlay.title_scale || 1.2),
                         lineHeight: studio.text_overlay.line_height,
                         letterSpacing: `${studio.text_overlay.letter_spacing}px`,
-                        backgroundColor: hexToRgba(textTheme.background, studio.text_overlay.background_opacity ?? 0.5),
+                        backgroundColor: Number(studio.text_overlay.background_opacity || 0) > 0
+                          ? hexToRgba(textTheme.background, studio.text_overlay.background_opacity ?? 0.5)
+                          : 'transparent',
+                        backdropFilter: Number(studio.text_overlay.background_opacity || 0) > 0 ? 'blur(4px)' : 'none',
                         textShadow: studio.text_overlay.shadow ? '0 2px 18px rgba(0,0,0,0.38)' : 'none',
                       }}
                     >
@@ -1548,6 +1575,8 @@ function TheForge2() {
                 <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
                 <label><input type="checkbox" checked={studio.preview_loop} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_loop: event.target.checked }))} /> Loop</label>
               </div>
+
+              {renderForge2ColorPalette(studio, updateStudioLocal)}
 
               <div className="forge2-preview-action-bar">
                 <button type="button" className="forge2-primary-action" onClick={handleGenerateCopy} disabled={!selectedProjectId || Boolean(busyAction)}>
