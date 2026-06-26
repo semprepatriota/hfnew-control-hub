@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines,
+  AlignCenter,
   Bot,
   CalendarClock,
   ChevronDown,
@@ -539,6 +540,7 @@ function TheForge2() {
   const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [sideTextControlsCollapsed, setSideTextControlsCollapsed] = useState(false);
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
   const [titlePresetCollapsed, setTitlePresetCollapsed] = useState(false);
   const [copyPanelCollapsed, setCopyPanelCollapsed] = useState(false);
@@ -1318,6 +1320,10 @@ function TheForge2() {
             )}
           </section>
 
+          <div className="forge2-text-controls-side">
+            {renderForge2TextControls(studio, updateStudioLocal, sideTextControlsCollapsed, setSideTextControlsCollapsed)}
+          </div>
+
           <section className={`forge2-panel forge2-media-panel ${studio.media_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
@@ -1615,6 +1621,22 @@ function TheForge2() {
               <div className="forge2-preview-toggles">
                 <label><input type="checkbox" checked={studio.preview_muted} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_muted: event.target.checked }))} /> Preview mudo</label>
                 <label><input type="checkbox" checked={studio.preview_loop} onChange={(event) => updateStudioLocal((current) => ({ ...current, preview_loop: event.target.checked }))} /> Loop</label>
+                <button
+                  type="button"
+                  className="forge2-quick-center-button"
+                  title="Centralizar texto"
+                  aria-label="Centralizar texto"
+                  onClick={() => updateStudioLocal((current) => ({
+                    ...current,
+                    text_overlay: {
+                      ...current.text_overlay,
+                      align: 'center',
+                      position_x: 50,
+                    },
+                  }))}
+                >
+                  <AlignCenter size={16} />
+                </button>
               </div>
 
               {renderForge2ColorPalette(studio, updateStudioLocal)}

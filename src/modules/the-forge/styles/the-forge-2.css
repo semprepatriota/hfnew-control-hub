@@ -1093,7 +1093,7 @@
 }
 
 .forge2-preview-copy.theme-devotional_orange .forge2-preview-copy-title {
-  font-size: 1.28em;
+  font-size: calc(var(--forge2-title-font-size, 48px) * 1.08);
   line-height: 1.02;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1158,7 +1158,7 @@
 }
 
 .forge2-preview-copy.theme-devotional_list .forge2-preview-copy-title {
-  font-size: 1.14em;
+  font-size: calc(var(--forge2-title-font-size, 48px) * 1.02);
   line-height: 1.08;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1202,7 +1202,7 @@
 }
 
 .forge2-preview-copy.theme-verse_gold .forge2-preview-copy-title {
-  font-size: 1.34em;
+  font-size: calc(var(--forge2-title-font-size, 48px) * 1.1);
   line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1290,9 +1290,30 @@
 
 .forge2-preview-toggles {
   display: flex;
+  align-items: center;
   gap: 14px;
   flex-wrap: wrap;
   color: var(--forge2-soft);
+}
+
+.forge2-preview-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forge2-quick-center-button {
+  width: 34px;
+  height: 34px;
+  min-width: 34px !important;
+  border-radius: 999px !important;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 !important;
+}
+
+.forge2-text-controls-side {
+  display: block;
 }
 
 .forge2-empty-preview {
@@ -1924,6 +1945,10 @@
 }
 
 @media (max-width: 780px) {
+  .forge2-text-controls-side {
+    display: none;
+  }
+
   .forge2-page-rebuilt {
     padding: 12px;
   }
