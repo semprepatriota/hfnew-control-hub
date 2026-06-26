@@ -3,6 +3,7 @@ import {
   Clapperboard,
   ChevronDown,
   ChevronUp,
+  CopyPlus,
   Download,
   Film,
   FolderOpen,
@@ -90,6 +91,21 @@ function ForgeMax3() {
       end_seconds: Number(selectedAsset.duration) || 0,
     })
     : null;
+
+  const prepareAssetDraftFromRange = (assetId, startSeconds, endSeconds) => {
+    const asset = assets.find((item) => item.id === assetId);
+    if (!asset) return;
+    const durationMax = Number(asset.duration) || 0;
+    const nextStart = Math.max(0, Math.min(durationMax, Number(startSeconds) || 0));
+    const nextEnd = Math.max(nextStart + 0.1, Math.min(durationMax || nextStart + 0.1, Number(endSeconds) || durationMax || nextStart + 0.1));
+    setAssetTrimDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [assetId]: {
+        start_seconds: nextStart,
+        end_seconds: nextEnd,
+      },
+    }));
+  };
 
   const runAction = async (label, action) => {
     setBusy(label);
@@ -373,6 +389,8 @@ function ForgeMax3() {
     ];
     if (!project?.project?.id) return;
     await runAction('save-timeline', async () => {
+      const pushedStart = Number(draft.start_seconds) || 0;
+      const pushedEnd = Number(draft.end_seconds) || 0;
       const updated = await updateForgeMaxTimeline(
         project.project.id,
         nextClips.map((clip) => ({
@@ -383,10 +401,23 @@ function ForgeMax3() {
         })),
       );
       setProject(updated);
-      const newestClip = updated.timeline?.clips?.[updated.timeline.clips.length - 1];
-      setSelectedTimelineClipId(newestClip?.id || updated.timeline?.clips?.[0]?.id || '');
       setSelectedAssetId(selectedAsset.id);
-      setMessage('Trecho atual enviado para a timeline.');
+      setSelectedTimelineClipId('');
+      const updatedAsset = updated.assets.find((item) => item.id === selectedAsset.id);
+      if (updatedAsset) {
+        const durationMax = Number(updatedAsset.duration) || 0;
+        const nextStart = pushedEnd >= durationMax ? Math.max(0, durationMax - 0.1) : pushedEnd;
+        const nextEnd = durationMax > nextStart ? durationMax : Math.max(nextStart + 0.1, durationMax);
+        setAssetTrimDrafts((currentDrafts) => ({
+          ...currentDrafts,
+          [selectedAsset.id]: {
+            start_seconds: nextStart,
+            end_seconds: nextEnd,
+          },
+        }));
+        setPreviewCurrentTime(nextStart);
+      }
+      setMessage('Corte enviado para a timeline. Ajuste o próximo trecho e puxe novamente.');
     });
   };
 
@@ -493,8 +524,18 @@ function ForgeMax3() {
   };
 
   const selectTimelineClip = (clip) => {
+    prepareAssetDraftFromRange(clip.asset_id, clip.start_seconds, clip.end_seconds);
     setSelectedTimelineClipId(clip.id);
     setSelectedAssetId(clip.asset_id);
+  };
+
+  const returnToNewCutMode = () => {
+    if (selectedTimelineClip) {
+      prepareAssetDraftFromRange(selectedTimelineClip.asset_id, selectedTimelineClip.start_seconds, selectedTimelineClip.end_seconds);
+      setSelectedAssetId(selectedTimelineClip.asset_id);
+    }
+    setSelectedTimelineClipId('');
+    setMessage('Modo de novo corte ativado. Ajuste o trecho no preview e puxe novamente para a timeline.');
   };
 
   const handlePreviewLoaded = (event) => {
@@ -707,6 +748,11 @@ function ForgeMax3() {
                       <span><b>Fim</b> {formatDuration(selectedTimelineClip ? selectedTimelineClip.end_seconds : (selectedAssetDraft?.end_seconds || 0))}</span>
                     </div>
                     <div className="forge-max-preview-cut-actions">
+                      {selectedTimelineClip && (
+                        <button type="button" onClick={returnToNewCutMode} disabled={Boolean(busy)}>
+                          <CopyPlus size={14} /> Novo corte deste vídeo
+                        </button>
+                      )}
                       <button type="button" onClick={togglePreviewPlayback} disabled={Boolean(busy)}>
                         {previewPlaying ? <Pause size={14} /> : <Play size={14} />}
                         {previewPlaying ? 'Pausar' : 'Reproduzir'}
@@ -760,106 +806,12 @@ function ForgeMax3() {
         onTrim={updateTimelineClip}
       />
 
-      <section className={`forge-max-panel forge-max-music-panel ${musicCollapsed ? 'collapsed' : ''}`}>
-        <div className="forge-max-panel-header">
-          <div>
-            <span className="forge-max-section-icon"><Music4 size={17} /></span>
-            <h2>Trilha de Música</h2>
-            <p>Suba a música, escolha a faixa e ajuste o volume fino antes de renderizar.</p>
-          </div>
-          <div className="forge-max-panel-actions">
-            <label className="forge-max-upload">
-              <Upload size={16} />
-              Adicionar músicas
-              <input
-                ref={musicInputRef}
-                type="file"
-                accept="audio/*"
-                multiple
-                disabled={Boolean(busy)}
-                onChange={handleMusicFiles}
-              />
-            </label>
-            <button type="button" className="forge-max-collapse" onClick={() => setMusicCollapsed((current) => !current)} aria-label={musicCollapsed ? 'Abrir trilha de música' : 'Recolher trilha de música'}>
-              {musicCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
-            </button>
-          </div>
-        </div>
-        {!musicCollapsed && (
-          <div className="forge-max-inline-music">
-            <div className="forge-max-inline-music-config">
-              <label>
-                <span>Faixa ativa</span>
-                <select
-                  value={musicConfig.active_music_id || ''}
-                  onChange={(event) => handleMusicConfigChange({ active_music_id: event.target.value })}
-                  disabled={Boolean(busy) || !musicTracks.length}
-                >
-                  <option value="">Sem música extra</option>
-                  {musicTracks.map((track) => (
-                    <option key={track.id} value={track.id}>{track.filename}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Volume da música {Math.round((musicConfig.volume ?? 0.35) * 100)}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1.5"
-                  step="0.05"
-                  value={musicConfig.volume ?? 0.35}
-                  onChange={(event) => setProject((current) => current ? ({
-                    ...current,
-                    music: {
-                      ...(current.music || {}),
-                      volume: Number(event.target.value),
-                    },
-                  }) : current)}
-                  onMouseUp={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
-                  onTouchEnd={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
-                  disabled={Boolean(busy)}
-                />
-              </label>
-            </div>
-            {!musicTracks.length ? (
-              <div className="forge-max-inline-music-empty">
-                <strong>Nenhuma faixa adicionada</strong>
-                <span>Suba MP3, WAV, M4A, AAC, OGG ou FLAC para usar música no render da timeline.</span>
-              </div>
-            ) : (
-              <div className="forge-max-inline-music-list">
-                {musicTracks.map((track) => (
-                  <article key={track.id} className={`forge-max-inline-music-card ${track.id === musicConfig.active_music_id ? 'selected' : ''}`}>
-                    <div className="forge-max-inline-music-main">
-                      <div className="forge-max-inline-music-meta">
-                        <strong title={track.filename}>{track.filename}</strong>
-                        <span>{formatDuration(track.duration)} · {track.audio_codec || 'audio'}</span>
-                      </div>
-                      <div className="forge-max-inline-music-actions">
-                        <button type="button" onClick={() => handleMusicConfigChange({ active_music_id: track.id })} disabled={Boolean(busy)}>
-                          {track.id === musicConfig.active_music_id ? 'Ativa' : 'Usar'}
-                        </button>
-                        <button type="button" className="forge-max-inline-music-delete" onClick={() => handleDeleteMusic(track.id)} disabled={Boolean(busy)} aria-label={`Excluir ${track.filename}`}>
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    <audio controls preload="none" src={forgeMaxFileUrl(track.url)} className="forge-max-inline-music-player" />
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
       <section className={`forge-max-render-panel ${renderCollapsed ? 'collapsed' : ''}`}>
         <div className="forge-max-render-header">
           <div>
             <span className="forge-max-section-icon"><Clapperboard size={17} /></span>
             <h2>Render da Timeline</h2>
-            <p>Primeiro núcleo da Fase 4: une os clipes da timeline em um MP4 vertical 9:16.</p>
+            <p>Acumule vários cortes do mesmo vídeo ou de vídeos diferentes, encaixe a trilha e finalize no render.</p>
           </div>
           <div className="forge-max-render-controls">
             <button type="button" className="forge-max-collapse" onClick={() => setRenderCollapsed((current) => !current)} aria-label={renderCollapsed ? 'Abrir render da timeline' : 'Recolher render da timeline'}>
@@ -886,42 +838,140 @@ function ForgeMax3() {
           </div>
         </div>
 
-        {!renderCollapsed && (lastRender ? (
-          <div className="forge-max-render-result">
-            <div className="forge-max-render-stage">
-              <video
-                src={forgeMaxFileUrl(lastRender.url)}
-                controls
-                playsInline
-                className="forge-max-render-video"
-              />
-            </div>
-            <div className="forge-max-render-meta">
-              <strong>{lastRender.filename}</strong>
-              <span>{lastRender.width}×{lastRender.height} · {formatDuration(lastRender.duration)} · {lastRender.clip_count || 0} clipes</span>
-              <div className="forge-max-render-actions">
-                <button
-                  type="button"
-                  className="forge-max-render-delete"
-                  onClick={handleDeleteRender}
-                  disabled={Boolean(busy)}
-                  aria-label="Excluir vídeo renderizado"
-                  title="Excluir vídeo renderizado"
-                >
-                  <X size={15} />
-                </button>
-                <a href={forgeMaxFileUrl(lastRender.url)} target="_blank" rel="noreferrer" className="forge-max-download-link">
-                  <Download size={15} /> Abrir MP4
-                </a>
+        {!renderCollapsed && (
+          <>
+            <div className={`forge-max-render-music-panel ${musicCollapsed ? 'collapsed' : ''}`}>
+              <div className="forge-max-panel-header forge-max-render-music-header">
+                <div>
+                  <span className="forge-max-section-icon"><Music4 size={17} /></span>
+                  <h3>Trilha de Música do Render</h3>
+                  <p>Essa trilha acompanha a união dos cortes da timeline.</p>
+                </div>
+                <div className="forge-max-panel-actions">
+                  <label className="forge-max-upload">
+                    <Upload size={16} />
+                    Adicionar músicas
+                    <input
+                      ref={musicInputRef}
+                      type="file"
+                      accept="audio/*"
+                      multiple
+                      disabled={Boolean(busy)}
+                      onChange={handleMusicFiles}
+                    />
+                  </label>
+                  <button type="button" className="forge-max-collapse" onClick={() => setMusicCollapsed((current) => !current)} aria-label={musicCollapsed ? 'Abrir trilha do render' : 'Recolher trilha do render'}>
+                    {musicCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+                  </button>
+                </div>
               </div>
+              {!musicCollapsed && (
+                <div className="forge-max-inline-music">
+                  <div className="forge-max-inline-music-config">
+                    <label>
+                      <span>Faixa ativa</span>
+                      <select
+                        value={musicConfig.active_music_id || ''}
+                        onChange={(event) => handleMusicConfigChange({ active_music_id: event.target.value })}
+                        disabled={Boolean(busy) || !musicTracks.length}
+                      >
+                        <option value="">Sem música extra</option>
+                        {musicTracks.map((track) => (
+                          <option key={track.id} value={track.id}>{track.filename}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Volume da música {Math.round((musicConfig.volume ?? 0.35) * 100)}%</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1.5"
+                        step="0.05"
+                        value={musicConfig.volume ?? 0.35}
+                        onChange={(event) => setProject((current) => current ? ({
+                          ...current,
+                          music: {
+                            ...(current.music || {}),
+                            volume: Number(event.target.value),
+                          },
+                        }) : current)}
+                        onMouseUp={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
+                        onTouchEnd={(event) => handleMusicConfigChange({ volume: Number(event.target.value) })}
+                        disabled={Boolean(busy)}
+                      />
+                    </label>
+                  </div>
+                  {!musicTracks.length ? (
+                    <div className="forge-max-inline-music-empty">
+                      <strong>Nenhuma faixa adicionada</strong>
+                      <span>Suba MP3, WAV, M4A, AAC, OGG ou FLAC para usar música no render da timeline.</span>
+                    </div>
+                  ) : (
+                    <div className="forge-max-inline-music-list">
+                      {musicTracks.map((track) => (
+                        <article key={track.id} className={`forge-max-inline-music-card ${track.id === musicConfig.active_music_id ? 'selected' : ''}`}>
+                          <div className="forge-max-inline-music-main">
+                            <div className="forge-max-inline-music-meta">
+                              <strong title={track.filename}>{track.filename}</strong>
+                              <span>{formatDuration(track.duration)} · {track.audio_codec || 'audio'}</span>
+                            </div>
+                            <div className="forge-max-inline-music-actions">
+                              <button type="button" onClick={() => handleMusicConfigChange({ active_music_id: track.id })} disabled={Boolean(busy)}>
+                                {track.id === musicConfig.active_music_id ? 'Ativa' : 'Usar'}
+                              </button>
+                              <button type="button" className="forge-max-inline-music-delete" onClick={() => handleDeleteMusic(track.id)} disabled={Boolean(busy)} aria-label={`Excluir ${track.filename}`}>
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <audio controls preload="none" src={forgeMaxFileUrl(track.url)} className="forge-max-inline-music-player" />
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="forge-max-render-empty">
-            <strong>Nenhum render ainda</strong>
-            <span>Monte a timeline e rode o primeiro render para validar cortes e união de clipes.</span>
-          </div>
-        ))}
+
+            {lastRender ? (
+              <div className="forge-max-render-result">
+                <div className="forge-max-render-stage">
+                  <video
+                    src={forgeMaxFileUrl(lastRender.url)}
+                    controls
+                    playsInline
+                    className="forge-max-render-video"
+                  />
+                </div>
+                <div className="forge-max-render-meta">
+                  <strong>{lastRender.filename}</strong>
+                  <span>{lastRender.width}×{lastRender.height} · {formatDuration(lastRender.duration)} · {lastRender.clip_count || 0} clipes</span>
+                  <div className="forge-max-render-actions">
+                    <button
+                      type="button"
+                      className="forge-max-render-delete"
+                      onClick={handleDeleteRender}
+                      disabled={Boolean(busy)}
+                      aria-label="Excluir vídeo renderizado"
+                      title="Excluir vídeo renderizado"
+                    >
+                      <X size={15} />
+                    </button>
+                    <a href={forgeMaxFileUrl(lastRender.url)} target="_blank" rel="noreferrer" className="forge-max-download-link">
+                      <Download size={15} /> Abrir MP4
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="forge-max-render-empty">
+                <strong>Nenhum render ainda</strong>
+                <span>Monte a timeline e rode o primeiro render para validar cortes e união de clipes.</span>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className={`forge-max-panel forge-max-roadmap-panel ${structureCollapsed ? 'collapsed' : ''}`}>

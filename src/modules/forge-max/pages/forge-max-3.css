@@ -527,6 +527,24 @@
   background: transparent;
 }
 
+.forge-max-render-music-panel {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--max-line);
+  border-radius: 8px;
+  background: rgba(9, 15, 24, 0.65);
+}
+
+.forge-max-render-music-header {
+  margin-bottom: 12px;
+}
+
+.forge-max-render-music-header h3 {
+  display: inline;
+  margin: 0 0 0 8px;
+  font-size: 15px;
+}
+
 .forge-max-inline-music-header {
   justify-content: space-between;
   gap: 14px;
