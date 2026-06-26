@@ -97,13 +97,14 @@ const TEXT_THEMES = [
 const FORGE2_NEW_TEMPLATE_IDS = ['devotional_orange', 'devotional_list', 'verse_gold'];
 const TEXT_COLOR_SWATCHS = [
   '#ffffff',
-  '#f7efe5',
-  '#f7d56a',
-  '#ef9743',
-  '#ff6b6b',
-  '#8fd3ff',
-  '#a7f3d0',
-  '#d8b4fe',
+  '#000000',
+  '#ffd400',
+  '#ff8a00',
+  '#ff2d55',
+  '#00c2ff',
+  '#00ff66',
+  '#7c3aed',
+  '#ff5cf0',
 ];
 const TITLE_PRESETS = [
   { id: 'serif_classic', label: 'Serif Clássico', sample: 'Título central' },
@@ -1563,6 +1564,7 @@ function TheForge2() {
                         fontFamily: studio.text_overlay.font_family,
                         fontSize: `${studio.text_overlay.font_size}px`,
                         '--forge2-title-scale': String(studio.text_overlay.title_scale || 1.2),
+                        '--forge2-title-font-size': `${Math.max(18, Math.round((studio.text_overlay.font_size || 36) * (studio.text_overlay.title_scale || 1.2) * 1.18))}px`,
                         lineHeight: studio.text_overlay.line_height,
                         letterSpacing: `${studio.text_overlay.letter_spacing}px`,
                         backgroundColor: Number(studio.text_overlay.background_opacity || 0) > 0

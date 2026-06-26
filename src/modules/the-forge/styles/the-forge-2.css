@@ -735,10 +735,11 @@
 }
 
 .forge2-preview-copy-title {
-  font-size: calc(1.12em * var(--forge2-title-scale, 1.2));
+  font-size: var(--forge2-title-font-size, 48px);
   line-height: 1.02;
   margin-bottom: 0.22em;
   font-weight: 950;
+  overflow-wrap: anywhere;
 }
 
 .forge2-preview-copy-title.title-serif_classic {
@@ -955,8 +956,10 @@
 .forge2-color-swatch {
   min-height: 28px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 0 16px color-mix(in srgb, var(--swatch-color) 65%, transparent);
   background: var(--swatch-color) !important;
 }
 
