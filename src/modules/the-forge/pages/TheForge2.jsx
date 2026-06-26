@@ -95,6 +95,16 @@ const TEXT_THEMES = [
 ];
 
 const FORGE2_NEW_TEMPLATE_IDS = ['devotional_orange', 'devotional_list', 'verse_gold'];
+const TEXT_COLOR_SWATCHS = [
+  '#ffffff',
+  '#f7efe5',
+  '#f7d56a',
+  '#ef9743',
+  '#ff6b6b',
+  '#8fd3ff',
+  '#a7f3d0',
+  '#d8b4fe',
+];
 
 const TEXT_THEME_DEFAULTS = {
   devotional_orange: {
@@ -104,7 +114,7 @@ const TEXT_THEME_DEFAULTS = {
     letter_spacing: 0,
     color: '#f7efe5',
     shadow: true,
-    background_opacity: 0.12,
+    background_opacity: 0,
     position_x: 50,
     position_y: 50,
     box_width: 84,
@@ -118,7 +128,7 @@ const TEXT_THEME_DEFAULTS = {
     letter_spacing: 0,
     color: '#f5f0e8',
     shadow: true,
-    background_opacity: 0.12,
+    background_opacity: 0,
     position_x: 50,
     position_y: 50,
     box_width: 84,
@@ -132,7 +142,7 @@ const TEXT_THEME_DEFAULTS = {
     letter_spacing: 0,
     color: '#f7d56a',
     shadow: true,
-    background_opacity: 0.14,
+    background_opacity: 0,
     position_x: 50,
     position_y: 48,
     box_width: 82,
@@ -173,6 +183,7 @@ function createDefaultStudio() {
       generated_text: '',
       font_family: 'Playfair Display',
       font_size: 36,
+      title_scale: 1.2,
       line_height: 1.08,
       letter_spacing: 0,
       color: '#ffffff',
@@ -270,6 +281,46 @@ function getTextTheme(themeId) {
 
 function getForge2NewTemplateThemes() {
   return TEXT_THEMES.filter((theme) => FORGE2_NEW_TEMPLATE_IDS.includes(theme.id));
+}
+
+function renderForge2TextControls(studio, updateStudioLocal, collapsed, setCollapsed) {
+  return (
+    <section className={`forge2-text-controls ${collapsed ? 'collapsed' : ''}`}>
+      <div className="forge2-text-controls-header">
+        <strong>Ajustes da frase</strong>
+        <button type="button" onClick={() => setCollapsed((current) => !current)}>
+          {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+        </button>
+      </div>
+      {!collapsed && (
+        <>
+          <div className="forge2-slider-grid forge2-preview-sliders">
+            <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
+            <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
+            <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
+            <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
+            <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
+          </div>
+          <div className="forge2-color-swatches">
+            {TEXT_COLOR_SWATCHS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`forge2-color-swatch ${((studio.text_overlay.color || '').toLowerCase() === color.toLowerCase()) ? 'active' : ''}`}
+                style={{ backgroundColor: color }}
+                onClick={() => updateStudioLocal((current) => ({
+                  ...current,
+                  text_overlay: { ...current.text_overlay, color },
+                }))}
+                aria-label={`Usar cor ${color}`}
+                title={color}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
 
 function applyTextThemeDefaults(currentOverlay, themeId) {
@@ -423,6 +474,7 @@ function TheForge2() {
   const [apiHealth, setApiHealth] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [sideTextControlsCollapsed, setSideTextControlsCollapsed] = useState(false);
   const [textControlsCollapsed, setTextControlsCollapsed] = useState(false);
   const [copyPanelCollapsed, setCopyPanelCollapsed] = useState(false);
   const [templatePanelCollapsed, setTemplatePanelCollapsed] = useState(false);
@@ -1200,6 +1252,10 @@ function TheForge2() {
             )}
           </section>
 
+          <div className="forge2-text-controls-side">
+            {renderForge2TextControls(studio, updateStudioLocal, sideTextControlsCollapsed, setSideTextControlsCollapsed)}
+          </div>
+
           <section className={`forge2-panel forge2-media-panel ${studio.media_collapsed ? 'collapsed' : ''}`}>
             <div className="forge2-panel-header">
               <div className="forge2-section-title">
@@ -1399,6 +1455,22 @@ function TheForge2() {
                 </button>
               </div>
 
+              <div className="forge2-title-scale-bar">
+                <label>
+                  <span>Tamanho do título {Math.round((studio.text_overlay.title_scale || 1.2) * 100)}%</span>
+                  <input
+                    type="range"
+                    min="70"
+                    max="180"
+                    value={Math.round((studio.text_overlay.title_scale || 1.2) * 100)}
+                    onChange={(event) => updateStudioLocal((current) => ({
+                      ...current,
+                      text_overlay: { ...current.text_overlay, title_scale: Number(event.target.value) / 100 },
+                    }))}
+                  />
+                </label>
+              </div>
+
               <div ref={previewStageRef} className={`forge2-preview-stage ${renderAspectClass}`}>
                 {selectedBaseAsset ? (
                   <>
@@ -1427,6 +1499,7 @@ function TheForge2() {
                         color: overlayTextColor,
                         fontFamily: studio.text_overlay.font_family,
                         fontSize: `${studio.text_overlay.font_size}px`,
+                        '--forge2-title-scale': studio.text_overlay.title_scale || 1.2,
                         lineHeight: studio.text_overlay.line_height,
                         letterSpacing: `${studio.text_overlay.letter_spacing}px`,
                         backgroundColor: hexToRgba(textTheme.background, studio.text_overlay.background_opacity ?? 0.5),
@@ -1491,23 +1564,7 @@ function TheForge2() {
                 </button>
               </div>
 
-              <section className={`forge2-text-controls ${textControlsCollapsed ? 'collapsed' : ''}`}>
-                <div className="forge2-text-controls-header">
-                  <strong>Ajustes da frase</strong>
-                  <button type="button" onClick={() => setTextControlsCollapsed((current) => !current)}>
-                    {textControlsCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                  </button>
-                </div>
-                {!textControlsCollapsed && (
-                  <div className="forge2-slider-grid forge2-preview-sliders">
-                    <label><span>Fonte {studio.text_overlay.font_size}px</span><input type="range" min="12" max="120" value={studio.text_overlay.font_size} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, font_size: Number(event.target.value) } }))} /></label>
-                    <label><span>Altura da caixa {studio.text_overlay.box_height}%</span><input type="range" min="18" max="88" value={studio.text_overlay.box_height} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_height: Number(event.target.value) } }))} /></label>
-                    <label><span>Largura da caixa {studio.text_overlay.box_width}%</span><input type="range" min="35" max="95" value={studio.text_overlay.box_width} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, box_width: Number(event.target.value) } }))} /></label>
-                    <label><span>Posição Y {studio.text_overlay.position_y}%</span><input type="range" min="5" max="88" value={studio.text_overlay.position_y} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, position_y: Number(event.target.value) } }))} /></label>
-                    <label><span>Transparência {Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)}%</span><input type="range" min="0" max="100" value={Math.round((studio.text_overlay.background_opacity ?? 0.5) * 100)} onChange={(event) => updateStudioLocal((current) => ({ ...current, text_overlay: { ...current.text_overlay, background_opacity: Number(event.target.value) / 100 } }))} /></label>
-                  </div>
-                )}
-              </section>
+              {renderForge2TextControls(studio, updateStudioLocal, textControlsCollapsed, setTextControlsCollapsed)}
 
               <section className={`forge2-panel forge2-template-panel ${templatePanelCollapsed ? 'collapsed' : ''}`}>
                 <div className="forge2-panel-header">

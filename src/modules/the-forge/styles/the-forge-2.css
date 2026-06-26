@@ -734,7 +734,7 @@
 }
 
 .forge2-preview-copy-title {
-  font-size: 1.12em;
+  font-size: calc(1.12em * var(--forge2-title-scale, 1.2));
   line-height: 1.02;
   margin-bottom: 0.22em;
   font-weight: 950;
@@ -791,6 +791,43 @@
 
 .forge2-preview-panel .forge2-text-controls {
   margin-top: 10px;
+}
+
+.forge2-title-scale-bar {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--forge2-line);
+  border-radius: 14px;
+  background: rgba(8, 13, 23, 0.68);
+}
+
+.forge2-title-scale-bar label {
+  display: grid;
+  gap: 8px;
+}
+
+.forge2-title-scale-bar span {
+  font-size: 12px;
+  color: var(--forge2-soft);
+  font-weight: 700;
+}
+
+.forge2-color-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.forge2-color-swatch {
+  min-height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.forge2-color-swatch.active {
+  outline: 2px solid rgba(66, 153, 225, 0.9);
+  outline-offset: 2px;
 }
 
 .forge2-preview-sliders {
@@ -865,30 +902,23 @@
 .forge2-preview-copy.theme-devotional_orange {
   padding: 42px 28px 44px;
   border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(19, 13, 10, 0.12), rgba(19, 13, 10, 0.26)) !important;
   background-image:
     linear-gradient(90deg, rgba(227, 158, 84, 0.95), rgba(227, 158, 84, 0.95)),
     linear-gradient(90deg, rgba(227, 158, 84, 0.95), rgba(227, 158, 84, 0.95)),
     linear-gradient(90deg, rgba(227, 158, 84, 0.95), rgba(227, 158, 84, 0.95)),
     linear-gradient(90deg, rgba(227, 158, 84, 0.95), rgba(227, 158, 84, 0.95)),
-    linear-gradient(180deg, rgba(19, 13, 10, 0.12), rgba(19, 13, 10, 0.26));
+    linear-gradient(90deg, rgba(227, 158, 84, 0.95), rgba(227, 158, 84, 0.95));
   background-size:
     22% 2px,
     22% 2px,
     14% 2px,
-    14% 2px,
-    100% 100%;
+    14% 2px;
   background-position:
     22% calc(100% - 18px),
     78% calc(100% - 18px),
     20% 16px,
-    38% 16px,
-    0 0;
+    38% 16px;
   background-repeat: no-repeat;
-  box-shadow:
-    inset 0 0 0 1px rgba(244, 185, 118, 0.08),
-    0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
 .forge2-preview-copy.theme-devotional_orange::before {
@@ -916,7 +946,6 @@
 }
 
 .forge2-preview-copy.theme-devotional_orange .forge2-preview-copy-title {
-  color: #fff8f0;
   font-size: 1.28em;
   line-height: 1.02;
   letter-spacing: 0.02em;
@@ -930,7 +959,6 @@
 }
 
 .forge2-preview-copy.theme-devotional_orange .forge2-preview-copy-line {
-  color: #f7efe5;
   font-size: 0.78em;
   line-height: 1.22;
   font-weight: 600;
@@ -944,24 +972,19 @@
 .forge2-preview-copy.theme-devotional_list {
   padding: 38px 24px 42px;
   border-radius: 26px;
-  background:
-    linear-gradient(180deg, rgba(22, 17, 14, 0.18), rgba(22, 17, 14, 0.24)) !important;
   background-image:
     linear-gradient(90deg, rgba(239, 151, 67, 0.96), rgba(239, 151, 67, 0.96)),
     linear-gradient(90deg, rgba(239, 151, 67, 0.96), rgba(239, 151, 67, 0.96)),
-    linear-gradient(180deg, rgba(22, 17, 14, 0.18), rgba(22, 17, 14, 0.24));
+    linear-gradient(90deg, rgba(239, 151, 67, 0.96), rgba(239, 151, 67, 0.96));
   background-size:
     34% 2px,
     78% 2px,
-    100% 100%;
+    2px 66%;
   background-position:
     23% 16px,
     50% calc(100% - 18px),
-    0 0;
+    8px 18%;
   background-repeat: no-repeat;
-  box-shadow:
-    inset 0 0 0 1px rgba(239, 151, 67, 0.08),
-    0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
 .forge2-preview-copy.theme-devotional_list::before {
@@ -988,7 +1011,6 @@
 }
 
 .forge2-preview-copy.theme-devotional_list .forge2-preview-copy-title {
-  color: #fff8ee;
   font-size: 1.14em;
   line-height: 1.08;
   letter-spacing: 0.02em;
@@ -1002,7 +1024,6 @@
 }
 
 .forge2-preview-copy.theme-devotional_list .forge2-preview-copy-line {
-  color: #f5f0e8;
   font-size: 0.76em;
   line-height: 1.22;
   font-weight: 600;
@@ -1016,12 +1037,6 @@
 .forge2-preview-copy.theme-verse_gold {
   padding: 28px 22px 26px 52px;
   border-radius: 24px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 220, 110, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(12, 16, 23, 0.16), rgba(12, 16, 23, 0.3)) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(247, 213, 106, 0.08),
-    0 20px 44px rgba(0, 0, 0, 0.24);
 }
 
 .forge2-preview-copy.theme-verse_gold::before {
@@ -1040,7 +1055,6 @@
 }
 
 .forge2-preview-copy.theme-verse_gold .forge2-preview-copy-title {
-  color: #f7d56a;
   font-size: 1.34em;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -1054,7 +1068,6 @@
 }
 
 .forge2-preview-copy.theme-verse_gold .forge2-preview-copy-line {
-  color: #fff8ee;
   font-size: 0.82em;
   line-height: 1.18;
   font-weight: 500;
@@ -1063,7 +1076,6 @@
 
 .forge2-preview-copy.theme-verse_gold .forge2-preview-copy-line.is-last {
   margin-top: 0.44em;
-  color: #f7d56a;
   font-size: 1.02em;
   font-style: italic;
   font-weight: 700;
@@ -1749,6 +1761,10 @@
     grid-template-columns: 1fr;
   }
 
+  .forge2-color-swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .forge2-preview-stage,
   .forge2-render-preview-stage {
     max-width: 720px;
@@ -1792,5 +1808,9 @@
   .forge2-preview-stage,
   .forge2-render-preview-stage {
     max-height: 400px;
+  }
+
+  .forge2-color-swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
