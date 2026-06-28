@@ -1,5 +1,6 @@
 .alliance-dark-app {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
   background-color: #070708;
   color: #ffffff;
@@ -9,6 +10,7 @@
 .main-content {
   flex: 1;
   min-width: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s ease;

@@ -80,6 +80,22 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    window.scrollTo(0, 0);
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, left: 0 });
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
     const syncViewport = () => {
       const mobile = window.innerWidth <= MOBILE_BREAKPOINT;
       setIsMobileViewport(mobile);
