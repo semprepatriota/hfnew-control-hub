@@ -693,6 +693,7 @@ function ForgeEditor() {
   const [metadataTitle, setMetadataTitle] = useState('');
   const [metadataDescription, setMetadataDescription] = useState('');
   const [metadataHashtags, setMetadataHashtags] = useState('');
+  const [metadataGenerateMode, setMetadataGenerateMode] = useState('title_description_hashtags');
   const [metadataCategory, setMetadataCategory] = useState('22');
   const [metadataPrivacyStatus, setMetadataPrivacyStatus] = useState('private');
   const [scheduleDateTime, setScheduleDateTime] = useState('');
@@ -2689,6 +2690,11 @@ function ForgeEditor() {
       return;
     }
 
+    const generateTitleOnly = metadataGenerateMode === 'title_only';
+    const generateTitle = true;
+    const generateDescription = !generateTitleOnly;
+    const generateHashtags = !generateTitleOnly;
+
     setGeneratingMetadata(true);
     setError('');
 
@@ -2702,6 +2708,9 @@ function ForgeEditor() {
           screenshot_path: getUploadedImageName(),
           video_id: renderResult.video_id || renderResult.id,
           platform: 'youtube_shorts',
+          generate_title: generateTitle,
+          generate_description: generateDescription,
+          generate_hashtags: generateHashtags,
         }),
       });
 
@@ -2712,8 +2721,12 @@ function ForgeEditor() {
 
       const data = await response.json();
       setMetadataTitle(data.title || '');
-      setMetadataDescription(data.description || '');
-      setMetadataHashtags((data.hashtags || []).join(' '));
+      if (generateDescription) {
+        setMetadataDescription(data.description || '');
+      }
+      if (generateHashtags) {
+        setMetadataHashtags((data.hashtags || []).join(' '));
+      }
       setMetadataCategory(String(data.category_id || '22'));
       setMetadataPrivacyStatus('private');
     } catch (err) {
@@ -4238,7 +4251,25 @@ function ForgeEditor() {
 
               <div className="metadata-editor">
                 <div className="metadata-editor-header">
-                  <h4>Dados editoriais</h4>
+                  <div className="metadata-editor-heading">
+                    <h4>Dados editoriais</h4>
+                    <div className="metadata-generate-modes">
+                      <button
+                        type="button"
+                        className={metadataGenerateMode === 'title_only' ? 'active' : ''}
+                        onClick={() => setMetadataGenerateMode('title_only')}
+                      >
+                        Só título
+                      </button>
+                      <button
+                        type="button"
+                        className={metadataGenerateMode === 'title_description_hashtags' ? 'active' : ''}
+                        onClick={() => setMetadataGenerateMode('title_description_hashtags')}
+                      >
+                        Título + descrição + hashtags
+                      </button>
+                    </div>
+                  </div>
                   <button
                     onClick={handleGenerateMetadata}
                     disabled={generatingMetadata}

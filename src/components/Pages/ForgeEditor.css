@@ -2822,10 +2822,43 @@
   gap: 12px;
 }
 
+.metadata-editor-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 .metadata-editor-header h4 {
   margin: 0;
   color: #ffffff;
   font-size: 15px;
+}
+
+.metadata-generate-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metadata-generate-modes button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.metadata-generate-modes button.active {
+  border-color: rgba(0, 102, 255, 0.55);
+  background: rgba(0, 102, 255, 0.18);
+  color: #a9c8ff;
+  box-shadow: 0 0 12px rgba(0, 102, 255, 0.18);
 }
 
 .generate-gpt-button {
