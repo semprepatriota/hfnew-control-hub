@@ -1061,11 +1061,6 @@ function TheForge2() {
       style: item.style || current.text_overlay.style,
       generated_text: item.treated_text || item.raw_text,
     },
-    publication: {
-      ...current.publication,
-      title: item.title || current.publication.title,
-      schedule_at: item.schedule_at || current.publication.schedule_at,
-    },
     production_items: normalizeProductionItems(current.production_items).map((entry) => (
       entry.slot === item.slot ? { ...entry, status: 'em_edicao' } : entry
     )),
