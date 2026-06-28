@@ -80,8 +80,8 @@
 /* Grid */
 .conexoes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
   margin-bottom: 30px;
 }
 
@@ -119,6 +119,7 @@
 .conexao-card {
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   padding: 0;
   background: linear-gradient(135deg, rgba(7, 7, 8, 0.8), rgba(15, 15, 20, 0.8));
@@ -145,23 +146,25 @@
 }
 
 .conexao-card.youtube-wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .conexao-card.instagram-wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .conexao-card.facebook-wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 /* Card Header */
 .card-header {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 16px;
   padding: 20px;
+  min-width: 0;
   background: linear-gradient(135deg, rgba(0, 102, 255, 0.1), rgba(0, 0, 0, 0.2));
   border-bottom: 1px solid rgba(0, 102, 255, 0.1);
 }
@@ -172,17 +175,20 @@
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
 }
 
 .card-title-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .card-title-group span {
   color: rgba(176, 176, 176, 0.75);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .icon-container {
@@ -280,10 +286,14 @@
 }
 
 .channel-info.compact {
-  min-width: 260px;
+  min-width: 0;
   padding: 0;
   background: transparent;
   flex: 1;
+}
+
+.channel-details {
+  min-width: 0;
 }
 
 .channel-thumbnail {
@@ -361,7 +371,7 @@
 
 .channel-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto auto;
+  grid-template-columns: minmax(260px, 1fr) minmax(120px, 160px) minmax(220px, max-content);
   align-items: center;
   gap: 16px;
   padding: 14px;
@@ -393,7 +403,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 130px;
+  min-width: 0;
   color: #b0b0b0;
   font-size: 11px;
   text-align: right;
@@ -404,10 +414,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.channel-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .connection-actions {
   flex-wrap: wrap;
+  justify-content: flex-start;
+  max-width: 100%;
 }
 
 /* Stats Grid */
@@ -451,6 +470,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 0;
   padding: 12px 16px;
   border: none;
   border-radius: 6px;
@@ -460,6 +480,8 @@
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .connect-button {
@@ -581,6 +603,7 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .meta-diagnostic__grid code,
@@ -623,6 +646,7 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .settings-icon-button:hover:not(:disabled) {
@@ -956,6 +980,7 @@
   .channel-actions,
   .connection-actions {
     flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .settings-drawer {
@@ -981,6 +1006,7 @@
 
   .conexoes-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .conexoes-page {
@@ -990,6 +1016,46 @@
   .conexao-card,
   .channel-row {
     min-width: 0;
+  }
+
+  .card-header {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .icon-container {
+    width: 48px;
+    height: 48px;
+  }
+
+  .channel-info {
+    align-items: flex-start;
+  }
+
+  .channel-actions,
+  .connection-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .channel-actions button,
+  .connection-actions button,
+  .settings-icon-button {
+    width: 100%;
+  }
+
+  .connect-button,
+  .disconnect-button,
+  .active-button,
+  .refresh-button,
+  .settings-icon-button {
+    white-space: normal;
+    min-height: 42px;
   }
 
   .conexoes-header,
