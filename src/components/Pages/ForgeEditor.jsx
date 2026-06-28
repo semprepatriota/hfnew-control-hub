@@ -2706,6 +2706,8 @@ function ForgeEditor() {
         },
         body: JSON.stringify({
           screenshot_path: getUploadedImageName(),
+          image_paths: getUploadedImageNames(),
+          headline_text: headlineText || '',
           video_id: renderResult.video_id || renderResult.id,
           platform: 'youtube_shorts',
           generate_title: generateTitle,
