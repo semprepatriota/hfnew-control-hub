@@ -209,7 +209,6 @@ function createDefaultStudio() {
       animation: 'fade',
       text_animation: 'none',
       text_animation_speed: 'normal',
-      render_layout: {},
     },
     publication: {
       title: '',
@@ -628,61 +627,6 @@ function TheForge2() {
   const overlayBodyLines = overlayPreviewText.split(/\n+/).map((line) => line.trim()).filter(Boolean);
   const newTemplateThemes = getForge2NewTemplateThemes();
 
-  const capturePreviewRenderLayout = () => {
-    const stage = previewStageRef.current;
-    if (!stage) return {};
-    const copy = stage.querySelector('.forge2-preview-copy');
-    if (!copy) return {};
-    const stageRect = stage.getBoundingClientRect();
-    const copyRect = copy.getBoundingClientRect();
-    if (!stageRect.width || !stageRect.height) return {};
-
-    const readNumber = (value) => {
-      const parsed = Number.parseFloat(value);
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-
-    const readElement = (element, role) => {
-      if (!element) return null;
-      const rect = element.getBoundingClientRect();
-      const style = window.getComputedStyle(element);
-      return {
-        text: element.textContent || '',
-        role,
-        x: rect.left - stageRect.left,
-        y: rect.top - stageRect.top,
-        width: rect.width,
-        height: rect.height,
-        font_family: style.fontFamily,
-        font_size: readNumber(style.fontSize),
-        font_weight: style.fontWeight,
-        line_height: readNumber(style.lineHeight),
-        letter_spacing: readNumber(style.letterSpacing),
-        color: style.color,
-      };
-    };
-
-    const titleLine = readElement(copy.querySelector('.forge2-preview-copy-title'), 'title');
-    const bodyLines = Array.from(copy.querySelectorAll('.forge2-preview-copy-line'))
-      .map((element) => readElement(element, 'body'))
-      .filter(Boolean);
-    const lines = [titleLine, ...bodyLines].filter(Boolean);
-    if (!lines.length) return {};
-
-    return {
-      version: 1,
-      stage_width: stageRect.width,
-      stage_height: stageRect.height,
-      box: {
-        x: copyRect.left - stageRect.left,
-        y: copyRect.top - stageRect.top,
-        width: copyRect.width,
-        height: copyRect.height,
-      },
-      lines,
-    };
-  };
-
   const handleCreateProject = async () => {
     await runAction('create-project', async () => {
       const data = await createForge2Project({
@@ -998,16 +942,7 @@ function TheForge2() {
 
   const handleRenderVideo = async () => {
     await runAction('render-forge2', async () => {
-      const renderLayout = capturePreviewRenderLayout();
-      const studioForRender = {
-        ...studio,
-        text_overlay: {
-          ...studio.text_overlay,
-          render_layout: renderLayout?.lines?.length ? renderLayout : {},
-        },
-      };
-      const savedStudio = await saveForge2StudioConfig(selectedProjectId, studioForRender);
-      setStudio(normalizeStudio(savedStudio.studio || studioForRender));
+      await saveForge2StudioConfig(selectedProjectId, studio);
       const data = await renderForge2Studio(selectedProjectId);
       const jobId = data.job?.id;
       if (!jobId) {
