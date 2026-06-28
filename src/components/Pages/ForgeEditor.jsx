@@ -2281,9 +2281,11 @@ function ForgeEditor() {
 
       const data = await response.json();
       setRenderResult(data);
-      setMetadataTitle(data.title || '');
-      setMetadataDescription(data.description || '');
-      setMetadataHashtags((data.hashtags || []).join(' '));
+      // Economiza chamadas/uso de IA: renderizar nunca deve preencher metadados automaticamente.
+      // Titulo, descricao e hashtags so entram quando o usuario clicar no botao de gerar.
+      setMetadataTitle('');
+      setMetadataDescription('');
+      setMetadataHashtags('');
       setMetadataCategory(String(data.category_id || '22'));
       setMetadataPrivacyStatus(String(data.privacy_status || 'private'));
       setTopRatio(ratioSnapshot.top);
