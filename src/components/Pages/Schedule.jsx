@@ -498,7 +498,7 @@ function Schedule() {
                         <span className={`schedule-preview-status ${getStatusInfo(item.status).className}`}>
                           {getStatusInfo(item.status).label}
                         </span>
-                        <img src={preview.src} alt={item.title} />
+                        <img src={preview.src} alt={item.title} loading="lazy" />
                       </div>
                     );
                   }
@@ -512,7 +512,7 @@ function Schedule() {
                         src={preview.src}
                         muted
                         playsInline
-                        preload="metadata"
+                        preload="none"
                       />
                     </div>
                   );
@@ -640,7 +640,7 @@ function Schedule() {
                      <SourceBadge
                         label={itemConfig.label}
                         detail={destination.label}
-                        tone={group.platformClass}
+                        tone={itemConfig.className}
                         compact
                         officialAsset={itemConfig.label === 'YouTube'}
                       />
