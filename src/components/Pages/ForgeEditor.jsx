@@ -2065,6 +2065,14 @@ function ForgeEditor() {
     enabled: effectsEnabled,
     mode: effectsMode,
     style_preset: effectsPreset,
+    metadata_context: {
+      headline_text: headlineText || '',
+      layout_preset: layoutPreset,
+      render_mode: slideshowMode ? 'slideshow' : 'single',
+      image_paths: getUploadedImageNames(),
+      background_video_name: selectedVideo?.display_name || selectedVideo?.title || selectedVideo?.filename || '',
+      background_audio_name: selectedAudio?.display_name || selectedAudio?.title || selectedAudio?.filename || '',
+    },
     transition_frequency: transitionFrequency,
     transitions: [],
     visual_effects: [],
@@ -2714,6 +2722,7 @@ function ForgeEditor() {
           generate_description: generateDescription,
           generate_hashtags: generateHashtags,
           extracted_text: renderResult.extracted_text || '',
+          edit_plan: buildForgeEditPlan(),
         }),
       });
 
