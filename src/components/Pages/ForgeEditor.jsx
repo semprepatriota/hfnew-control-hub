@@ -2711,6 +2711,7 @@ function ForgeEditor() {
           generate_title: generateTitle,
           generate_description: generateDescription,
           generate_hashtags: generateHashtags,
+          extracted_text: renderResult.extracted_text || '',
         }),
       });
 
