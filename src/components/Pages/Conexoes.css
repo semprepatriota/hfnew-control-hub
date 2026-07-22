@@ -85,6 +85,50 @@
   margin-bottom: 30px;
 }
 
+.guest-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 255, 65, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 255, 65, 0.06);
+  color: #f2f2f2;
+}
+
+.guest-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.guest-panel strong {
+  color: #00ff41;
+  font-size: 13px;
+}
+
+.guest-panel span {
+  color: #a7b0b6;
+  font-size: 12px;
+}
+
+.guest-panel__list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.guest-panel__item,
+.guest-panel__empty {
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 255, 65, 0.32);
+  border-radius: 999px;
+  color: #d9ffe1 !important;
+  background: rgba(0, 255, 65, 0.08);
+  font-size: 12px;
+}
+
 .provider-status {
   display: inline-flex;
   align-items: center;
@@ -1110,6 +1154,15 @@
 }
 
 @media (max-width: 480px) {
+  .guest-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .guest-panel__list {
+    justify-content: flex-start;
+  }
+
   .conexao-card {
     border-radius: 10px;
   }
