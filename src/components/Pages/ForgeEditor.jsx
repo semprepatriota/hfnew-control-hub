@@ -146,6 +146,30 @@ const normalizeForge7030ImageTable = (items) => {
     }));
 };
 
+const extractForgeUploadedFilename = (value) => {
+  if (!value) return '';
+
+  let path = String(value);
+  try {
+    const parsed = new URL(path, window.location.origin);
+    path = parsed.pathname;
+  } catch (error) {
+    path = path.split('?')[0].split('#')[0];
+  }
+
+  if (path.includes('/api/forge/uploaded/')) {
+    path = path.split('/api/forge/uploaded/')[1] || '';
+  } else if (path.includes('uploads/')) {
+    path = path.split('uploads/')[1] || '';
+  }
+
+  try {
+    return decodeURIComponent(path.split('/').pop() || '');
+  } catch (error) {
+    return path.split('/').pop() || '';
+  }
+};
+
 function ForgeCropGuides({ active }) {
   if (!active) return null;
   return (
@@ -2021,13 +2045,7 @@ function ForgeEditor() {
       : (screenshotPath || '');
 
     if (!renderSource) return '';
-    if (renderSource.includes('/api/forge/uploaded/')) {
-      return renderSource.split('/api/forge/uploaded/')[1];
-    }
-    if (renderSource.includes('uploads/')) {
-      return renderSource.split('uploads/')[1];
-    }
-    return renderSource;
+    return extractForgeUploadedFilename(renderSource) || renderSource;
   };
 
   const getUploadedImageNames = () => {
@@ -2037,13 +2055,7 @@ function ForgeEditor() {
     return resolved
       .map((path) => {
         if (!path) return '';
-        if (path.includes('/api/forge/uploaded/')) {
-          return path.split('/api/forge/uploaded/')[1];
-        }
-        if (path.includes('uploads/')) {
-          return path.split('uploads/')[1];
-        }
-        return path;
+        return extractForgeUploadedFilename(path) || path;
       })
       .filter(Boolean);
   };
