@@ -22,7 +22,6 @@ import {
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
 import './ForgeEditor.css';
-import patriotaHeadline from '../../assets/patriota-headline.png';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
@@ -30,7 +29,7 @@ const FORGE_LOCAL_VIDEO_LABELS_KEY = 'alliance_forge_local_video_labels_v1';
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
-// 1. Patriota
+// 1. Azul / Branco
 // 2. Breaking
 // 3. Live HF
 // 4. Ticker Duplo
@@ -207,20 +206,17 @@ function ForgeHeadlineBand({ styleId, text, fontSize, compact = false }) {
   if (styleId === 'doubleTicker') {
     return (
       <div className={`headline-style-content style-double-ticker ${compact ? 'compact' : ''}`}>
-        <span className="headline-top-chip">ATENÇÃO</span>
         <strong style={{ fontSize }}>{safeText}</strong>
       </div>
     );
   }
 
   return (
-    <div className={`headline-style-content style-patriota ${compact ? 'compact' : ''}`}>
-      <div className="headline-patriota-shell">
-        <img src={patriotaHeadline} alt="" className="headline-patriota-bg" />
-        <div className="headline-patriota-main">
-          <strong style={{ fontSize }}>{safeText}</strong>
-        </div>
+    <div className={`headline-style-content style-blue-live ${compact ? 'compact' : ''}`}>
+      <div className="headline-live-badge">
+        <span>LIVE</span>
       </div>
+      <strong style={{ fontSize }}>{safeText}</strong>
     </div>
   );
 }
@@ -808,7 +804,7 @@ function ForgeEditor() {
 
   // Catálogo fixo do bloco de headline aprovado pelo usuário.
   const headlinePalettes = [
-    { id: 'purpleGold', label: 'Patriota', className: 'purpleGold', sampleText: 'A VERDADE VOLTOU AO CENTRO' },
+    { id: 'purpleGold', label: 'Azul / Branco', className: 'purpleGold', sampleText: 'A VERDADE VOLTOU AO CENTRO' },
     { id: 'breakingFlash', label: 'Breaking', className: 'breakingFlash', sampleText: 'AGORA A CASA CAIU' },
     { id: 'liveHf', label: 'Live HF', className: 'liveHf', sampleText: 'AO VIVO NO CENTRO DO CAOS' },
     { id: 'doubleTicker', label: 'Ticker Duplo', className: 'doubleTicker', sampleText: 'NINGUÉM CONSEGUE ESCONDER ISSO' },
