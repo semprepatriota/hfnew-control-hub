@@ -98,6 +98,14 @@ function OAuthCallback() {
         callbackPath = `/api/facebook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       }
 
+      if (authFlow === 'youtube' && !socialProvider) {
+        setMessage('Concluindo conexão do canal...');
+        window.localStorage.removeItem(PENDING_AUTH_FLOW_KEY);
+        window.sessionStorage.removeItem(OAUTH_CALLBACK_URL_KEY);
+        window.location.href = apiUrl(callbackPath);
+        return;
+      }
+
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 15000);
 
