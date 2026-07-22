@@ -132,6 +132,9 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   ];
 
   const isActive = (path) => location.pathname === path;
+  const visibleMenuItems = currentUser?.role === 'guest'
+    ? menuItems.filter((item) => [1, 2, 4, 5, 6].includes(item.id))
+    : menuItems;
 
   return (
     <>
@@ -160,7 +163,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
         </div>
 
         <nav className="sidebar-nav">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
@@ -195,7 +198,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
         <div className="sidebar-footer">
           {isOpen && (currentUser?.email || currentUser?.name) && (
             <div className="sidebar-user">
-              <span className="sidebar-user-name">{currentUser.name || 'Usuario autorizado'}</span>
+              <span className="sidebar-user-name">{currentUser.name || 'Usuario autorizado'}{currentUser.role === 'guest' ? ' · Convidado' : ''}</span>
               <span className="sidebar-user-email">{currentUser.email}</span>
             </div>
           )}

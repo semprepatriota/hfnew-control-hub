@@ -58,7 +58,9 @@ function AppShell() {
     allowed: false,
     message: '',
     email: '',
-    name: ''
+    name: '',
+    role: 'owner',
+    scope: ''
   });
   const authRequestStarted = useRef(false);
   const authRetryCount = useRef(0);
@@ -77,6 +79,28 @@ function AppShell() {
     if (authRetryTimeout.current) {
       window.clearTimeout(authRetryTimeout.current);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+      const requestUrl = typeof input === 'string' ? input : input?.url || '';
+      const isApiRequest = requestUrl.includes('/api/');
+      const token = window.localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!isApiRequest || !token) {
+        return nativeFetch(input, init);
+      }
+
+      const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+      if (!headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return nativeFetch(input, { ...init, headers });
+    };
+    return () => {
+      window.fetch = nativeFetch;
+    };
   }, []);
 
   useEffect(() => {
@@ -154,7 +178,9 @@ function AppShell() {
           allowed: false,
           message: 'Autenticacao ausente',
           email: '',
-          name: ''
+          name: '',
+          role: 'owner',
+          scope: ''
         });
         return;
       }
@@ -178,7 +204,9 @@ function AppShell() {
             allowed: false,
             message: 'Finalizando validacao do login...',
             email: '',
-            name: ''
+            name: '',
+            role: 'owner',
+            scope: ''
           });
           authRetryTimeout.current = window.setTimeout(() => {
             setAuthAttempt((current) => current + 1);
@@ -226,7 +254,9 @@ function AppShell() {
           allowed: Boolean(data.authorized),
           message: data.message || '',
           email: data.email || '',
-          name: data.name || ''
+          name: data.name || '',
+          role: data.role || 'owner',
+          scope: data.scope || ''
         });
       } catch (error) {
         const recentAuthAt = Number(window.localStorage.getItem(RECENT_AUTH_KEY) || '0');
@@ -244,7 +274,9 @@ function AppShell() {
             allowed: false,
             message: 'Finalizando validacao do login...',
             email: '',
-            name: ''
+            name: '',
+            role: 'owner',
+            scope: ''
           });
           authRetryTimeout.current = window.setTimeout(() => {
             setAuthAttempt((current) => current + 1);
@@ -261,7 +293,9 @@ function AppShell() {
               ? 'Sessao local mantida. API demorou para responder.'
               : 'Sessao local mantida. Validacao remota indisponivel.',
             email: '',
-            name: ''
+            name: '',
+            role: 'owner',
+            scope: ''
           });
           return;
         }
@@ -273,8 +307,10 @@ function AppShell() {
           message: error?.name === 'AbortError'
             ? 'Tempo limite ao validar a sessao do dashboard'
             : 'Falha ao verificar acesso',
-          email: '',
-          name: ''
+            email: '',
+            name: '',
+            role: 'owner',
+            scope: ''
         });
       }
     }
@@ -322,7 +358,9 @@ function AppShell() {
           onLogout={handleLogout}
           currentUser={{
             email: authStatus.email,
-            name: authStatus.name
+            name: authStatus.name,
+            role: authStatus.role,
+            scope: authStatus.scope
           }}
         />
       )}
@@ -342,7 +380,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/painel" element={<Dashboard />} />
-          <Route path="/conexoes" element={<Conexoes />} />
+          <Route path="/conexoes" element={<Conexoes currentUser={authStatus} />} />
           <Route path="/intel" element={<Intel />} />
           <Route path="/forge" element={<Forge />} />
           <Route path="/the-forge" element={<TheForge2 />} />
