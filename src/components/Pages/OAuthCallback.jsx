@@ -68,7 +68,12 @@ function OAuthCallback() {
       ? `alliance_dark_oauth_processed:${processedFlowKey}:${state}:${code}`
       : '';
 
-    if (processedKey && window.sessionStorage.getItem(processedKey)) {
+    const processedStatus = processedKey ? window.sessionStorage.getItem(processedKey) : '';
+    if (processedStatus === 'processing') {
+      setMessage('Autorização já está em processamento...');
+      return;
+    }
+    if (processedKey && processedStatus === 'done') {
       redirectAfterProcessed(authFlow);
       return;
     }
@@ -133,7 +138,7 @@ function OAuthCallback() {
         .then(data => {
           console.log('Callback response:', data);
           if (processedKey) {
-            window.sessionStorage.setItem(processedKey, '1');
+            window.sessionStorage.setItem(processedKey, 'done');
           }
           setMessage('Autorização concluída. Redirecionando...');
           const responseFlow = data?.flow_type || authFlow;
