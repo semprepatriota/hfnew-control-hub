@@ -580,13 +580,29 @@ function Conexoes({ currentUser }) {
 
       {!isGuest && (
         <section className="guest-panel" aria-label="Convidados autorizados">
-          <div>
+          <div className="guest-panel__header">
             <strong>Convidados autorizados</strong>
             <span>Dados e canais separados por usuário</span>
           </div>
           <div className="guest-panel__list">
             {guestUsers.length > 0 ? guestUsers.map((guest) => (
-              <span className="guest-panel__item" key={guest.email}>{guest.email}</span>
+              <article className="guest-panel__item" key={guest.email}>
+                <div className="guest-panel__guest">
+                  <strong>{guest.name || guest.email}</strong>
+                  <span>{guest.email}</span>
+                </div>
+                <div className="guest-panel__channels">
+                  {(guest.channels || []).length > 0 ? guest.channels.map((channel) => (
+                    <div className={`guest-panel__channel ${channel.is_active ? 'active' : ''}`} key={channel.channel_id || channel.channel_name}>
+                      {channel.thumbnail ? <img src={channel.thumbnail} alt="" /> : <Radio size={14} />}
+                      <div>
+                        <strong>{channel.channel_name || 'Canal sem nome'}</strong>
+                        <span>{channel.is_active ? 'Em uso' : 'Conectado'}{channel.needs_reconnect ? ' · reconectar' : ''}</span>
+                      </div>
+                    </div>
+                  )) : <span className="guest-panel__empty">Nenhum canal conectado</span>}
+                </div>
+              </article>
             )) : <span className="guest-panel__empty">Nenhum convidado cadastrado</span>}
           </div>
         </section>
