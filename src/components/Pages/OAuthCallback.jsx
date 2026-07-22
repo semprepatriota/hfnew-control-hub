@@ -88,9 +88,6 @@ function OAuthCallback() {
     }
 
     if (code && state) {
-      if (processedKey) {
-        window.sessionStorage.setItem(processedKey, '1');
-      }
       setMessage('Validando retorno do Google...');
       let callbackPath = `/api/conexoes/youtube/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       if (authFlow === 'dashboard') {
@@ -121,6 +118,9 @@ function OAuthCallback() {
         })
         .then(data => {
           console.log('Callback response:', data);
+          if (processedKey) {
+            window.sessionStorage.setItem(processedKey, '1');
+          }
           setMessage('Autorização concluída. Redirecionando...');
           const responseFlow = data?.flow_type || authFlow;
           if (responseFlow === 'dashboard') {
