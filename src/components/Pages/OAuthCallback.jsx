@@ -88,6 +88,9 @@ function OAuthCallback() {
     }
 
     if (code && state) {
+      if (processedKey) {
+        window.sessionStorage.setItem(processedKey, 'processing');
+      }
       setMessage('Validando retorno do Google...');
       let callbackPath = `/api/conexoes/youtube/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
       if (authFlow === 'dashboard') {
@@ -120,6 +123,9 @@ function OAuthCallback() {
             const error = new Error(data?.detail || 'Erro no callback');
             error.status = res.status;
             error.data = data;
+            if (processedKey) {
+              window.sessionStorage.removeItem(processedKey);
+            }
             throw error;
           }
           return data;
