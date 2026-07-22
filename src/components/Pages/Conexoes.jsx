@@ -20,6 +20,15 @@ import './Conexoes.css';
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const PENDING_AUTH_FLOW_KEY = 'alliance_dark_pending_auth_flow';
 const OAUTH_ERROR_KEY = 'alliance_dark_oauth_error';
+const EMPTY_INTEGRATION_SETTINGS = { tools: [], defaults: {}, destinations: {} };
+
+function connectionErrorMessage(error, fallback = 'Não foi possível concluir a operação.') {
+  const message = String(error?.message || error || '').trim();
+  if (!message || message === 'Failed to fetch') {
+    return fallback;
+  }
+  return message;
+}
 
 async function readResponseData(response) {
   const contentType = response.headers.get('content-type') || '';
@@ -164,7 +173,8 @@ function Conexoes({ currentUser }) {
         }
         setIntegrationSettings(data);
       } else {
-        throw integrationsResult.reason;
+        console.warn('Falha ao carregar integrações:', integrationsResult.reason);
+        setIntegrationSettings((current) => current || EMPTY_INTEGRATION_SETTINGS);
       }
 
       const instagramDiagnostics = instagramDiagnosticsResult.status === 'fulfilled' && instagramDiagnosticsResult.value.ok
@@ -189,7 +199,8 @@ function Conexoes({ currentUser }) {
         hasFacebook: Boolean(facebookData?.pages?.length),
       };
     } catch (err) {
-      setError(err.message || 'Erro ao verificar conexões');
+      console.error('Erro ao verificar conexões:', err);
+      setError(connectionErrorMessage(err, 'Não foi possível atualizar os status das conexões. Tente atualizar a página.'));
       return {
         hasYoutube: false,
         hasInstagram: false,
@@ -308,7 +319,7 @@ function Conexoes({ currentUser }) {
       }) : current);
       refreshSoon(checkStatuses);
     } catch (err) {
-      setError(err.message);
+      setError(connectionErrorMessage(err, 'Não foi possível iniciar a conexão. Atualize a página e tente novamente.'));
     } finally {
       setUpdatingId('');
     }
