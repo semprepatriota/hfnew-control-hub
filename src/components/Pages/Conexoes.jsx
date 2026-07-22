@@ -55,6 +55,7 @@ function refreshSoon(refreshFn) {
 
 function Conexoes({ currentUser }) {
   const isGuest = currentUser?.role === 'guest';
+  const [guestUsers, setGuestUsers] = useState([]);
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [instagramStatus, setInstagramStatus] = useState(null);
   const [facebookStatus, setFacebookStatus] = useState(null);
@@ -109,6 +110,14 @@ function Conexoes({ currentUser }) {
         fetch(apiUrl('/api/instagram/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
         fetch(apiUrl('/api/facebook/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
       ]);
+
+      if (!isGuest) {
+        const guestsResponse = await fetch(apiUrl('/api/conexoes/guests'), { headers: getAuthHeaders(), cache: 'no-store' });
+        if (guestsResponse.ok) {
+          const guestsData = await readResponseData(guestsResponse);
+          setGuestUsers(guestsData.guests || []);
+        }
+      }
 
       const refreshFailures = [];
       let youtubeData = null;
@@ -189,7 +198,7 @@ function Conexoes({ currentUser }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     checkStatuses().then((statusSnapshot) => {
@@ -530,12 +539,24 @@ function Conexoes({ currentUser }) {
           <h1>Conexões</h1>
           <p>Organize canais autorizados e preferências técnicas por destino.</p>
         </div>
-        {!isGuest && (
-          <button type="button" className="header-settings-button" onClick={openGlobalSettings} title="Configurações gerais de APIs">
-            <Settings2 size={16} />
-          </button>
-        )}
+        <button type="button" className="header-settings-button" onClick={openGlobalSettings} title="Configurações gerais de APIs">
+          <Settings2 size={16} />
+        </button>
       </div>
+
+      {!isGuest && (
+        <section className="guest-panel" aria-label="Convidados autorizados">
+          <div>
+            <strong>Convidados autorizados</strong>
+            <span>Dados e canais separados por usuário</span>
+          </div>
+          <div className="guest-panel__list">
+            {guestUsers.length > 0 ? guestUsers.map((guest) => (
+              <span className="guest-panel__item" key={guest.email}>{guest.email}</span>
+            )) : <span className="guest-panel__empty">Nenhum convidado cadastrado</span>}
+          </div>
+        </section>
+      )}
 
       {error && (
         <div className="error-banner">
@@ -584,7 +605,7 @@ function Conexoes({ currentUser }) {
                           <span>{formatNumber(channel.video_count)} videos</span>
                         </div>
                         <div className="channel-actions">
-                          {!isGuest && renderChannelSettingsButton('youtube', { id: channel.channel_id, name: channel.channel_name })}
+                          {renderChannelSettingsButton('youtube', { id: channel.channel_id, name: channel.channel_name })}
                           {!channel.is_active && (
                             <button type="button" onClick={() => setActiveYoutube(channel.channel_id)} disabled={updatingId === channel.channel_id} className="active-button">
                               {updatingId === channel.channel_id ? <Loader size={15} className="spinner" /> : <Radio size={15} />} Usar
@@ -615,7 +636,7 @@ function Conexoes({ currentUser }) {
           </div>
         </div>
 
-        {!isGuest && <div className="conexao-card instagram instagram-wide">
+        <div className="conexao-card instagram instagram-wide">
           <div className="card-header">
             <div className="icon-container instagram-icon"><Instagram size={32} /></div>
             <div className="card-title-group">
@@ -690,9 +711,9 @@ function Conexoes({ currentUser }) {
               </>
             )}
           </div>
-        </div>}
+        </div>
 
-        {!isGuest && <div className="conexao-card facebook facebook-wide">
+        <div className="conexao-card facebook facebook-wide">
           <div className="card-header">
             <div className="icon-container facebook-icon"><Facebook size={32} /></div>
             <div className="card-title-group">
@@ -767,7 +788,7 @@ function Conexoes({ currentUser }) {
               </>
             )}
           </div>
-        </div>}
+        </div>
       </div>
 
       {settingsOpen && (

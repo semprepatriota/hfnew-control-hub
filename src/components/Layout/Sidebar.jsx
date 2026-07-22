@@ -132,9 +132,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   ];
 
   const isActive = (path) => location.pathname === path;
-  const visibleMenuItems = currentUser?.role === 'guest'
-    ? menuItems.filter((item) => [1, 2, 4, 5, 6].includes(item.id))
-    : menuItems;
+  const visibleMenuItems = menuItems;
 
   return (
     <>
