@@ -248,6 +248,29 @@ function Conexoes({ currentUser }) {
     setConnecting(provider);
     setError('');
     try {
+      if (provider === 'youtube') {
+        const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
+        if (!authToken) {
+          throw new Error('Sessão ausente. Entre novamente antes de conectar o canal.');
+        }
+
+        window.localStorage.setItem(PENDING_AUTH_FLOW_KEY, provider);
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = apiUrl('/api/conexoes/youtube/login');
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'dashboard_token';
+        input.value = authToken;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+
       let endpoint = '/api/conexoes/youtube/auth-url';
       if (provider === 'instagram') endpoint = '/api/instagram/auth-url';
       if (provider === 'facebook') endpoint = '/api/facebook/auth-url';
