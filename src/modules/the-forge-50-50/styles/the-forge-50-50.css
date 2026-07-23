@@ -5,4 +5,5 @@
 .forge5050-preview{container-type:inline-size}
 .forge5050-combined-stage{position:absolute;inset:0;overflow:hidden}
 .forge5050-combined-stage>.forge5050-preview-video{position:absolute}
+.forge5050-preview.single .forge5050-preview-video.solo{top:0;bottom:0;height:100%}
 .forge5050-headline{height:var(--headline-band-height);min-height:0;font-size:min(var(--headline-font-size-width),var(--headline-font-size-height));line-height:1.1;overflow:hidden;overflow-wrap:anywhere}
