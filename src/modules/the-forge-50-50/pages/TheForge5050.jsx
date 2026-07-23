@@ -19,7 +19,7 @@ const headlineStyles = [
   ['liveHf', 'Live HF'], ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'],
 ];
 const headlineStyleIds = new Set(headlineStyles.map(([id]) => id));
-const platformOutputs = [
+const socialPlatforms = [
   { id: 'youtube', label: 'YouTube', metadataPlatform: 'youtube_shorts' },
   { id: 'instagram', label: 'Instagram', metadataPlatform: 'instagram' },
   { id: 'tiktok', label: 'TikTok', metadataPlatform: 'tiktok' },
@@ -53,6 +53,7 @@ function TheForge5050() {
   const [cropMode, setCropMode] = useState(false);
   const [generatingHook, setGeneratingHook] = useState(false);
   const [socialMetadata, setSocialMetadata] = useState({});
+  const [selectedMetadataPlatform, setSelectedMetadataPlatform] = useState('youtube');
   const [generatingMetadataFor, setGeneratingMetadataFor] = useState('');
 
   const videos = project?.videos || [];
@@ -207,7 +208,7 @@ function TheForge5050() {
     setGeneratingMetadataFor(platform);
     setError('');
     try {
-      const item = platformOutputs.find((entry) => entry.id === platform);
+      const item = socialPlatforms.find((entry) => entry.id === platform);
       const titleHint = [
         config.headline_text ? `Headline: ${config.headline_text}` : '',
         topVideo?.original_name ? `Vídeo 1: ${topVideo.original_name}` : '',
@@ -289,11 +290,7 @@ function TheForge5050() {
         </div>
       </div>
 
-      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeos renderizados por plataforma</h2><div className="forge5050-platform-grid">{platformOutputs.map((platform) => {
-        const variant = render.variants?.[platform.id] || render;
-        const metadata = socialMetadata[platform.id] || {};
-        return <article key={platform.id} className="forge5050-platform-card"><h3>{platform.label}</h3><span className="forge5050-platform-format">{variant.format || 'Vertical 1080×1920'}</span><video src={forge5050FileUrl(variant.url)} controls className="forge5050-platform-video" /><a className="forge5050-button secondary" href={forge5050FileUrl(variant.url)} download><Download size={15} /> Baixar MP4</a><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(platform.id)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === platform.id ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e #</>}</button>{metadata.title && <div className="forge5050-metadata"><label>Título<input value={metadata.title} readOnly /></label><label>Descrição<textarea value={metadata.description || ''} readOnly rows={4} /></label><label>Hashtags<input value={(metadata.hashtags || []).join(' ')} readOnly /></label></div>}</article>;
-      })}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeos renderizados</button></section>}
+      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><a className="forge5050-button secondary" href={forge5050FileUrl(render.url)} download><Download size={16} /> Baixar vídeo MP4</a><div className="forge5050-social-generator"><h3>Gerar publicação para uma rede social</h3><Select label="Rede social" value={selectedMetadataPlatform} options={socialPlatforms.map((item) => ({ value: item.id, original_name: item.label }))} onChange={setSelectedMetadataPlatform} /><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(selectedMetadataPlatform)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === selectedMetadataPlatform ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e hashtags</>}</button>{socialMetadata[selectedMetadataPlatform]?.title && <div className="forge5050-metadata"><label>Título<input value={socialMetadata[selectedMetadataPlatform].title} readOnly /></label><label>Descrição<textarea value={socialMetadata[selectedMetadataPlatform].description || ''} readOnly rows={5} /></label><label>Hashtags<input value={(socialMetadata[selectedMetadataPlatform].hashtags || []).join(' ')} readOnly /></label></div>}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeo renderizado</button></section>}
     </>}
   </main>;
 }

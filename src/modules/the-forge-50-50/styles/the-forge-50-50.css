@@ -19,7 +19,9 @@
 .forge5050-platform-format{display:block;margin:4px 0 8px;color:#8fa8be;font-size:10px}
 .forge5050-platform-video{display:block;width:100%;aspect-ratio:9/16;object-fit:contain;background:#020509;border-radius:5px}
 .forge5050-platform-card .forge5050-button{width:100%;margin-top:7px;padding:8px 7px;font-size:11px}
-.forge5050-button.metadata-button{border-color:#4b8fe2;background:#164b8a;color:#fff}
+.forge5050-social-generator{margin-top:12px;padding:11px;border:1px solid #246c47;border-radius:7px;background:#092219}
+.forge5050-social-generator h3{margin:0 0 9px;color:#76ffac;font-size:13px}
+.forge5050-button.metadata-button{border-color:#52ff9a;background:#117a45;color:#effff5}
 .forge5050-metadata{display:grid;gap:7px;margin-top:9px}
 .forge5050-metadata label{display:grid;gap:4px;color:#a9bdcf;font-size:10px;font-weight:800}
 .forge5050-metadata input,.forge5050-metadata textarea{box-sizing:border-box;width:100%;resize:vertical;padding:7px;border:1px solid #304c65;border-radius:5px;background:#07101a;color:#eef6ff;font:inherit;font-weight:500}
