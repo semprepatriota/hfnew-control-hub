@@ -30,4 +30,10 @@ export const renderForge5050 = (id, config) => fetch(apiUrl(`/api/forge5050/proj
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config),
 }).then(parse);
 
+export const generateForge5050Hook = (context, currentHeadline = '') => fetch(apiUrl('/api/forge5050/generate-hook'), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ context, current_headline: currentHeadline }),
+}).then(parse);
+
 export const forge5050FileUrl = (path) => apiUrl(path);
