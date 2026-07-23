@@ -30,6 +30,21 @@ export const renderForge5050 = (id, config) => fetch(apiUrl(`/api/forge5050/proj
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config),
 }).then(parse);
 
+export const deleteForge5050Render = (id) => fetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/render`), {
+  method: 'DELETE',
+}).then(parse);
+
+export const generateForge5050SocialMetadata = (platform, titleHint, descriptionHint) => fetch(apiUrl('/api/forge/generate-social-metadata'), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    platform,
+    media_type: 'video',
+    title_hint: titleHint,
+    description_hint: descriptionHint,
+  }),
+}).then(parse);
+
 export const generateForge5050Hook = (context, currentHeadline = '') => fetch(apiUrl('/api/forge5050/generate-hook'), {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },

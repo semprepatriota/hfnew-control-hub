@@ -3,7 +3,9 @@ import { Check, ChevronDown, ChevronUp, Download, Eye, EyeOff, Film, Loader, Mou
 import {
   createForge5050Project,
   deleteForge5050Project,
+  deleteForge5050Render,
   forge5050FileUrl,
+  generateForge5050SocialMetadata,
   getForge5050Project,
   generateForge5050Hook,
   listForge5050Projects,
@@ -17,6 +19,11 @@ const headlineStyles = [
   ['liveHf', 'Live HF'], ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'],
 ];
 const headlineStyleIds = new Set(headlineStyles.map(([id]) => id));
+const platformOutputs = [
+  { id: 'youtube', label: 'YouTube', metadataPlatform: 'youtube_shorts' },
+  { id: 'instagram', label: 'Instagram', metadataPlatform: 'instagram' },
+  { id: 'tiktok', label: 'TikTok', metadataPlatform: 'tiktok' },
+];
 
 const defaultConfig = {
   top_video: '', bottom_video: '', top_start: 0, top_end: 0, bottom_start: 0, bottom_end: 0,
@@ -45,6 +52,8 @@ function TheForge5050() {
   const [showCombinedPreview, setShowCombinedPreview] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [generatingHook, setGeneratingHook] = useState(false);
+  const [socialMetadata, setSocialMetadata] = useState({});
+  const [generatingMetadataFor, setGeneratingMetadataFor] = useState('');
 
   const videos = project?.videos || [];
   const topVideo = useMemo(() => videos.find((item) => item.filename === config.top_video), [videos, config.top_video]);
@@ -61,6 +70,7 @@ function TheForge5050() {
     setProject(data);
     setConfig(normalizeForge5050Config(data.config));
     setRender(data.last_render || null);
+    setSocialMetadata({});
   };
 
   useEffect(() => {
@@ -178,7 +188,35 @@ function TheForge5050() {
       setRender(data);
       await openProject(project.id);
       setRender(data);
+      setSocialMetadata({});
     } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const removeRender = async () => {
+    if (!project || !render || !window.confirm('Excluir os três vídeos renderizados?')) return;
+    setBusy(true); setError('');
+    try {
+      await deleteForge5050Render(project.id);
+      setRender(null);
+      setSocialMetadata({});
+      setProject((current) => current ? { ...current, last_render: null } : current);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const generateSocialMetadata = async (platform) => {
+    setGeneratingMetadataFor(platform);
+    setError('');
+    try {
+      const item = platformOutputs.find((entry) => entry.id === platform);
+      const titleHint = [
+        config.headline_text ? `Headline: ${config.headline_text}` : '',
+        topVideo?.original_name ? `Vídeo 1: ${topVideo.original_name}` : '',
+        bottomVideo?.original_name ? `Vídeo 2: ${bottomVideo.original_name}` : '',
+      ].filter(Boolean).join('\n');
+      const descriptionHint = 'Vídeo vertical 50/50 com dois vídeos unidos para publicação em rede social.';
+      const data = await generateForge5050SocialMetadata(item.metadataPlatform, titleHint, descriptionHint);
+      setSocialMetadata((current) => ({ ...current, [platform]: data }));
+    } catch (err) { setError(err.message); } finally { setGeneratingMetadataFor(''); }
   };
 
   if (loading) return <main className="forge5050-page"><div className="forge5050-loading"><Loader className="forge5050-spin" /> Carregando The Forge 50/50...</div></main>;
@@ -251,7 +289,11 @@ function TheForge5050() {
         </div>
       </div>
 
-      {render && <section className="forge5050-panel forge5050-result"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><a className="forge5050-button secondary" href={forge5050FileUrl(render.url)} download><Download size={16} /> Baixar vídeo MP4</a></section>}
+      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeos renderizados por plataforma</h2><div className="forge5050-platform-grid">{platformOutputs.map((platform) => {
+        const variant = render.variants?.[platform.id] || render;
+        const metadata = socialMetadata[platform.id] || {};
+        return <article key={platform.id} className="forge5050-platform-card"><h3>{platform.label}</h3><span className="forge5050-platform-format">{variant.format || 'Vertical 1080×1920'}</span><video src={forge5050FileUrl(variant.url)} controls className="forge5050-platform-video" /><a className="forge5050-button secondary" href={forge5050FileUrl(variant.url)} download><Download size={15} /> Baixar MP4</a><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(platform.id)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === platform.id ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e #</>}</button>{metadata.title && <div className="forge5050-metadata"><label>Título<input value={metadata.title} readOnly /></label><label>Descrição<textarea value={metadata.description || ''} readOnly rows={4} /></label><label>Hashtags<input value={(metadata.hashtags || []).join(' ')} readOnly /></label></div>}</article>;
+      })}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeos renderizados</button></section>}
     </>}
   </main>;
 }
