@@ -131,6 +131,11 @@ function TheForge5050() {
     setCropMode(false);
   };
 
+  const activateCropVideo = (slot) => {
+    selectCropVideo(slot);
+    setCropMode(true);
+  };
+
   const joinVideos = async () => {
     if (!config.top_video || !config.bottom_video) {
       setError('Selecione os dois vídeos antes de unir o preview.');
@@ -235,7 +240,7 @@ function TheForge5050() {
 
     {project && <>
       <Panel title="Biblioteca de dois vídeos" open={open.library} onToggle={() => setOpen((v) => ({ ...v, library: !v.library }))}>
-        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} config={config} update={update} onSelect={() => selectCropVideo(slot)} />)}</div>
+        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} config={config} update={update} onSelect={() => activateCropVideo(slot)} />)}</div>
       </Panel>
 
       <div className="forge5050-grid">
