@@ -42,3 +42,5 @@
 .forge5050-slot-trim-actions button:first-child{border-color:#4ca8e4;background:#154a70;color:#fff}
 .forge5050-slot-trim-actions button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:560px){.forge5050-trim-duration{grid-template-columns:1fr}.forge5050-slot-trim-heading{align-items:flex-start;flex-direction:column}.forge5050-slot-trim-heading span{text-align:left}}
+.forge5050-headline{top:var(--headline-top);bottom:auto;transform:none}
+.forge5050-headline-toggle{display:flex;align-items:center;gap:7px;margin:0 0 8px;color:#aec0d2;font-size:11px;font-weight:800;cursor:pointer}.forge5050-headline-toggle input{accent-color:#52ff9a}

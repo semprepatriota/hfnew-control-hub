@@ -29,12 +29,19 @@ const defaultConfig = {
   top_video: '', bottom_video: '', top_start: 0, top_end: 0, bottom_start: 0, bottom_end: 0,
   top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
   top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
-  headline_text: '', headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'liveHf',
+  headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'liveHf',
 };
 
 const normalizeForge5050Config = (source = {}) => {
   const next = { ...defaultConfig, ...source };
   if (!headlineStyleIds.has(next.headline_palette)) next.headline_palette = defaultConfig.headline_palette;
+  if (typeof source.headline_enabled !== 'boolean') {
+    next.headline_enabled = Boolean(source.headline_text?.trim()) && source.headline_position !== 'none';
+  }
+  if (source.headline_y === undefined) {
+    next.headline_y = { top: 0, middle: 0.5, bottom: 1 }[source.headline_position] ?? defaultConfig.headline_y;
+  }
+  next.headline_y = Math.min(1, Math.max(0, Number(next.headline_y) || 0));
   return next;
 };
 
@@ -259,9 +266,10 @@ function TheForge5050() {
             {showCombinedPreview ? <div className="forge5050-combined-stage">
               <PreviewVideo video={topVideo} className="top" cropX={config.top_crop_x} cropY={config.top_crop_y} />
               <PreviewVideo video={bottomVideo} className="bottom" cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} />
-              {config.headline_text && config.headline_position !== 'none' && <div
-                className={`forge5050-headline ${config.headline_position} palette-${config.headline_palette}`}
+              {config.headline_enabled && config.headline_text.trim() && <div
+                className={`forge5050-headline palette-${config.headline_palette}`}
                 style={{
+                  '--headline-top': `${((1 - config.headline_ratio) * config.headline_y * 100).toFixed(3)}%`,
                   '--headline-band-height': `${Math.round(config.headline_ratio * 100)}%`,
                   '--headline-font-size-width': `${(10 * config.headline_font_scale).toFixed(3)}cqw`,
                   '--headline-font-size-height': `${(110.222 * config.headline_ratio * config.headline_font_scale).toFixed(3)}cqw`,
@@ -289,7 +297,8 @@ function TheForge5050() {
             <button type="button" className="forge5050-button hook" onClick={generateHook} disabled={generatingHook || busy || !topVideo || !bottomVideo}>
               {generatingHook ? <><Loader size={15} className="forge5050-spin" /> Gerando hook...</> : <><Search size={15} /> Gerar hook + CTA com ChatGPT</>}
             </button>
-            <div className="forge5050-control-grid"><Select label="Posição" value={config.headline_position} options={[{ value: 'none', original_name: 'Sem headline' }, { value: 'top', original_name: 'Topo' }, { value: 'middle', original_name: 'Meio' }, { value: 'bottom', original_name: 'Embaixo' }]} onChange={(value) => update('headline_position', value)} /><Range label={`Altura da faixa ${Math.round(config.headline_ratio * 100)}%`} value={config.headline_ratio} min="0.06" max="0.20" step="0.01" onChange={(value) => update('headline_ratio', value)} /><Range label={`Tamanho ${config.headline_font_scale.toFixed(2)}x`} value={config.headline_font_scale} min="0.7" max="1.8" step="0.05" onChange={(value) => update('headline_font_scale', value)} /></div>
+            <label className="forge5050-headline-toggle"><input type="checkbox" checked={Boolean(config.headline_enabled)} onChange={(e) => update('headline_enabled', e.target.checked)} /> Usar headline</label>
+            <div className="forge5050-control-grid"><Range label={`Altura da faixa ${Math.round(config.headline_ratio * 100)}%`} value={config.headline_ratio} min="0.06" max="0.20" step="0.01" onChange={(value) => update('headline_ratio', value)} /><Range label={`Posição vertical ${Math.round(config.headline_y * 100)}%`} value={config.headline_y} min="0" max="1" step="0.01" onChange={(value) => update('headline_y', value)} /><Range label={`Tamanho ${config.headline_font_scale.toFixed(2)}x`} value={config.headline_font_scale} min="0.7" max="1.8" step="0.05" onChange={(value) => update('headline_font_scale', value)} /></div>
             <div className="forge5050-style-grid">{headlineStyles.map(([id, label]) => <button key={id} className={config.headline_palette === id ? 'selected' : ''} onClick={() => update('headline_palette', id)}><span className={`forge5050-swatch palette-${id}`} />{label}</button>)}</div>
           </Panel>
         </div>
