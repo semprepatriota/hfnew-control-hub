@@ -3,4 +3,6 @@
 @media(max-width:900px){.forge5050-page{padding:15px}.forge5050-header{align-items:flex-start;flex-direction:column}.forge5050-library,.forge5050-grid{grid-template-columns:1fr}.forge5050-style-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.forge5050-control-grid:has(> .forge5050-label:nth-child(3)){grid-template-columns:1fr 1fr}.forge5050-preview-toolbar button.join{margin-left:0}}
 /* Headline controls must mirror the configured band and font scale in the preview. */
 .forge5050-preview{container-type:inline-size}
+.forge5050-combined-stage{position:absolute;inset:0;overflow:hidden}
+.forge5050-combined-stage>.forge5050-preview-video{position:absolute}
 .forge5050-headline{height:var(--headline-band-height);min-height:0;font-size:min(var(--headline-font-size-width),var(--headline-font-size-height));line-height:1.1;overflow:hidden;overflow-wrap:anywhere}

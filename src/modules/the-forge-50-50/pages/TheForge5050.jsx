@@ -211,8 +211,8 @@ function TheForge5050() {
             </button>
             <button type="button" className="join" onClick={joinVideos} disabled={busy || !topVideo || !bottomVideo}><Check size={14} /> Unir vídeos</button>
           </div>
-          <div className="forge5050-preview" style={{ '--top': `${config.top_ratio * 100}%` }}>
-            {showCombinedPreview ? <>
+          <div className={`forge5050-preview ${showCombinedPreview ? 'combined' : 'single'}`} style={{ '--top': `${config.top_ratio * 100}%` }}>
+            {showCombinedPreview ? <div className="forge5050-combined-stage">
               <PreviewVideo video={topVideo} className="top" cropX={config.top_crop_x} cropY={config.top_crop_y} />
               <PreviewVideo video={bottomVideo} className="bottom" cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} />
               {config.headline_text && config.headline_position !== 'none' && <div
@@ -223,7 +223,7 @@ function TheForge5050() {
                   '--headline-font-size-height': `${(110.222 * config.headline_ratio * config.headline_font_scale).toFixed(3)}cqw`,
                 }}
               >{config.headline_text}</div>}
-            </> : <PreviewVideo video={cropEditingSlot === 'top' ? topVideo : bottomVideo} className={`solo ${cropEditingSlot}`} cropActive={cropMode} whole={!cropMode} cropX={config[`${cropEditingSlot}_crop_x`]} cropY={config[`${cropEditingSlot}_crop_y`]} />}
+            </div> : <PreviewVideo video={cropEditingSlot === 'top' ? topVideo : bottomVideo} className={`solo ${cropEditingSlot}`} cropActive={cropMode} whole={!cropMode} cropX={config[`${cropEditingSlot}_crop_x`]} cropY={config[`${cropEditingSlot}_crop_y`]} />}
           </div>
           <p className="forge5050-note">Selecione Vídeo 1 ou Vídeo 2 para cortar separadamente. O botão “Unir vídeos” fixa a divisão automática em 50/50.</p>
           <button className="forge5050-button primary wide" onClick={renderVideo} disabled={busy}><Film size={16} /> {busy ? 'Renderizando...' : 'Renderizar vídeo 50/50'}</button>
