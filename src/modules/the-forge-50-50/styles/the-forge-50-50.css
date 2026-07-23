@@ -6,4 +6,8 @@
 .forge5050-combined-stage{position:absolute;inset:0;overflow:hidden}
 .forge5050-combined-stage>.forge5050-preview-video{position:absolute}
 .forge5050-preview.single .forge5050-preview-video.solo{top:0;bottom:0;height:100%}
+.forge5050-preview-video video{transition:transform .15s ease-out}
+.forge5050-crop-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.forge5050-select-button{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid #4ca8e4;border-radius:5px;background:#154a70;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
+.forge5050-select-button:disabled{opacity:.45;cursor:not-allowed}
 .forge5050-headline{height:var(--headline-band-height);min-height:0;font-size:min(var(--headline-font-size-width),var(--headline-font-size-height));line-height:1.1;overflow:hidden;overflow-wrap:anywhere}
