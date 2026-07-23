@@ -14,15 +14,21 @@ import {
 import '../styles/the-forge-50-50.css';
 
 const headlineStyles = [
-  ['purpleGold', 'Azul ao vivo'], ['breakingFlash', 'Breaking'], ['liveHf', 'Live HF'],
-  ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'], ['whiteBlack', 'Branco / preto'],
+  ['liveHf', 'Live HF'], ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'],
 ];
+const headlineStyleIds = new Set(headlineStyles.map(([id]) => id));
 
 const defaultConfig = {
   top_video: '', bottom_video: '', top_start: 0, top_end: 0, bottom_start: 0, bottom_end: 0,
   top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
   top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
-  headline_text: '', headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'purpleGold',
+  headline_text: '', headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'liveHf',
+};
+
+const normalizeForge5050Config = (source = {}) => {
+  const next = { ...defaultConfig, ...source };
+  if (!headlineStyleIds.has(next.headline_palette)) next.headline_palette = defaultConfig.headline_palette;
+  return next;
 };
 
 function TheForge5050() {
@@ -53,7 +59,7 @@ function TheForge5050() {
   const openProject = async (id) => {
     const data = await getForge5050Project(id);
     setProject(data);
-    setConfig({ ...defaultConfig, ...(data.config || {}) });
+    setConfig(normalizeForge5050Config(data.config));
     setRender(data.last_render || null);
   };
 
@@ -87,7 +93,7 @@ function TheForge5050() {
     setBusy(true); setError('');
     try {
       const data = await uploadForge5050Video(project.id, slot, file);
-      setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) }); setRender(null); setJoinedPreview(false); setShowCombinedPreview(false); setCropMode(false);
+      setProject(data); setConfig(normalizeForge5050Config(data.config)); setRender(null); setJoinedPreview(false); setShowCombinedPreview(false); setCropMode(false);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
@@ -96,7 +102,7 @@ function TheForge5050() {
     setError('');
     try {
       const data = await saveForge5050Config(project.id, nextConfig);
-      setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) });
+      setProject(data); setConfig(normalizeForge5050Config(data.config));
       return data;
     } catch (err) {
       setError(err.message);
@@ -125,7 +131,7 @@ function TheForge5050() {
     try {
       const data = await saveForge5050Config(project.id, nextConfig);
       setProject(data);
-      setConfig({ ...defaultConfig, ...(data.config || {}) });
+      setConfig(normalizeForge5050Config(data.config));
       setJoinedPreview(true);
       setShowCombinedPreview(true);
       setCropMode(false);
@@ -227,7 +233,7 @@ function TheForge5050() {
         </Panel>
       </div>
 
-      <Panel title="Headline · mesmo sistema do The Forge 70/30" open={open.headline} onToggle={() => setOpen((v) => ({ ...v, headline: !v.headline }))}>
+      <Panel title="Headline" open={open.headline} onToggle={() => setOpen((v) => ({ ...v, headline: !v.headline }))} className="forge5050-headline-panel">
         <label className="forge5050-label">Texto da headline<input value={config.headline_text} maxLength={120} onChange={(e) => update('headline_text', e.target.value)} placeholder="Digite a headline" /></label>
         <button type="button" className="forge5050-button hook" onClick={generateHook} disabled={generatingHook || busy || !topVideo || !bottomVideo}>
           {generatingHook ? <><Loader size={15} className="forge5050-spin" /> Gerando hook...</> : <><Search size={15} /> Gerar hook + CTA com ChatGPT</>}
