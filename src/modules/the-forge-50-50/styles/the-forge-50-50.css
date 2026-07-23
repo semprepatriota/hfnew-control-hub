@@ -28,3 +28,17 @@
 .forge5050-button.delete-render{margin-top:12px;border-color:#b84654;background:#5a151f;color:#ffd8dd}
 @media(max-width:900px){.forge5050-platform-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.forge5050-platform-grid{grid-template-columns:1fr}}
+
+.forge5050-slot-trim{margin-top:10px;padding:10px;border:1px solid #25445d;border-radius:7px;background:#07111c}
+.forge5050-slot-trim-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;color:#7dffb0;font-size:11px}
+.forge5050-slot-trim-heading span{color:#a9bfd1;font-size:10px;text-align:right}
+.forge5050-trim-duration{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.forge5050-trim-duration label{display:grid;gap:4px;color:#a9bfd1;font-size:10px;font-weight:800}
+.forge5050-trim-duration input{box-sizing:border-box;width:100%;padding:7px;border:1px solid #31516b;border-radius:5px;background:#0b1b2b;color:#f2f8ff;font:inherit}
+.forge5050-trim-range{display:grid;gap:2px;margin:8px 0 2px}
+.forge5050-trim-range input[type=range]{width:100%;margin:0;accent-color:#52ff9a}
+.forge5050-slot-trim-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.forge5050-slot-trim-actions button{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid #31516b;border-radius:5px;background:#0c2031;color:#d8eaf6;font-size:10px;font-weight:800;cursor:pointer}
+.forge5050-slot-trim-actions button:first-child{border-color:#4ca8e4;background:#154a70;color:#fff}
+.forge5050-slot-trim-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:560px){.forge5050-trim-duration{grid-template-columns:1fr}.forge5050-slot-trim-heading{align-items:flex-start;flex-direction:column}.forge5050-slot-trim-heading span{text-align:left}}

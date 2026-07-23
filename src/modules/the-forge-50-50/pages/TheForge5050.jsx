@@ -235,7 +235,7 @@ function TheForge5050() {
 
     {project && <>
       <Panel title="Biblioteca de dois vídeos" open={open.library} onToggle={() => setOpen((v) => ({ ...v, library: !v.library }))}>
-        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} />)}</div>
+        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} config={config} update={update} onSelect={() => selectCropVideo(slot)} />)}</div>
       </Panel>
 
       <div className="forge5050-grid">
@@ -309,7 +309,52 @@ function PreviewVideo({ video, className, cropActive = false, whole = false, cro
   </div>;
 }
 function VideoCropGuides() { return <div className="forge5050-video-guides" aria-hidden="true"><div className="top" /><div className="bottom" /></div>; }
-function VideoSlot({ slot, video, busy, onUpload }) { return <div className={`forge5050-slot ${video ? 'filled' : ''}`}><div className="forge5050-slot-title"><strong>{slot === 'top' ? 'Vídeo de cima' : 'Vídeo de baixo'}</strong><span>{video ? `${video.width}×${video.height} · ${(video.duration || 0).toFixed(1)}s` : 'Aguardando vídeo'}</span></div>{video ? <video className="forge5050-thumb" src={forge5050FileUrl(video.url)} controls /> : <div className="forge5050-empty"><Film size={24} /> Escolha um vídeo</div>}<label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar vídeo' : 'Adicionar vídeo'}<input type="file" accept="video/*" onChange={(e) => onUpload(slot, e.target.files?.[0])} disabled={busy} /></label></div>; }
+function VideoSlot({ slot, video, busy, onUpload, config, update, onSelect }) {
+  const prefix = slot;
+  const duration = Math.max(0, Number(video?.duration || 0));
+  const rawStart = Number(config?.[`${prefix}_start`] || 0);
+  const rawEnd = Number(config?.[`${prefix}_end`] || 0);
+  const start = duration ? Math.min(Math.max(rawStart, 0), Math.max(duration - 0.1, 0)) : 0;
+  const end = duration ? Math.min(Math.max(rawEnd || duration, start + 0.1), duration) : 0;
+  const selectedDuration = duration ? Math.max(0.1, end - start) : 0;
+  const hasTrim = Boolean(duration && (start > 0.05 || end < duration - 0.05));
+
+  const updateStart = (value) => {
+    if (!duration) return;
+    const next = Math.min(Math.max(Number(value) || 0, 0), Math.max(end - 0.1, 0));
+    update(`${prefix}_start`, Number(next.toFixed(2)));
+  };
+  const updateEnd = (value) => {
+    if (!duration) return;
+    const next = Math.min(Math.max(Number(value) || duration, start + 0.1), duration);
+    update(`${prefix}_end`, next >= duration - 0.05 ? 0 : Number(next.toFixed(2)));
+  };
+  const resetTrim = () => {
+    update(`${prefix}_start`, 0);
+    update(`${prefix}_end`, 0);
+  };
+
+  return <div className={`forge5050-slot ${video ? 'filled' : ''}`}>
+    <div className="forge5050-slot-title"><strong>{slot === 'top' ? 'Vídeo de cima' : 'Vídeo de baixo'}</strong><span>{video ? `${video.width}×${video.height} · ${duration.toFixed(1)}s` : 'Aguardando vídeo'}</span></div>
+    {video ? <video className="forge5050-thumb" src={forge5050FileUrl(video.url)} controls /> : <div className="forge5050-empty"><Film size={24} /> Escolha um vídeo</div>}
+    <label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar vídeo' : 'Adicionar vídeo'}<input type="file" accept="video/*" onChange={(e) => onUpload(slot, e.target.files?.[0])} disabled={busy} /></label>
+    {video && <div className="forge5050-slot-trim">
+      <div className="forge5050-slot-trim-heading"><strong>Corte de duração separado</strong><span>{hasTrim ? `${selectedDuration.toFixed(1)}s selecionados` : 'Vídeo inteiro'}</span></div>
+      <div className="forge5050-trim-duration">
+        <label>Início (s)<input type="number" min="0" max={Math.max(duration - 0.1, 0)} step="0.1" value={start.toFixed(1)} onChange={(e) => updateStart(e.target.value)} /></label>
+        <label>Fim (s)<input type="number" min={Math.min(duration, start + 0.1)} max={duration} step="0.1" value={end.toFixed(1)} onChange={(e) => updateEnd(e.target.value)} /></label>
+      </div>
+      <div className="forge5050-trim-range" aria-label={`Ajuste de duração do ${slot === 'top' ? 'vídeo 1' : 'vídeo 2'}`}>
+        <input type="range" min="0" max={Math.max(duration - 0.1, 0)} step="0.1" value={start} onChange={(e) => updateStart(e.target.value)} aria-label="Início do corte" />
+        <input type="range" min={Math.min(duration, start + 0.1)} max={duration} step="0.1" value={end} onChange={(e) => updateEnd(e.target.value)} aria-label="Fim do corte" />
+      </div>
+      <div className="forge5050-slot-trim-actions">
+        <button type="button" onClick={onSelect}><MousePointer2 size={13} /> Ajustar enquadramento</button>
+        <button type="button" onClick={resetTrim} disabled={!hasTrim}><RefreshCw size={13} /> Vídeo inteiro</button>
+      </div>
+    </div>}
+  </div>;
+}
 function Select({ label, value, options, onChange }) { return <label className="forge5050-label">{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option.value} value={option.value}>{option.original_name || option.label || option.value}</option>)}</select></label>; }
 function Range({ label, value, min, max, step, onChange }) { return <label className="forge5050-label">{label}<input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label>; }
 function Trim({ prefix, title, active, onSelect }) { return <div className={`forge5050-trim ${active ? 'active' : ''}`}><div className="forge5050-trim-heading"><h3>{title}</h3><button type="button" onClick={onSelect}>{active ? 'Selecionado no preview' : 'Selecionar no preview'}</button></div></div>; }
