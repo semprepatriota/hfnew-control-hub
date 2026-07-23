@@ -227,6 +227,19 @@ function TheForge5050() {
           </div>
           <p className="forge5050-note">Selecione Vídeo 1 ou Vídeo 2 para cortar separadamente. O botão “Unir vídeos” fixa a divisão automática em 50/50.</p>
           <button className="forge5050-button primary wide" onClick={renderVideo} disabled={busy}><Film size={16} /> {busy ? 'Renderizando...' : 'Renderizar vídeo 50/50'}</button>
+        </section>
+
+        <div className="forge5050-editor-controls">
+          <Panel title="Ajustes dos vídeos" open={open.controls} onToggle={() => setOpen((v) => ({ ...v, controls: !v.controls }))} className="forge5050-panel">
+            <div className="forge5050-control-grid"><Select label="Vídeo de cima" value={config.top_video} options={videos} onChange={(value) => update('top_video', value)} /><Select label="Vídeo de baixo" value={config.bottom_video} options={videos} onChange={(value) => update('bottom_video', value)} /></div>
+            <label className="forge5050-label">Divisão {Math.round(config.top_ratio * 100)}/{100 - Math.round(config.top_ratio * 100)}<input type="range" min="0.3" max="0.7" step="0.01" value={config.top_ratio} onChange={(e) => update('top_ratio', Number(e.target.value))} /></label>
+            <div className="forge5050-control-grid"><Trim prefix="top" config={config} update={update} title="Vídeo de cima" active={cropEditingSlot === 'top'} onSelect={() => selectCropVideo('top')} /><Trim prefix="bottom" config={config} update={update} title="Vídeo de baixo" active={cropEditingSlot === 'bottom'} onSelect={() => selectCropVideo('bottom')} /></div>
+            <div className="forge5050-control-grid"><Range label="Volume de cima" value={config.top_volume} min="0" max="2" step="0.05" onChange={(value) => update('top_volume', value)} /><Range label="Volume de baixo" value={config.bottom_volume} min="0" max="2" step="0.05" onChange={(value) => update('bottom_volume', value)} /></div>
+            <CropInspector cropEditingSlot={cropEditingSlot} config={config} update={update} cropMode={cropMode} setCropMode={setCropMode} setShowCombinedPreview={setShowCombinedPreview} topVideo={topVideo} bottomVideo={bottomVideo} joinedPreview={joinedPreview} onSelect={() => selectCropVideo(cropEditingSlot)} />
+            <Select label="Áudio usado" value={config.audio_mode} options={[{ value: 'top', original_name: 'Somente vídeo de cima' }, { value: 'bottom', original_name: 'Somente vídeo de baixo' }, { value: 'both', original_name: 'Os dois vídeos' }, { value: 'none', original_name: 'Sem áudio' }]} onChange={(value) => update('audio_mode', value)} />
+            <button className="forge5050-button secondary" onClick={save} disabled={busy}><Check size={15} /> Salvar ajustes</button>
+          </Panel>
+
           <Panel title="Headline" open={open.headline} onToggle={() => setOpen((v) => ({ ...v, headline: !v.headline }))} className="forge5050-headline-panel">
             <label className="forge5050-label">Texto da headline<input value={config.headline_text} maxLength={120} onChange={(e) => update('headline_text', e.target.value)} placeholder="Digite a headline" /></label>
             <button type="button" className="forge5050-button hook" onClick={generateHook} disabled={generatingHook || busy || !topVideo || !bottomVideo}>
@@ -235,17 +248,7 @@ function TheForge5050() {
             <div className="forge5050-control-grid"><Select label="Posição" value={config.headline_position} options={[{ value: 'none', original_name: 'Sem headline' }, { value: 'top', original_name: 'Topo' }, { value: 'middle', original_name: 'Meio' }, { value: 'bottom', original_name: 'Embaixo' }]} onChange={(value) => update('headline_position', value)} /><Range label={`Altura da faixa ${Math.round(config.headline_ratio * 100)}%`} value={config.headline_ratio} min="0.06" max="0.20" step="0.01" onChange={(value) => update('headline_ratio', value)} /><Range label={`Tamanho ${config.headline_font_scale.toFixed(2)}x`} value={config.headline_font_scale} min="0.7" max="1.8" step="0.05" onChange={(value) => update('headline_font_scale', value)} /></div>
             <div className="forge5050-style-grid">{headlineStyles.map(([id, label]) => <button key={id} className={config.headline_palette === id ? 'selected' : ''} onClick={() => update('headline_palette', id)}><span className={`forge5050-swatch palette-${id}`} />{label}</button>)}</div>
           </Panel>
-        </section>
-
-        <Panel title="Ajustes dos vídeos" open={open.controls} onToggle={() => setOpen((v) => ({ ...v, controls: !v.controls }))} className="forge5050-panel">
-          <div className="forge5050-control-grid"><Select label="Vídeo de cima" value={config.top_video} options={videos} onChange={(value) => update('top_video', value)} /><Select label="Vídeo de baixo" value={config.bottom_video} options={videos} onChange={(value) => update('bottom_video', value)} /></div>
-          <label className="forge5050-label">Divisão {Math.round(config.top_ratio * 100)}/{100 - Math.round(config.top_ratio * 100)}<input type="range" min="0.3" max="0.7" step="0.01" value={config.top_ratio} onChange={(e) => update('top_ratio', Number(e.target.value))} /></label>
-          <div className="forge5050-control-grid"><Trim prefix="top" config={config} update={update} title="Vídeo de cima" active={cropEditingSlot === 'top'} onSelect={() => selectCropVideo('top')} /><Trim prefix="bottom" config={config} update={update} title="Vídeo de baixo" active={cropEditingSlot === 'bottom'} onSelect={() => selectCropVideo('bottom')} /></div>
-          <div className="forge5050-control-grid"><Range label="Volume de cima" value={config.top_volume} min="0" max="2" step="0.05" onChange={(value) => update('top_volume', value)} /><Range label="Volume de baixo" value={config.bottom_volume} min="0" max="2" step="0.05" onChange={(value) => update('bottom_volume', value)} /></div>
-          <CropInspector cropEditingSlot={cropEditingSlot} config={config} update={update} cropMode={cropMode} setCropMode={setCropMode} setShowCombinedPreview={setShowCombinedPreview} topVideo={topVideo} bottomVideo={bottomVideo} joinedPreview={joinedPreview} onSelect={() => selectCropVideo(cropEditingSlot)} />
-          <Select label="Áudio usado" value={config.audio_mode} options={[{ value: 'top', original_name: 'Somente vídeo de cima' }, { value: 'bottom', original_name: 'Somente vídeo de baixo' }, { value: 'both', original_name: 'Os dois vídeos' }, { value: 'none', original_name: 'Sem áudio' }]} onChange={(value) => update('audio_mode', value)} />
-          <button className="forge5050-button secondary" onClick={save} disabled={busy}><Check size={15} /> Salvar ajustes</button>
-        </Panel>
+        </div>
       </div>
 
       {render && <section className="forge5050-panel forge5050-result"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><a className="forge5050-button secondary" href={forge5050FileUrl(render.url)} download><Download size={16} /> Baixar vídeo MP4</a></section>}
