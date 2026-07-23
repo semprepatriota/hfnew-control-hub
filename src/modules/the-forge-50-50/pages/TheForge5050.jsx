@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronUp, Film, Loader, Plus, RefreshCw, Search, Trash2, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Film, Loader, Plus, RefreshCw, Search, Scissors, Trash2, Upload, X } from 'lucide-react';
 import {
   createForge5050Project,
   deleteForge5050Project,
@@ -36,6 +36,8 @@ function TheForge5050() {
   const [render, setRender] = useState(null);
   const [cropEditingSlot, setCropEditingSlot] = useState('top');
   const [joinedPreview, setJoinedPreview] = useState(false);
+  const [showCombinedPreview, setShowCombinedPreview] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
   const [generatingHook, setGeneratingHook] = useState(false);
 
   const videos = project?.videos || [];
@@ -85,7 +87,7 @@ function TheForge5050() {
     setBusy(true); setError('');
     try {
       const data = await uploadForge5050Video(project.id, slot, file);
-      setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) }); setRender(null); setJoinedPreview(false);
+      setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) }); setRender(null); setJoinedPreview(false); setShowCombinedPreview(false); setCropMode(false);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
@@ -108,6 +110,8 @@ function TheForge5050() {
       return;
     }
     setCropEditingSlot(slot);
+    setShowCombinedPreview(false);
+    setCropMode(false);
   };
 
   const joinVideos = async () => {
@@ -123,6 +127,8 @@ function TheForge5050() {
       setProject(data);
       setConfig({ ...defaultConfig, ...(data.config || {}) });
       setJoinedPreview(true);
+      setShowCombinedPreview(true);
+      setCropMode(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -194,16 +200,21 @@ function TheForge5050() {
             <span>Cortar no preview:</span>
             <button type="button" className={cropEditingSlot === 'top' ? 'active' : ''} onClick={() => selectCropVideo('top')} disabled={!topVideo}>Vídeo 1</button>
             <button type="button" className={cropEditingSlot === 'bottom' ? 'active' : ''} onClick={() => selectCropVideo('bottom')} disabled={!bottomVideo}>Vídeo 2</button>
+            <button type="button" className="preview-eye" onClick={() => setShowCombinedPreview((current) => !current)} disabled={!topVideo || !bottomVideo} title={showCombinedPreview ? 'Mostrar corte individual' : 'Ver prévia unida'} aria-label={showCombinedPreview ? 'Mostrar corte individual' : 'Ver prévia unida'}>
+              {showCombinedPreview ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
             <button type="button" className="join" onClick={joinVideos} disabled={busy || !topVideo || !bottomVideo}><Check size={14} /> Unir vídeos</button>
           </div>
           <div className="forge5050-preview" style={{ '--top': `${config.top_ratio * 100}%` }}>
-            <PreviewVideo video={topVideo} className="top" cropActive={cropEditingSlot === 'top'} cropX={config.top_crop_x} cropY={config.top_crop_y} />
-            <PreviewVideo video={bottomVideo} className="bottom" cropActive={cropEditingSlot === 'bottom'} cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} />
-            {config.headline_text && config.headline_position !== 'none' && <div className={`forge5050-headline ${config.headline_position} palette-${config.headline_palette}`}>{config.headline_text}</div>}
+            {showCombinedPreview ? <>
+              <PreviewVideo video={topVideo} className="top" cropX={config.top_crop_x} cropY={config.top_crop_y} />
+              <PreviewVideo video={bottomVideo} className="bottom" cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} />
+              {config.headline_text && config.headline_position !== 'none' && <div className={`forge5050-headline ${config.headline_position} palette-${config.headline_palette}`}>{config.headline_text}</div>}
+            </> : <PreviewVideo video={cropEditingSlot === 'top' ? topVideo : bottomVideo} className="solo" cropActive={cropMode} whole={!cropMode} cropX={config[`${cropEditingSlot}_crop_x`]} cropY={config[`${cropEditingSlot}_crop_y`]} />}
           </div>
           <div className="forge5050-crop-inspector">
-            <strong>Vídeo {cropEditingSlot === 'top' ? '1 · cima' : '2 · baixo'} selecionado</strong>
-            <span>O vídeo inteiro aparece durante o ajuste. As linhas verdes indicam o enquadramento que será aplicado ao renderizar.</span>
+            <div className="forge5050-crop-inspector-heading"><strong>Vídeo {cropEditingSlot === 'top' ? '1 · cima' : '2 · baixo'} selecionado</strong><button type="button" className="forge5050-cut-button" onClick={() => { setShowCombinedPreview(false); setCropMode((current) => !current); }} disabled={!topVideo || !bottomVideo}><Scissors size={14} /> {cropMode ? 'Mostrar vídeo inteiro' : 'Cortar vídeo'}</button></div>
+            <span>{cropMode ? 'As linhas verdes mostram o enquadramento aplicado. Ajuste X e Y e confira o corte individual.' : 'O vídeo inteiro está visível. Clique em Cortar vídeo para ativar as linhas verdes e ajustar o enquadramento.'}</span>
             <div className="forge5050-control-grid">
               <Range label={`Ajuste lateral ${Math.round((config[`${cropEditingSlot}_crop_x`] || 0.5) * 100)}%`} value={config[`${cropEditingSlot}_crop_x`]} min="0" max="1" step="0.01" onChange={(value) => update(`${cropEditingSlot}_crop_x`, value)} />
               <Range label={`Ajuste vertical ${Math.round((config[`${cropEditingSlot}_crop_y`] || 0.5) * 100)}%`} value={config[`${cropEditingSlot}_crop_y`]} min="0" max="1" step="0.01" onChange={(value) => update(`${cropEditingSlot}_crop_y`, value)} />
@@ -239,9 +250,9 @@ function TheForge5050() {
 }
 
 function Panel({ title, open, onToggle, children, className = '' }) { return <section className={`forge5050-panel ${className}`}><button className="forge5050-panel-title" onClick={onToggle}><span>{title}</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{open && children}</section>; }
-function PreviewVideo({ video, className, cropActive = false, cropX = 0.5, cropY = 0.5 }) {
+function PreviewVideo({ video, className, cropActive = false, whole = false, cropX = 0.5, cropY = 0.5 }) {
   return <div className={`forge5050-preview-video ${className} ${cropActive ? 'crop-active' : ''}`}>
-    {video ? <video src={forge5050FileUrl(video.url)} controls style={{ objectFit: cropActive ? 'contain' : 'cover', objectPosition: `${cropX * 100}% ${cropY * 100}%` }} /> : <Film size={26} />}
+    {video ? <video src={forge5050FileUrl(video.url)} controls style={{ objectFit: whole ? 'contain' : 'cover', objectPosition: `${cropX * 100}% ${cropY * 100}%` }} /> : <Film size={26} />}
     {video && cropActive && <VideoCropGuides />}
   </div>;
 }
@@ -249,6 +260,6 @@ function VideoCropGuides() { return <div className="forge5050-video-guides" aria
 function VideoSlot({ slot, video, busy, onUpload }) { return <div className={`forge5050-slot ${video ? 'filled' : ''}`}><div className="forge5050-slot-title"><strong>{slot === 'top' ? 'Vídeo de cima' : 'Vídeo de baixo'}</strong><span>{video ? `${video.width}×${video.height} · ${(video.duration || 0).toFixed(1)}s` : 'Aguardando vídeo'}</span></div>{video ? <video className="forge5050-thumb" src={forge5050FileUrl(video.url)} controls /> : <div className="forge5050-empty"><Film size={24} /> Escolha um vídeo</div>}<label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar vídeo' : 'Adicionar vídeo'}<input type="file" accept="video/*" onChange={(e) => onUpload(slot, e.target.files?.[0])} disabled={busy} /></label></div>; }
 function Select({ label, value, options, onChange }) { return <label className="forge5050-label">{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option.value} value={option.value}>{option.original_name || option.label || option.value}</option>)}</select></label>; }
 function Range({ label, value, min, max, step, onChange }) { return <label className="forge5050-label">{label}<input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label>; }
-function Trim({ prefix, config, update, title, active, onSelect }) { return <div className={`forge5050-trim ${active ? 'active' : ''}`}><div className="forge5050-trim-heading"><h3>{title}</h3><button type="button" onClick={onSelect}>{active ? 'Selecionado no preview' : 'Cortar no preview'}</button></div><div className="forge5050-trim-grid"><label>Início<input type="number" min="0" step="0.1" value={config[`${prefix}_start`]} onChange={(e) => update(`${prefix}_start`, Number(e.target.value))} /></label><label>Fim<input type="number" min="0" step="0.1" value={config[`${prefix}_end`]} onChange={(e) => update(`${prefix}_end`, Number(e.target.value))} /></label></div><Range label="Enquadramento X" value={config[`${prefix}_crop_x`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_x`, value)} /><Range label="Enquadramento Y" value={config[`${prefix}_crop_y`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_y`, value)} /></div>; }
+function Trim({ prefix, config, update, title, active, onSelect }) { return <div className={`forge5050-trim ${active ? 'active' : ''}`}><div className="forge5050-trim-heading"><h3>{title}</h3><button type="button" onClick={onSelect}>{active ? 'Selecionado no preview' : 'Cortar no preview'}</button></div><div className="forge5050-control-grid"><Range label="Enquadramento X" value={config[`${prefix}_crop_x`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_x`, value)} /><Range label="Enquadramento Y" value={config[`${prefix}_crop_y`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_y`, value)} /></div></div>; }
 
 export default TheForge5050;
