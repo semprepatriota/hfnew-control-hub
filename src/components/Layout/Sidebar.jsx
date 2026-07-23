@@ -61,7 +61,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 5,
-      label: 'The Forge 2.0',
+      label: 'The Forge 50/50',
       path: '/the-forge',
       icon: Clapperboard,
       color: 'neon-gold'

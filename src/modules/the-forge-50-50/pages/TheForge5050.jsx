@@ -1,0 +1,157 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, ChevronDown, ChevronUp, Film, Loader, Plus, RefreshCw, Trash2, Upload, X } from 'lucide-react';
+import {
+  createForge5050Project,
+  deleteForge5050Project,
+  forge5050FileUrl,
+  getForge5050Project,
+  listForge5050Projects,
+  renderForge5050,
+  saveForge5050Config,
+  uploadForge5050Video,
+} from '../services/forge5050Api';
+import '../styles/the-forge-50-50.css';
+
+const headlineStyles = [
+  ['purpleGold', 'Azul ao vivo'], ['breakingFlash', 'Breaking'], ['liveHf', 'Live HF'],
+  ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'], ['whiteBlack', 'Branco / preto'],
+];
+
+const defaultConfig = {
+  top_video: '', bottom_video: '', top_start: 0, top_end: 0, bottom_start: 0, bottom_end: 0,
+  top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
+  top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
+  headline_text: '', headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'purpleGold',
+};
+
+function TheForge5050() {
+  const [projects, setProjects] = useState([]);
+  const [project, setProject] = useState(null);
+  const [config, setConfig] = useState(defaultConfig);
+  const [open, setOpen] = useState({ projects: true, library: true, controls: true, headline: true });
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [render, setRender] = useState(null);
+
+  const videos = project?.videos || [];
+  const topVideo = useMemo(() => videos.find((item) => item.filename === config.top_video), [videos, config.top_video]);
+  const bottomVideo = useMemo(() => videos.find((item) => item.filename === config.bottom_video), [videos, config.bottom_video]);
+
+  const refresh = async () => {
+    const result = await listForge5050Projects();
+    setProjects(result.projects || []);
+    return result.projects || [];
+  };
+
+  const openProject = async (id) => {
+    const data = await getForge5050Project(id);
+    setProject(data);
+    setConfig({ ...defaultConfig, ...(data.config || {}) });
+    setRender(data.last_render || null);
+  };
+
+  useEffect(() => {
+    refresh().then((items) => (items[0] ? openProject(items[0].id) : null)).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, []);
+
+  const update = (key, value) => setConfig((current) => ({ ...current, [key]: value }));
+
+  const createProject = async () => {
+    setBusy(true); setError('');
+    try {
+      const data = await createForge5050Project(`The Forge 50/50 - ${new Date().toLocaleDateString('pt-BR')}`);
+      await refresh(); await openProject(data.id);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const removeProject = async () => {
+    if (!project || !window.confirm(`Excluir “${project.title}”?`)) return;
+    setBusy(true); setError('');
+    try {
+      await deleteForge5050Project(project.id);
+      const items = await refresh();
+      setProject(null); setRender(null);
+      if (items[0]) await openProject(items[0].id);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const upload = async (slot, file) => {
+    if (!file || !project) return;
+    setBusy(true); setError('');
+    try {
+      const data = await uploadForge5050Video(project.id, slot, file);
+      setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) }); setRender(null);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const save = async () => {
+    if (!project) return;
+    const data = await saveForge5050Config(project.id, config);
+    setProject(data); setConfig({ ...defaultConfig, ...(data.config || {}) });
+  };
+
+  const renderVideo = async () => {
+    if (!project || !config.top_video || !config.bottom_video) {
+      setError('Adicione e selecione os dois vídeos antes de renderizar.'); return;
+    }
+    setBusy(true); setError(''); setRender(null);
+    try {
+      await save();
+      const data = await renderForge5050(project.id, config);
+      setRender(data);
+      await openProject(project.id);
+      setRender(data);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  if (loading) return <main className="forge5050-page"><div className="forge5050-loading"><Loader className="forge5050-spin" /> Carregando The Forge 50/50...</div></main>;
+
+  return <main className="forge5050-page">
+    <header className="forge5050-header">
+      <div><span className="forge5050-kicker">EDITOR DE DOIS VÍDEOS</span><h1>The Forge 50/50</h1><p>Una dois vídeos em um quadro vertical 1080 × 1920, com áudio e headline.</p></div>
+      <div className="forge5050-actions"><button className="forge5050-button primary" onClick={createProject} disabled={busy}><Plus size={16} /> Novo projeto</button><button className="forge5050-button ghost" onClick={() => refresh()}><RefreshCw size={15} /> Atualizar</button></div>
+    </header>
+    {error && <div className="forge5050-error">{error}<button onClick={() => setError('')}><X size={15} /></button></div>}
+
+    <Panel title="Projetos 50/50" open={open.projects} onToggle={() => setOpen((v) => ({ ...v, projects: !v.projects }))}>
+      <div className="forge5050-projects">{projects.map((item) => <button key={item.id} className={`forge5050-project ${item.id === project?.id ? 'active' : ''}`} onClick={() => openProject(item.id)}><Film size={15} /> {item.title}</button>)}{!projects.length && <span className="forge5050-muted">Crie o primeiro projeto para começar.</span>}{project && <button className="forge5050-delete" onClick={removeProject} disabled={busy}><Trash2 size={14} /> Excluir projeto atual</button>}</div>
+    </Panel>
+
+    {project && <>
+      <Panel title="Biblioteca de dois vídeos" open={open.library} onToggle={() => setOpen((v) => ({ ...v, library: !v.library }))}>
+        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} />)}</div>
+      </Panel>
+
+      <div className="forge5050-grid">
+        <section className="forge5050-panel forge5050-preview-panel"><h2>Preview de edição 50/50</h2><div className="forge5050-preview" style={{ '--top': `${config.top_ratio * 100}%` }}><PreviewVideo video={topVideo} className="top" /><PreviewVideo video={bottomVideo} className="bottom" />{config.headline_text && config.headline_position !== 'none' && <div className={`forge5050-headline ${config.headline_position} palette-${config.headline_palette}`}>{config.headline_text}</div>}</div><p className="forge5050-note">A divisão, o enquadramento, os cortes e o áudio usados aqui são os mesmos enviados à renderização.</p><button className="forge5050-button primary wide" onClick={renderVideo} disabled={busy}><Film size={16} /> {busy ? 'Renderizando...' : 'Renderizar vídeo 50/50'}</button></section>
+
+        <Panel title="Ajustes dos vídeos" open={open.controls} onToggle={() => setOpen((v) => ({ ...v, controls: !v.controls }))} className="forge5050-panel">
+          <div className="forge5050-control-grid"><Select label="Vídeo de cima" value={config.top_video} options={videos} onChange={(value) => update('top_video', value)} /><Select label="Vídeo de baixo" value={config.bottom_video} options={videos} onChange={(value) => update('bottom_video', value)} /></div>
+          <label className="forge5050-label">Divisão {Math.round(config.top_ratio * 100)}/{100 - Math.round(config.top_ratio * 100)}<input type="range" min="0.3" max="0.7" step="0.01" value={config.top_ratio} onChange={(e) => update('top_ratio', Number(e.target.value))} /></label>
+          <div className="forge5050-control-grid"><Trim prefix="top" config={config} update={update} title="Vídeo de cima" /><Trim prefix="bottom" config={config} update={update} title="Vídeo de baixo" /></div>
+          <div className="forge5050-control-grid"><Range label="Volume de cima" value={config.top_volume} min="0" max="2" step="0.05" onChange={(value) => update('top_volume', value)} /><Range label="Volume de baixo" value={config.bottom_volume} min="0" max="2" step="0.05" onChange={(value) => update('bottom_volume', value)} /></div>
+          <Select label="Áudio usado" value={config.audio_mode} options={[{ value: 'top', original_name: 'Somente vídeo de cima' }, { value: 'bottom', original_name: 'Somente vídeo de baixo' }, { value: 'both', original_name: 'Os dois vídeos' }, { value: 'none', original_name: 'Sem áudio' }]} onChange={(value) => update('audio_mode', value)} />
+          <button className="forge5050-button secondary" onClick={save} disabled={busy}><Check size={15} /> Salvar ajustes</button>
+        </Panel>
+      </div>
+
+      <Panel title="Headline · mesmo sistema do The Forge 70/30" open={open.headline} onToggle={() => setOpen((v) => ({ ...v, headline: !v.headline }))}>
+        <label className="forge5050-label">Texto da headline<input value={config.headline_text} maxLength={120} onChange={(e) => update('headline_text', e.target.value)} placeholder="Digite a headline" /></label>
+        <div className="forge5050-control-grid"><Select label="Posição" value={config.headline_position} options={[{ value: 'none', original_name: 'Sem headline' }, { value: 'top', original_name: 'Topo' }, { value: 'middle', original_name: 'Meio' }, { value: 'bottom', original_name: 'Embaixo' }]} onChange={(value) => update('headline_position', value)} /><Range label={`Altura da faixa ${Math.round(config.headline_ratio * 100)}%`} value={config.headline_ratio} min="0.06" max="0.20" step="0.01" onChange={(value) => update('headline_ratio', value)} /><Range label={`Tamanho ${config.headline_font_scale.toFixed(2)}x`} value={config.headline_font_scale} min="0.7" max="1.8" step="0.05" onChange={(value) => update('headline_font_scale', value)} /></div>
+        <div className="forge5050-style-grid">{headlineStyles.map(([id, label]) => <button key={id} className={config.headline_palette === id ? 'selected' : ''} onClick={() => update('headline_palette', id)}><span className={`forge5050-swatch palette-${id}`} />{label}</button>)}</div>
+      </Panel>
+
+      {render && <section className="forge5050-panel forge5050-result"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><a className="forge5050-button secondary" href={forge5050FileUrl(render.url)} download>Baixar MP4</a></section>}
+    </>}
+  </main>;
+}
+
+function Panel({ title, open, onToggle, children, className = '' }) { return <section className={`forge5050-panel ${className}`}><button className="forge5050-panel-title" onClick={onToggle}><span>{title}</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{open && children}</section>; }
+function PreviewVideo({ video, className }) { return <div className={`forge5050-preview-video ${className}`}>{video ? <video src={forge5050FileUrl(video.url)} controls /> : <Film size={26} />}</div>; }
+function VideoSlot({ slot, video, busy, onUpload }) { return <div className={`forge5050-slot ${video ? 'filled' : ''}`}><div className="forge5050-slot-title"><strong>{slot === 'top' ? 'Vídeo de cima' : 'Vídeo de baixo'}</strong><span>{video ? `${video.width}×${video.height} · ${(video.duration || 0).toFixed(1)}s` : 'Aguardando vídeo'}</span></div>{video ? <video className="forge5050-thumb" src={forge5050FileUrl(video.url)} controls /> : <div className="forge5050-empty"><Film size={24} /> Escolha um vídeo</div>}<label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar vídeo' : 'Adicionar vídeo'}<input type="file" accept="video/*" onChange={(e) => onUpload(slot, e.target.files?.[0])} disabled={busy} /></label></div>; }
+function Select({ label, value, options, onChange }) { return <label className="forge5050-label">{label}<select value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option.value} value={option.value}>{option.original_name || option.label || option.value}</option>)}</select></label>; }
+function Range({ label, value, min, max, step, onChange }) { return <label className="forge5050-label">{label}<input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label>; }
+function Trim({ prefix, config, update, title }) { return <div className="forge5050-trim"><h3>{title}</h3><div className="forge5050-trim-grid"><label>Início<input type="number" min="0" step="0.1" value={config[`${prefix}_start`]} onChange={(e) => update(`${prefix}_start`, Number(e.target.value))} /></label><label>Fim<input type="number" min="0" step="0.1" value={config[`${prefix}_end`]} onChange={(e) => update(`${prefix}_end`, Number(e.target.value))} /></label></div><Range label="Enquadramento X" value={config[`${prefix}_crop_x`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_x`, value)} /><Range label="Enquadramento Y" value={config[`${prefix}_crop_y`]} min="0" max="1" step="0.01" onChange={(value) => update(`${prefix}_crop_y`, value)} /></div>; }
+
+export default TheForge5050;

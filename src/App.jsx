@@ -6,7 +6,7 @@ import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
 import Intel from './components/Pages/Intel';
 import Forge from './components/Pages/Forge';
-import TheForge2 from './modules/the-forge/pages/TheForge2';
+import TheForge5050 from './modules/the-forge-50-50/pages/TheForge5050';
 import ForgeEasyEditor from './modules/forge-easy-editor/pages/ForgeEasyEditor';
 import ForgeMax3 from './modules/forge-max/pages/ForgeMax3';
 import Vault from './components/Pages/Vault';
@@ -383,7 +383,8 @@ function AppShell() {
           <Route path="/conexoes" element={<Conexoes currentUser={authStatus} />} />
           <Route path="/intel" element={<Intel />} />
           <Route path="/forge" element={<Forge />} />
-          <Route path="/the-forge" element={<TheForge2 />} />
+          <Route path="/the-forge" element={<TheForge5050 />} />
+          <Route path="/the-forge-50-50" element={<TheForge5050 />} />
           <Route path="/the-forge/editor" element={<ForgeEasyEditor />} />
           <Route path="/forge-max" element={<ForgeMax3 />} />
           <Route path="/agenda" element={<Schedule />} />
