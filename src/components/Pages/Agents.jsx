@@ -6,6 +6,7 @@ import './Agents.css';
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const AGENTS_QUEUE_STORAGE_PREFIX = 'alliance_dark_agents_queue_v1';
+const MAX_COMMENT_FETCH = 1000;
 
 const DEFAULT_BATCH_PROGRESS = {
   total: 0,
@@ -125,7 +126,11 @@ function Agents() {
       return;
     }
 
-    window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+    } catch (storageError) {
+      // A fila principal tambem fica no backend; uma cota local cheia nao pode derrubar a tela.
+    }
   }, []);
 
   const getQueueStorageKey = useCallback((platform, channelId) => {
@@ -460,7 +465,7 @@ function Agents() {
       && Array.isArray(commentQueue)
       && commentQueue.length > 0
     ) {
-      const cachedItems = commentQueue.slice(0, Math.max(1, Math.min(requestedLimit, 300)));
+      const cachedItems = commentQueue.slice(0, Math.max(1, Math.min(requestedLimit, MAX_COMMENT_FETCH)));
       setCommentQueue(cachedItems);
       setCommentItem((current) => (
         current && cachedItems.some((item) => item.comment_id === current.comment_id)
@@ -487,7 +492,7 @@ function Agents() {
     try {
       const response = await fetch(
         apiUrl(
-          `/api/agents/youtube/fetch-comments?channel_id=${encodeURIComponent(selectedChannelId)}&limit=${Math.max(1, Math.min(requestedLimit, 300))}&fetch_all=false`,
+          `/api/agents/youtube/fetch-comments?channel_id=${encodeURIComponent(selectedChannelId)}&limit=${Math.max(1, Math.min(requestedLimit, MAX_COMMENT_FETCH))}&fetch_all=false`,
         ),
         { headers: getAuthHeaders() },
       );
@@ -922,7 +927,7 @@ function Agents() {
     clearRobotRepeatTimeout();
 
     try {
-      const desiredCount = Math.max(1, Math.min(robotFetchCount, 300));
+      const desiredCount = Math.max(1, Math.min(robotFetchCount, MAX_COMMENT_FETCH));
       const desiredInterval = Math.max(1, Math.min(robotIntervalSeconds, 300));
       setFetchCount(desiredCount);
       setReplyIntervalSeconds(desiredInterval);
@@ -1134,9 +1139,9 @@ function Agents() {
                 <input
                   type="number"
                   min="1"
-                  max="300"
+                  max={MAX_COMMENT_FETCH}
                   value={robotFetchCount}
-                  onChange={(event) => setRobotFetchCount(Math.max(1, Math.min(300, Number(event.target.value) || 1)))}
+                  onChange={(event) => setRobotFetchCount(Math.max(1, Math.min(MAX_COMMENT_FETCH, Number(event.target.value) || 1)))}
                 />
               </label>
 
@@ -1391,9 +1396,9 @@ function Agents() {
                 id="agent-fetch-count"
                 type="number"
                 min="1"
-                max="300"
+                max={MAX_COMMENT_FETCH}
                 value={fetchCount}
-                onChange={(event) => setFetchCount(Math.max(1, Math.min(300, Number(event.target.value) || 1)))}
+                onChange={(event) => setFetchCount(Math.max(1, Math.min(MAX_COMMENT_FETCH, Number(event.target.value) || 1)))}
               />
             </div>
 
@@ -1460,7 +1465,7 @@ function Agents() {
           <div className="agents-batch-panel__header">
             <div>
               <h2>Resposta automática</h2>
-              <p>O agente responde um comentário por vez e respeita o intervalo em segundos entre cada envio.</p>
+              <p>A fila fica salva separadamente por canal. O que não for respondido permanece aqui até uma nova tentativa.</p>
             </div>
             <div className={`agents-batch-status ${runningBatch ? 'running' : ''}`}>
               {runningBatch ? `Em execução · ${Math.max(batchProgress.total - batchProgress.processed, 0)} pendentes` : 'Pronto'}
