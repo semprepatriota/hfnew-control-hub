@@ -22,11 +22,17 @@ function ForgeMaxTimeline({
   onRemove,
   onTrim,
 }) {
-  const totalDuration = clips.reduce((total, clip) => total + Math.max(0, clip.end_seconds - clip.start_seconds), 0);
+  const totalDuration = clips.reduce((total, clip) => total + (
+    Math.max(0, clip.end_seconds - clip.start_seconds) / Math.max(Number(clip.speed || 1), 0.5)
+  ), 0);
   const selectedClip = clips.find((clip) => clip.id === selectedClipId) || clips[0] || null;
   const selectedAsset = assets.find((item) => item.id === selectedClip?.asset_id) || null;
   const [draftStart, setDraftStart] = useState(0);
   const [draftEnd, setDraftEnd] = useState(0);
+  const [draftVolume, setDraftVolume] = useState(1);
+  const [draftSpeed, setDraftSpeed] = useState(1);
+  const [draftFlipHorizontal, setDraftFlipHorizontal] = useState(false);
+  const [draftFlipVertical, setDraftFlipVertical] = useState(false);
   const [previewClipIndex, setPreviewClipIndex] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const timelinePreviewRef = useRef(null);
@@ -42,6 +48,10 @@ function ForgeMaxTimeline({
     }
     setDraftStart(Number(selectedClip.start_seconds) || 0);
     setDraftEnd(Number(selectedClip.end_seconds) || 0);
+    setDraftVolume(Number(selectedClip.volume ?? 1));
+    setDraftSpeed(Number(selectedClip.speed ?? 1));
+    setDraftFlipHorizontal(Boolean(selectedClip.flip_horizontal));
+    setDraftFlipVertical(Boolean(selectedClip.flip_vertical));
   }, [selectedClip?.id, selectedClip?.start_seconds, selectedClip?.end_seconds]);
 
   useEffect(() => {
@@ -59,6 +69,9 @@ function ForgeMaxTimeline({
   useEffect(() => {
     const player = timelinePreviewRef.current;
     if (!player || !previewClip) return;
+
+    player.playbackRate = Math.max(0.5, Math.min(2, Number(previewClip.speed || 1)));
+    player.volume = Math.max(0, Math.min(1, Number(previewClip.volume ?? 1)));
 
     const syncPreview = () => {
       const nextTime = Math.min(previewClip.start_seconds, player.duration || previewClip.start_seconds || 0);
@@ -95,13 +108,24 @@ function ForgeMaxTimeline({
     if (nextEnd <= nextStart) {
       nextEnd = Math.min(durationMax || nextStart + 0.1, nextStart + 0.1);
     }
-    onTrim(selectedClip.id, { start_seconds: nextStart, end_seconds: nextEnd });
+    onTrim(selectedClip.id, {
+      start_seconds: nextStart,
+      end_seconds: nextEnd,
+      volume: Math.max(0, Math.min(2, Number(draftVolume) || 0)),
+      speed: Math.max(0.5, Math.min(2, Number(draftSpeed) || 1)),
+      flip_horizontal: draftFlipHorizontal,
+      flip_vertical: draftFlipVertical,
+    });
   };
 
   const resetDraftTrim = () => {
     if (!selectedAsset) return;
     setDraftStart(0);
     setDraftEnd(Number(selectedAsset.duration) || 0);
+    setDraftVolume(1);
+    setDraftSpeed(1);
+    setDraftFlipHorizontal(false);
+    setDraftFlipVertical(false);
   };
 
   const stepPreviewClip = (direction) => {
@@ -210,6 +234,9 @@ function ForgeMaxTimeline({
                   controls
                   playsInline
                   className="forge-max-timeline-preview-video"
+                  style={{
+                    transform: `${previewClip.flip_horizontal ? 'scaleX(-1)' : ''} ${previewClip.flip_vertical ? 'scaleY(-1)' : ''}`.trim() || undefined,
+                  }}
                   onLoadedMetadata={handleTimelinePreviewLoaded}
                   onTimeUpdate={handleTimelinePreviewTimeUpdate}
                   onPlay={() => setPreviewPlaying(true)}
@@ -230,7 +257,7 @@ function ForgeMaxTimeline({
             {clips.map((clip, index) => {
               const asset = assets.find((item) => item.id === clip.asset_id);
               if (!asset) return null;
-              const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1);
+              const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1) / Math.max(Number(clip.speed || 1), 0.5);
               const widthPercent = totalDuration > 0 ? `${(clipDuration / totalDuration) * 100}%` : '100%';
               return (
                 <article
@@ -314,6 +341,47 @@ function ForgeMaxTimeline({
                     value={draftEnd}
                     onChange={(event) => setDraftEnd(Number(event.target.value))}
                   />
+                </label>
+              </div>
+
+              <div className="forge-max-timeline-clip-adjustments">
+                <label>
+                  <span>Volume {Math.round(Number(draftVolume || 0) * 100)}%</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.05"
+                    value={draftVolume}
+                    onChange={(event) => setDraftVolume(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  <span>Velocidade {Number(draftSpeed || 1).toFixed(2)}x</span>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.05"
+                    value={draftSpeed}
+                    onChange={(event) => setDraftSpeed(Number(event.target.value))}
+                  />
+                </label>
+                <label className="forge-max-timeline-toggle">
+                  <input
+                    type="checkbox"
+                    checked={draftFlipHorizontal}
+                    onChange={(event) => setDraftFlipHorizontal(event.target.checked)}
+                  />
+                  Inverter horizontal
+                </label>
+                <label className="forge-max-timeline-toggle">
+                  <input
+                    type="checkbox"
+                    checked={draftFlipVertical}
+                    onChange={(event) => setDraftFlipVertical(event.target.checked)}
+                  />
+                  Inverter vertical
                 </label>
               </div>
 

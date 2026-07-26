@@ -41,6 +41,10 @@ import './forge-max-3.css';
 
 const MAX_LIBRARY_ITEMS = 20;
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value)));
+}
+
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return 'Carregando...';
   const total = Math.round(seconds);
@@ -190,6 +194,10 @@ function ForgeMax3() {
     const player = previewVideoRef.current;
     if (!player || !previewAsset) return;
 
+    const previewSpeed = selectedTimelineClip ? clamp(selectedTimelineClip.speed || 1, 0.5, 2) : 1;
+    player.playbackRate = previewSpeed;
+    player.volume = clamp(selectedTimelineClip?.volume ?? 1, 0, 1);
+
     const syncClipPreview = () => {
       if (selectedTimelineClip) {
         const nextTime = Math.min(selectedTimelineClip.start_seconds, player.duration || selectedTimelineClip.start_seconds || 0);
@@ -208,7 +216,7 @@ function ForgeMax3() {
 
     player.addEventListener('loadedmetadata', syncClipPreview, { once: true });
     return () => player.removeEventListener('loadedmetadata', syncClipPreview);
-  }, [previewAsset?.url, selectedTimelineClip?.id, selectedTimelineClip?.start_seconds, selectedAssetDraft?.start_seconds]);
+  }, [previewAsset?.url, selectedTimelineClip?.id, selectedTimelineClip?.start_seconds, selectedTimelineClip?.speed, selectedTimelineClip?.volume, selectedAssetDraft?.start_seconds]);
 
   const previewRangeMin = selectedTimelineClip ? Number(selectedTimelineClip.start_seconds) || 0 : 0;
   const previewRangeMax = selectedTimelineClip
@@ -371,6 +379,10 @@ function ForgeMax3() {
           asset_id: clip.asset_id,
           start_seconds: Number(clip.start_seconds) || 0,
           end_seconds: Number(clip.end_seconds) || 0,
+          volume: clamp(clip.volume ?? 1, 0, 2),
+          speed: clamp(clip.speed ?? 1, 0.5, 2),
+          flip_horizontal: Boolean(clip.flip_horizontal),
+          flip_vertical: Boolean(clip.flip_vertical),
         })),
       );
       setProject(updated);
@@ -405,6 +417,10 @@ function ForgeMax3() {
           asset_id: clip.asset_id,
           start_seconds: Number(clip.start_seconds) || 0,
           end_seconds: Number(clip.end_seconds) || 0,
+          volume: clamp(clip.volume ?? 1, 0, 2),
+          speed: clamp(clip.speed ?? 1, 0.5, 2),
+          flip_horizontal: Boolean(clip.flip_horizontal),
+          flip_vertical: Boolean(clip.flip_vertical),
         })),
       );
       setProject(updated);
@@ -493,10 +509,14 @@ function ForgeMax3() {
 
     const nextStartRaw = values.start_seconds !== undefined ? Number(values.start_seconds) : clip.start_seconds;
     const nextEndRaw = values.end_seconds !== undefined ? Number(values.end_seconds) : clip.end_seconds;
+    const nextVolumeRaw = values.volume !== undefined ? Number(values.volume) : (clip.volume ?? 1);
+    const nextSpeedRaw = values.speed !== undefined ? Number(values.speed) : (clip.speed ?? 1);
     const durationMax = Number(asset.duration) || 0;
 
     let nextStart = Number.isFinite(nextStartRaw) ? nextStartRaw : clip.start_seconds;
     let nextEnd = Number.isFinite(nextEndRaw) ? nextEndRaw : clip.end_seconds;
+    const nextVolume = clamp(Number.isFinite(nextVolumeRaw) ? nextVolumeRaw : 1, 0, 2);
+    const nextSpeed = clamp(Number.isFinite(nextSpeedRaw) ? nextSpeedRaw : 1, 0.5, 2);
     nextStart = Math.max(0, Math.min(durationMax, nextStart));
     nextEnd = Math.max(0.1, Math.min(durationMax || nextEnd, nextEnd));
     if (nextEnd <= nextStart) {
@@ -511,8 +531,12 @@ function ForgeMax3() {
       timelineClips.map((item) => (item.id === clipId ? {
         ...item,
         start_seconds: nextStart,
-        end_seconds: nextEnd,
-      } : item)),
+         end_seconds: nextEnd,
+         volume: nextVolume,
+         speed: nextSpeed,
+         flip_horizontal: values.flip_horizontal !== undefined ? Boolean(values.flip_horizontal) : Boolean(clip.flip_horizontal),
+         flip_vertical: values.flip_vertical !== undefined ? Boolean(values.flip_vertical) : Boolean(clip.flip_vertical),
+       } : item)),
       'Corte da timeline salvo.',
     );
   };
@@ -589,7 +613,7 @@ function ForgeMax3() {
     <div className="forge-max-page">
       <header className="forge-max-header">
         <div>
-          <span className="forge-max-kicker">EDITOR AVANÇADO · FASE 1</span>
+          <span className="forge-max-kicker">EDITOR AVANÇADO · FASE 5</span>
           <h1>Forge Max 3.0</h1>
           <p>Biblioteca de alta resolução e preview vertical isolado dos outros módulos de edição.</p>
         </div>
@@ -729,6 +753,9 @@ function ForgeMax3() {
                     controls
                     playsInline
                     className="forge-max-preview-video"
+                    style={{
+                      transform: `${selectedTimelineClip?.flip_horizontal ? 'scaleX(-1)' : ''} ${selectedTimelineClip?.flip_vertical ? 'scaleY(-1)' : ''}`.trim() || undefined,
+                    }}
                     onLoadedMetadata={handlePreviewLoaded}
                     onTimeUpdate={handlePreviewTimeUpdate}
                     onPlay={() => setPreviewPlaying(true)}

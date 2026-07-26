@@ -1181,6 +1181,44 @@
   background: #0a0f17;
 }
 
+.forge-max-timeline-clip-adjustments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(119, 231, 180, 0.18);
+  border-radius: 6px;
+  background: rgba(3, 9, 14, 0.38);
+}
+
+.forge-max-timeline-clip-adjustments label {
+  display: grid;
+  gap: 6px;
+  color: var(--max-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-timeline-clip-adjustments input[type="range"] {
+  width: 100%;
+  accent-color: var(--max-green);
+}
+
+.forge-max-timeline-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--max-line);
+  border-radius: 5px;
+  background: #0a0f17;
+}
+
+.forge-max-timeline-toggle input {
+  accent-color: var(--max-green);
+}
+
 .forge-max-timeline-editor-actions {
   justify-content: flex-end;
 }
@@ -1326,6 +1364,7 @@
 
   .forge-max-inline-music-config,
   .forge-max-timeline-slider-group,
+  .forge-max-timeline-clip-adjustments,
   .forge-max-timeline-editor-header,
   .forge-max-timeline-preview-header {
     grid-template-columns: 1fr;
