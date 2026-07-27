@@ -45,6 +45,17 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value)));
 }
 
+function buildClipTransform(clip) {
+  if (!clip) return undefined;
+  const translateX = clamp(clip.frame_x ?? 0, -1, 1) * 12;
+  const translateY = clamp(clip.frame_y ?? 0, -1, 1) * 12;
+  const zoom = clamp(clip.frame_zoom ?? 1, 1, 2.5);
+  const transforms = [`translate(${translateX}%, ${translateY}%)`, `scale(${zoom})`];
+  if (clip.flip_horizontal) transforms.push('scaleX(-1)');
+  if (clip.flip_vertical) transforms.push('scaleY(-1)');
+  return transforms.join(' ');
+}
+
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return 'Carregando...';
   const total = Math.round(seconds);
@@ -383,6 +394,9 @@ function ForgeMax3() {
           speed: clamp(clip.speed ?? 1, 0.5, 2),
           flip_horizontal: Boolean(clip.flip_horizontal),
           flip_vertical: Boolean(clip.flip_vertical),
+          frame_zoom: clamp(clip.frame_zoom ?? 1, 1, 2.5),
+          frame_x: clamp(clip.frame_x ?? 0, -1, 1),
+          frame_y: clamp(clip.frame_y ?? 0, -1, 1),
         })),
       );
       setProject(updated);
@@ -421,6 +435,9 @@ function ForgeMax3() {
           speed: clamp(clip.speed ?? 1, 0.5, 2),
           flip_horizontal: Boolean(clip.flip_horizontal),
           flip_vertical: Boolean(clip.flip_vertical),
+          frame_zoom: clamp(clip.frame_zoom ?? 1, 1, 2.5),
+          frame_x: clamp(clip.frame_x ?? 0, -1, 1),
+          frame_y: clamp(clip.frame_y ?? 0, -1, 1),
         })),
       );
       setProject(updated);
@@ -511,12 +528,18 @@ function ForgeMax3() {
     const nextEndRaw = values.end_seconds !== undefined ? Number(values.end_seconds) : clip.end_seconds;
     const nextVolumeRaw = values.volume !== undefined ? Number(values.volume) : (clip.volume ?? 1);
     const nextSpeedRaw = values.speed !== undefined ? Number(values.speed) : (clip.speed ?? 1);
+    const nextFrameZoomRaw = values.frame_zoom !== undefined ? Number(values.frame_zoom) : (clip.frame_zoom ?? 1);
+    const nextFrameXRaw = values.frame_x !== undefined ? Number(values.frame_x) : (clip.frame_x ?? 0);
+    const nextFrameYRaw = values.frame_y !== undefined ? Number(values.frame_y) : (clip.frame_y ?? 0);
     const durationMax = Number(asset.duration) || 0;
 
     let nextStart = Number.isFinite(nextStartRaw) ? nextStartRaw : clip.start_seconds;
     let nextEnd = Number.isFinite(nextEndRaw) ? nextEndRaw : clip.end_seconds;
     const nextVolume = clamp(Number.isFinite(nextVolumeRaw) ? nextVolumeRaw : 1, 0, 2);
     const nextSpeed = clamp(Number.isFinite(nextSpeedRaw) ? nextSpeedRaw : 1, 0.5, 2);
+    const nextFrameZoom = clamp(Number.isFinite(nextFrameZoomRaw) ? nextFrameZoomRaw : 1, 1, 2.5);
+    const nextFrameX = clamp(Number.isFinite(nextFrameXRaw) ? nextFrameXRaw : 0, -1, 1);
+    const nextFrameY = clamp(Number.isFinite(nextFrameYRaw) ? nextFrameYRaw : 0, -1, 1);
     nextStart = Math.max(0, Math.min(durationMax, nextStart));
     nextEnd = Math.max(0.1, Math.min(durationMax || nextEnd, nextEnd));
     if (nextEnd <= nextStart) {
@@ -536,6 +559,9 @@ function ForgeMax3() {
          speed: nextSpeed,
          flip_horizontal: values.flip_horizontal !== undefined ? Boolean(values.flip_horizontal) : Boolean(clip.flip_horizontal),
          flip_vertical: values.flip_vertical !== undefined ? Boolean(values.flip_vertical) : Boolean(clip.flip_vertical),
+         frame_zoom: nextFrameZoom,
+         frame_x: nextFrameX,
+         frame_y: nextFrameY,
        } : item)),
       'Corte da timeline salvo.',
     );
@@ -754,7 +780,7 @@ function ForgeMax3() {
                     playsInline
                     className="forge-max-preview-video"
                     style={{
-                      transform: `${selectedTimelineClip?.flip_horizontal ? 'scaleX(-1)' : ''} ${selectedTimelineClip?.flip_vertical ? 'scaleY(-1)' : ''}`.trim() || undefined,
+                      transform: buildClipTransform(selectedTimelineClip),
                     }}
                     onLoadedMetadata={handlePreviewLoaded}
                     onTimeUpdate={handlePreviewTimeUpdate}

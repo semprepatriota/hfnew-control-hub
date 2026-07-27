@@ -1219,6 +1219,51 @@
   accent-color: var(--max-green);
 }
 
+.forge-max-timeline-framing {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(120, 186, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(4, 10, 18, 0.42);
+}
+
+.forge-max-timeline-framing-title {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--max-ink);
+  font-size: 12px;
+}
+
+.forge-max-timeline-framing-title button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(119, 231, 180, 0.45);
+  border-radius: 5px;
+  color: var(--max-green);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.forge-max-timeline-framing label {
+  display: grid;
+  gap: 6px;
+  color: var(--max-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-timeline-framing input[type="range"] {
+  width: 100%;
+  accent-color: var(--max-blue);
+}
+
 .forge-max-timeline-editor-actions {
   justify-content: flex-end;
 }
@@ -1365,6 +1410,7 @@
   .forge-max-inline-music-config,
   .forge-max-timeline-slider-group,
   .forge-max-timeline-clip-adjustments,
+  .forge-max-timeline-framing,
   .forge-max-timeline-editor-header,
   .forge-max-timeline-preview-header {
     grid-template-columns: 1fr;

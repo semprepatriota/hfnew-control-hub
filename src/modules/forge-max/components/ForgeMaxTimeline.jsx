@@ -9,6 +9,21 @@ function formatDuration(seconds) {
   return `${minutes}:${String(remainder).padStart(2, '0')}`;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value)));
+}
+
+function buildClipTransform(clip) {
+  if (!clip) return undefined;
+  const translateX = clamp(clip.frame_x ?? 0, -1, 1) * 12;
+  const translateY = clamp(clip.frame_y ?? 0, -1, 1) * 12;
+  const zoom = clamp(clip.frame_zoom ?? 1, 1, 2.5);
+  const transforms = [`translate(${translateX}%, ${translateY}%)`, `scale(${zoom})`];
+  if (clip.flip_horizontal) transforms.push('scaleX(-1)');
+  if (clip.flip_vertical) transforms.push('scaleY(-1)');
+  return transforms.join(' ');
+}
+
 function ForgeMaxTimeline({
   assets,
   clips,
@@ -33,6 +48,9 @@ function ForgeMaxTimeline({
   const [draftSpeed, setDraftSpeed] = useState(1);
   const [draftFlipHorizontal, setDraftFlipHorizontal] = useState(false);
   const [draftFlipVertical, setDraftFlipVertical] = useState(false);
+  const [draftFrameZoom, setDraftFrameZoom] = useState(1);
+  const [draftFrameX, setDraftFrameX] = useState(0);
+  const [draftFrameY, setDraftFrameY] = useState(0);
   const [previewClipIndex, setPreviewClipIndex] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const timelinePreviewRef = useRef(null);
@@ -52,6 +70,9 @@ function ForgeMaxTimeline({
     setDraftSpeed(Number(selectedClip.speed ?? 1));
     setDraftFlipHorizontal(Boolean(selectedClip.flip_horizontal));
     setDraftFlipVertical(Boolean(selectedClip.flip_vertical));
+    setDraftFrameZoom(Number(selectedClip.frame_zoom ?? 1));
+    setDraftFrameX(Number(selectedClip.frame_x ?? 0));
+    setDraftFrameY(Number(selectedClip.frame_y ?? 0));
   }, [selectedClip?.id, selectedClip?.start_seconds, selectedClip?.end_seconds]);
 
   useEffect(() => {
@@ -85,7 +106,7 @@ function ForgeMaxTimeline({
 
     player.addEventListener('loadedmetadata', syncPreview, { once: true });
     return () => player.removeEventListener('loadedmetadata', syncPreview);
-  }, [previewClip?.id, previewClip?.start_seconds, previewAsset?.url]);
+  }, [previewClip?.id, previewClip?.start_seconds, previewClip?.speed, previewClip?.volume, previewClip?.frame_zoom, previewClip?.frame_x, previewClip?.frame_y, previewAsset?.url]);
 
   const timelineRuler = useMemo(() => {
     if (!clips.length || totalDuration <= 0) return [];
@@ -115,6 +136,9 @@ function ForgeMaxTimeline({
       speed: Math.max(0.5, Math.min(2, Number(draftSpeed) || 1)),
       flip_horizontal: draftFlipHorizontal,
       flip_vertical: draftFlipVertical,
+      frame_zoom: clamp(draftFrameZoom, 1, 2.5),
+      frame_x: clamp(draftFrameX, -1, 1),
+      frame_y: clamp(draftFrameY, -1, 1),
     });
   };
 
@@ -126,6 +150,9 @@ function ForgeMaxTimeline({
     setDraftSpeed(1);
     setDraftFlipHorizontal(false);
     setDraftFlipVertical(false);
+    setDraftFrameZoom(1);
+    setDraftFrameX(0);
+    setDraftFrameY(0);
   };
 
   const stepPreviewClip = (direction) => {
@@ -235,7 +262,7 @@ function ForgeMaxTimeline({
                   playsInline
                   className="forge-max-timeline-preview-video"
                   style={{
-                    transform: `${previewClip.flip_horizontal ? 'scaleX(-1)' : ''} ${previewClip.flip_vertical ? 'scaleY(-1)' : ''}`.trim() || undefined,
+                    transform: buildClipTransform(previewClip),
                   }}
                   onLoadedMetadata={handleTimelinePreviewLoaded}
                   onTimeUpdate={handleTimelinePreviewTimeUpdate}
@@ -382,6 +409,35 @@ function ForgeMaxTimeline({
                     onChange={(event) => setDraftFlipVertical(event.target.checked)}
                   />
                   Inverter vertical
+                </label>
+              </div>
+
+              <div className="forge-max-timeline-framing">
+                <div className="forge-max-timeline-framing-title">
+                  <strong>Enquadramento do clipe</strong>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftFrameZoom(1);
+                      setDraftFrameX(0);
+                      setDraftFrameY(0);
+                    }}
+                    disabled={Boolean(busy)}
+                  >
+                    Centralizar
+                  </button>
+                </div>
+                <label>
+                  <span>Zoom {Math.round(Number(draftFrameZoom || 1) * 100)}%</span>
+                  <input type="range" min="1" max="2.5" step="0.01" value={draftFrameZoom} onChange={(event) => setDraftFrameZoom(Number(event.target.value))} />
+                </label>
+                <label>
+                  <span>Posição X {Math.round(Number(draftFrameX || 0) * 100)}</span>
+                  <input type="range" min="-1" max="1" step="0.01" value={draftFrameX} onChange={(event) => setDraftFrameX(Number(event.target.value))} />
+                </label>
+                <label>
+                  <span>Posição Y {Math.round(Number(draftFrameY || 0) * 100)}</span>
+                  <input type="range" min="-1" max="1" step="0.01" value={draftFrameY} onChange={(event) => setDraftFrameY(Number(event.target.value))} />
                 </label>
               </div>
 
