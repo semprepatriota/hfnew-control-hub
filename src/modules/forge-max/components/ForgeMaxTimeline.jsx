@@ -36,6 +36,7 @@ function ForgeMaxTimeline({
   onMove,
   onRemove,
   onTrim,
+  onSplitScenes,
 }) {
   const totalDuration = clips.reduce((total, clip) => total + (
     Math.max(0, clip.end_seconds - clip.start_seconds) / Math.max(Number(clip.speed || 1), 0.5)
@@ -324,9 +325,14 @@ function ForgeMaxTimeline({
                     {' '}de {formatDuration(selectedAsset.duration)}
                   </span>
                 </div>
-                <button type="button" className="forge-max-timeline-reset" onClick={resetDraftTrim} disabled={Boolean(busy)}>
-                  <RotateCcw size={14} /> Resetar corte
-                </button>
+                <div className="forge-max-timeline-editor-actions-top">
+                  <button type="button" className="forge-max-timeline-reset" onClick={resetDraftTrim} disabled={Boolean(busy)}>
+                    <RotateCcw size={14} /> Resetar corte
+                  </button>
+                  <button type="button" className="forge-max-timeline-scene-button" onClick={onSplitScenes} disabled={Boolean(busy)} title="Detectar mudanças de cena e dividir este clipe">
+                    <Scissors size={14} /> Separador de cenas
+                  </button>
+                </div>
               </div>
 
               <div className="forge-max-timeline-slider-group">

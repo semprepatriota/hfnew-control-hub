@@ -1239,6 +1239,34 @@
   font-size: 12px;
 }
 
+.forge-max-timeline-editor-actions-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forge-max-timeline-scene-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(119, 231, 180, 0.48);
+  border-radius: 6px;
+  color: #07120d;
+  background: var(--max-green);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.forge-max-timeline-scene-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .forge-max-timeline-framing-title button {
   min-height: 28px;
   padding: 0 9px;
@@ -1412,6 +1440,7 @@
   .forge-max-timeline-clip-adjustments,
   .forge-max-timeline-framing,
   .forge-max-timeline-editor-header,
+  .forge-max-timeline-editor-actions-top,
   .forge-max-timeline-preview-header {
     grid-template-columns: 1fr;
     flex-direction: column;

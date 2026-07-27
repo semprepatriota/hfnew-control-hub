@@ -73,6 +73,14 @@ export async function updateForgeMaxTimeline(projectId, clips) {
   }));
 }
 
+export async function splitForgeMaxTimelineScenes(projectId, clipId, threshold = 0.35) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/timeline/split-scenes`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clip_id: clipId, threshold }),
+  }));
+}
+
 export async function updateForgeMaxMusic(projectId, payload) {
   return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/music`), {
     method: 'PUT',

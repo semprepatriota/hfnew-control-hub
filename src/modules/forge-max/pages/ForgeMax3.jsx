@@ -31,6 +31,7 @@ import {
   getForgeMaxProject,
   listForgeMaxProjects,
   renderForgeMaxTimeline,
+  splitForgeMaxTimelineScenes,
   updateForgeMaxMusic,
   uploadForgeMaxMusic,
   uploadForgeMaxVideo,
@@ -470,6 +471,24 @@ function ForgeMax3() {
     });
   };
 
+  const handleSplitScenes = async () => {
+    if (!project?.project?.id || !selectedTimelineClip) {
+      setError('Selecione um clipe da timeline antes de separar as cenas.');
+      return;
+    }
+    await runAction('split-scenes', async () => {
+      const result = await splitForgeMaxTimelineScenes(project.project.id, selectedTimelineClip.id);
+      setProject(result.project);
+      setSelectedTimelineClipId(result.created_clip_ids?.[0] || '');
+      setSelectedAssetId(selectedTimelineClip.asset_id);
+      setMessage(
+        result.scene_count > 1
+          ? `${result.scene_count} cenas separadas e adicionadas à timeline.`
+          : 'Nenhuma mudança de cena suficiente foi encontrada neste trecho.',
+      );
+    });
+  };
+
   const handleDeleteRender = async () => {
     if (!project?.project?.id || !lastRender) return;
     await runAction('delete-render', async () => {
@@ -872,6 +891,7 @@ function ForgeMax3() {
         onMove={moveTimelineClip}
         onRemove={removeTimelineClip}
         onTrim={updateTimelineClip}
+        onSplitScenes={handleSplitScenes}
       />
 
       <section className={`forge-max-render-panel ${renderCollapsed ? 'collapsed' : ''}`}>
