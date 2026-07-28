@@ -16,7 +16,6 @@ import {
 import '../styles/the-forge-50-50.css';
 
 const headlineStyles = [
-  ['liveHf', 'Live HF'], ['doubleTicker', 'Ticker duplo'], ['blackGold', 'Preto / ouro'], ['redBlack', 'Vermelho / preto'],
   ['stepOrange', 'Gradiente laranja'], ['stepBlue', 'Gradiente azul'], ['stepCoral', 'Gradiente coral'], ['stepSpectrum', 'Gradiente espectro'],
 ];
 const headlineStyleIds = new Set(headlineStyles.map(([id]) => id));
@@ -30,7 +29,7 @@ const defaultConfig = {
   top_video: '', bottom_video: '', top_start: 0, top_end: 0, bottom_start: 0, bottom_end: 0,
   top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
   top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
-  headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'liveHf',
+  headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'stepOrange',
 };
 
 const normalizeForge5050Config = (source = {}) => {
