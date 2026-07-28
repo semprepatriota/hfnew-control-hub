@@ -62,6 +62,7 @@ function TheForge5050() {
   const [socialMetadata, setSocialMetadata] = useState({});
   const [selectedMetadataPlatform, setSelectedMetadataPlatform] = useState('youtube');
   const [generatingMetadataFor, setGeneratingMetadataFor] = useState('');
+  const [downloadingRender, setDownloadingRender] = useState(false);
 
   const videos = project?.videos || [];
   const topVideo = useMemo(() => videos.find((item) => item.filename === config.top_video), [videos, config.top_video]);
@@ -143,6 +144,58 @@ function TheForge5050() {
     setCropEditingSlot(slot);
     setShowCombinedPreview(false);
     setCropMode(false);
+  };
+
+  const downloadRender = async () => {
+    if (!render?.url) {
+      setError('Renderize o vídeo antes de baixar o MP4 final.');
+      return;
+    }
+
+    const filename = render.filename || 'forge5050-render.mp4';
+    let fileHandle = null;
+
+    // Deve ser chamado diretamente no clique para o navegador liberar o seletor nativo.
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'Vídeo MP4', accept: { 'video/mp4': ['.mp4'] } }],
+        });
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        setError(err.message || 'Não foi possível abrir o seletor de pasta.');
+        return;
+      }
+    }
+
+    setDownloadingRender(true);
+    setError('');
+    try {
+      const response = await fetch(forge5050FileUrl(render.url), { cache: 'no-store' });
+      if (!response.ok) throw new Error('Falha ao preparar o arquivo MP4 para download.');
+      const blob = await response.blob();
+
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      setError(err.message || 'Não foi possível salvar o vídeo MP4.');
+    } finally {
+      setDownloadingRender(false);
+    }
   };
 
   const activateCropVideo = (slot) => {
@@ -311,7 +364,7 @@ function TheForge5050() {
         </div>
       </div>
 
-      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><a className="forge5050-button secondary" href={forge5050FileUrl(render.url)} download><Download size={16} /> Baixar vídeo MP4</a><div className="forge5050-social-generator"><h3>Gerar publicação para uma rede social</h3><Select label="Rede social" value={selectedMetadataPlatform} options={socialPlatforms.map((item) => ({ value: item.id, original_name: item.label }))} onChange={setSelectedMetadataPlatform} /><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(selectedMetadataPlatform)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === selectedMetadataPlatform ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e hashtags</>}</button>{socialMetadata[selectedMetadataPlatform]?.title && <div className="forge5050-metadata"><label>Título<input value={socialMetadata[selectedMetadataPlatform].title} readOnly /></label><label>Descrição<textarea value={socialMetadata[selectedMetadataPlatform].description || ''} readOnly rows={5} /></label><label>Hashtags<input value={(socialMetadata[selectedMetadataPlatform].hashtags || []).join(' ')} readOnly /></label></div>}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeo renderizado</button></section>}
+      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><button type="button" className="forge5050-button secondary" onClick={downloadRender} disabled={downloadingRender}><Download size={16} /> {downloadingRender ? 'Salvando MP4...' : 'Baixar vídeo MP4'}</button><div className="forge5050-social-generator"><h3>Gerar publicação para uma rede social</h3><Select label="Rede social" value={selectedMetadataPlatform} options={socialPlatforms.map((item) => ({ value: item.id, original_name: item.label }))} onChange={setSelectedMetadataPlatform} /><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(selectedMetadataPlatform)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === selectedMetadataPlatform ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e hashtags</>}</button>{socialMetadata[selectedMetadataPlatform]?.title && <div className="forge5050-metadata"><label>Título<input value={socialMetadata[selectedMetadataPlatform].title} readOnly /></label><label>Descrição<textarea value={socialMetadata[selectedMetadataPlatform].description || ''} readOnly rows={5} /></label><label>Hashtags<input value={(socialMetadata[selectedMetadataPlatform].hashtags || []).join(' ')} readOnly /></label></div>}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeo renderizado</button></section>}
     </>}
   </main>;
 }
