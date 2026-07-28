@@ -4,6 +4,7 @@ import {
   createForge5050Project,
   deleteForge5050Project,
   deleteForge5050Render,
+  forge5050DownloadUrl,
   forge5050FileUrl,
   generateForge5050SocialMetadata,
   getForge5050Project,
@@ -172,8 +173,12 @@ function TheForge5050() {
     setDownloadingRender(true);
     setError('');
     try {
-      const response = await fetch(forge5050FileUrl(render.url), { cache: 'no-store' });
+      const response = await fetch(forge5050DownloadUrl(render.url), { cache: 'no-store', headers: { Accept: 'video/mp4' } });
       if (!response.ok) throw new Error('Falha ao preparar o arquivo MP4 para download.');
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      if (contentType && !contentType.includes('video/mp4') && !contentType.includes('application/octet-stream')) {
+        throw new Error('O servidor não retornou um arquivo MP4 válido.');
+      }
       const blob = await response.blob();
 
       if (fileHandle) {
