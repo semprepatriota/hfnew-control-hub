@@ -87,6 +87,13 @@ function TheForge5050() {
 
   const update = (key, value) => setConfig((current) => ({ ...current, [key]: value }));
 
+  const changeAudioMode = (value) => setConfig((current) => ({
+    ...current,
+    audio_mode: value,
+    top_volume: value === 'top' || value === 'both' ? (Number(current.top_volume) > 0 ? current.top_volume : 1) : current.top_volume,
+    bottom_volume: value === 'bottom' || value === 'both' ? (Number(current.bottom_volume) > 0 ? current.bottom_volume : 1) : current.bottom_volume,
+  }));
+
   const createProject = async () => {
     setBusy(true); setError('');
     try {
@@ -288,7 +295,7 @@ function TheForge5050() {
             <div className="forge5050-control-grid"><Trim prefix="top" config={config} update={update} title="Vídeo de cima" active={cropEditingSlot === 'top'} onSelect={() => selectCropVideo('top')} /><Trim prefix="bottom" config={config} update={update} title="Vídeo de baixo" active={cropEditingSlot === 'bottom'} onSelect={() => selectCropVideo('bottom')} /></div>
             <div className="forge5050-control-grid"><Range label="Volume de cima" value={config.top_volume} min="0" max="2" step="0.05" onChange={(value) => update('top_volume', value)} /><Range label="Volume de baixo" value={config.bottom_volume} min="0" max="2" step="0.05" onChange={(value) => update('bottom_volume', value)} /></div>
             <CropInspector cropEditingSlot={cropEditingSlot} config={config} update={update} cropMode={cropMode} setCropMode={setCropMode} setShowCombinedPreview={setShowCombinedPreview} topVideo={topVideo} bottomVideo={bottomVideo} joinedPreview={joinedPreview} onSelect={() => selectCropVideo(cropEditingSlot)} />
-            <Select label="Áudio usado" value={config.audio_mode} options={[{ value: 'top', original_name: 'Somente vídeo de cima' }, { value: 'bottom', original_name: 'Somente vídeo de baixo' }, { value: 'both', original_name: 'Os dois vídeos' }, { value: 'none', original_name: 'Sem áudio' }]} onChange={(value) => update('audio_mode', value)} />
+            <Select label="Áudio usado" value={config.audio_mode} options={[{ value: 'top', original_name: 'Somente vídeo de cima' }, { value: 'bottom', original_name: 'Somente vídeo de baixo' }, { value: 'both', original_name: 'Os dois vídeos' }, { value: 'none', original_name: 'Sem áudio' }]} onChange={changeAudioMode} />
             <button className="forge5050-button secondary" onClick={save} disabled={busy}><Check size={15} /> Salvar ajustes</button>
           </Panel>
 
