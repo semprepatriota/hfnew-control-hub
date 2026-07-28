@@ -179,15 +179,23 @@ function TheForge5050() {
       if (contentType && !contentType.includes('video/mp4') && !contentType.includes('application/octet-stream')) {
         throw new Error('O servidor não retornou um arquivo MP4 válido.');
       }
-      const blob = await response.blob();
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const signature = new TextDecoder().decode(bytes.slice(4, 8));
+      if (signature !== 'ftyp') {
+        throw new Error('O arquivo recebido não contém uma estrutura MP4 válida.');
+      }
 
       if (fileHandle) {
         const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+        try {
+          await writable.write(bytes);
+        } finally {
+          await writable.close();
+        }
         return;
       }
 
+      const blob = new Blob([bytes], { type: 'video/mp4' });
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
