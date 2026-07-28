@@ -271,10 +271,19 @@ function TheForge5050() {
       const saved = await save(config);
       if (!saved) return;
       const data = await renderForge5050(project.id, config);
-      setRender(data);
-      await openProject(project.id);
-      setRender(data);
+      const rendered = data?.url && data?.filename ? data : data?.render || data?.last_render;
+      if (!rendered?.url || !rendered?.filename) {
+        throw new Error('A API concluiu o render, mas não retornou o arquivo MP4 para o preview.');
+      }
+      setRender(rendered);
+      setProject((current) => current ? {
+        ...current,
+        config: saved.config || config,
+        last_render: rendered,
+      } : current);
       setSocialMetadata({});
+      setShowCombinedPreview(true);
+      refresh().catch(() => {});
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
@@ -377,7 +386,7 @@ function TheForge5050() {
         </div>
       </div>
 
-      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeo renderizado</h2><video src={forge5050FileUrl(render.url)} controls className="forge5050-rendered" /><button type="button" className="forge5050-button secondary" onClick={downloadRender} disabled={downloadingRender}><Download size={16} /> {downloadingRender ? 'Salvando MP4...' : 'Baixar vídeo MP4'}</button><div className="forge5050-social-generator"><h3>Gerar publicação para uma rede social</h3><Select label="Rede social" value={selectedMetadataPlatform} options={socialPlatforms.map((item) => ({ value: item.id, original_name: item.label }))} onChange={setSelectedMetadataPlatform} /><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(selectedMetadataPlatform)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === selectedMetadataPlatform ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e hashtags</>}</button>{socialMetadata[selectedMetadataPlatform]?.title && <div className="forge5050-metadata"><label>Título<input value={socialMetadata[selectedMetadataPlatform].title} readOnly /></label><label>Descrição<textarea value={socialMetadata[selectedMetadataPlatform].description || ''} readOnly rows={5} /></label><label>Hashtags<input value={(socialMetadata[selectedMetadataPlatform].hashtags || []).join(' ')} readOnly /></label></div>}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeo renderizado</button></section>}
+      {render && <section className="forge5050-panel forge5050-platform-results"><h2>Vídeo renderizado</h2><video key={`${render.filename}-${render.created_at || ''}`} src={`${forge5050FileUrl(render.url)}?render=${encodeURIComponent(render.created_at || render.filename)}`} controls className="forge5050-rendered" /><button type="button" className="forge5050-button secondary" onClick={downloadRender} disabled={downloadingRender}><Download size={16} /> {downloadingRender ? 'Salvando MP4...' : 'Baixar vídeo MP4'}</button><div className="forge5050-social-generator"><h3>Gerar publicação para uma rede social</h3><Select label="Rede social" value={selectedMetadataPlatform} options={socialPlatforms.map((item) => ({ value: item.id, original_name: item.label }))} onChange={setSelectedMetadataPlatform} /><button type="button" className="forge5050-button metadata-button" onClick={() => generateSocialMetadata(selectedMetadataPlatform)} disabled={generatingMetadataFor !== ''}>{generatingMetadataFor === selectedMetadataPlatform ? <><Loader size={15} className="forge5050-spin" /> Gerando...</> : <><Search size={15} /> Gerar título, descrição e hashtags</>}</button>{socialMetadata[selectedMetadataPlatform]?.title && <div className="forge5050-metadata"><label>Título<input value={socialMetadata[selectedMetadataPlatform].title} readOnly /></label><label>Descrição<textarea value={socialMetadata[selectedMetadataPlatform].description || ''} readOnly rows={5} /></label><label>Hashtags<input value={(socialMetadata[selectedMetadataPlatform].hashtags || []).join(' ')} readOnly /></label></div>}</div><button type="button" className="forge5050-button delete-render" onClick={removeRender} disabled={busy}><Trash2 size={15} /> Excluir vídeo renderizado</button></section>}
     </>}
   </main>;
 }
