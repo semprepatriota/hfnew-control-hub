@@ -12,6 +12,8 @@ import {
   listForge5050Projects,
   renderForge5050,
   saveForge5050Config,
+  deleteForge5050Logo,
+  uploadForge5050Logo,
   uploadForge5050Video,
 } from '../services/forge5050Api';
 import '../styles/the-forge-50-50.css';
@@ -31,6 +33,7 @@ const defaultConfig = {
   top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
   top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
   headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'stepOrange',
+  logo_enabled: false, logo_filename: '', logo_x: 0.5, logo_y: 0.15, logo_scale: 0.18, logo_opacity: 1,
 };
 
 const normalizeForge5050Config = (source = {}) => {
@@ -287,6 +290,29 @@ function TheForge5050() {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
+  const uploadLogo = async (file) => {
+    if (!file || !project) return;
+    setBusy(true); setError('');
+    try {
+      const data = await uploadForge5050Logo(project.id, file);
+      setProject(data);
+      setConfig(normalizeForge5050Config(data.config));
+      setRender(null);
+      setJoinedPreview(false);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const removeLogo = async () => {
+    if (!project || !project.logo || !window.confirm('Excluir a logo deste projeto?')) return;
+    setBusy(true); setError('');
+    try {
+      const data = await deleteForge5050Logo(project.id);
+      setProject(data);
+      setConfig(normalizeForge5050Config(data.config));
+      setRender(null);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
   const removeRender = async () => {
     if (!project || !render || !window.confirm('Excluir os três vídeos renderizados?')) return;
     setBusy(true); setError('');
@@ -325,6 +351,7 @@ function TheForge5050() {
 
     <Panel title="Projetos 50/50" open={open.projects} onToggle={() => setOpen((v) => ({ ...v, projects: !v.projects }))}>
       <div className="forge5050-projects">{projects.map((item) => <button key={item.id} className={`forge5050-project ${item.id === project?.id ? 'active' : ''}`} onClick={() => openProject(item.id)}><Film size={15} /> {item.title}</button>)}{!projects.length && <span className="forge5050-muted">Crie o primeiro projeto para começar.</span>}{project && <button className="forge5050-delete" onClick={removeProject} disabled={busy}><Trash2 size={14} /> Excluir projeto atual</button>}</div>
+      {project && <LogoControls project={project} config={config} update={update} busy={busy} onUpload={uploadLogo} onRemove={removeLogo} />}
     </Panel>
 
     {project && <>
@@ -348,6 +375,7 @@ function TheForge5050() {
             {showCombinedPreview ? <div className="forge5050-combined-stage">
               <PreviewVideo video={topVideo} className="top" cropX={config.top_crop_x} cropY={config.top_crop_y} trimStart={config.top_start} trimEnd={config.top_end} />
               <PreviewVideo video={bottomVideo} className="bottom" cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} trimStart={config.bottom_start} trimEnd={config.bottom_end} />
+              {project.logo && config.logo_enabled && config.logo_filename && <LogoOverlay logo={project.logo} config={config} update={update} />}
               {config.headline_enabled && config.headline_text.trim() && <div
                 className={`forge5050-headline palette-${config.headline_palette}`}
                 style={{
@@ -392,6 +420,56 @@ function TheForge5050() {
 }
 
 function Panel({ title, open, onToggle, children, className = '' }) { return <section className={`forge5050-panel ${className}`}><button className="forge5050-panel-title" onClick={onToggle}><span>{title}</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{open && children}</section>; }
+function LogoControls({ project, config, update, busy, onUpload, onRemove }) {
+  return <div className="forge5050-logo-controls">
+    <div className="forge5050-logo-heading"><div><strong>Logo do projeto</strong><span>{project.logo ? project.logo.original_name : 'Nenhuma logo enviada'}</span></div><label className="forge5050-headline-toggle"><input type="checkbox" checked={Boolean(config.logo_enabled)} onChange={(event) => update('logo_enabled', event.target.checked)} disabled={!project.logo || busy} /> Usar logo</label></div>
+    <div className="forge5050-logo-actions">
+      <label className="forge5050-upload forge5050-logo-upload"><Upload size={15} /> {project.logo ? 'Trocar logo' : 'Adicionar logo'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { onUpload(event.target.files?.[0]); event.currentTarget.value = ''; }} disabled={busy} /></label>
+      {project.logo && <button type="button" className="forge5050-logo-delete" onClick={onRemove} disabled={busy}><Trash2 size={14} /> Excluir</button>}
+    </div>
+    {project.logo && <>
+      <div className="forge5050-logo-thumb-wrap"><img className="forge5050-logo-thumb" src={forge5050FileUrl(project.logo.url)} alt="Prévia da logo" /><span>Arraste a logo no preview unido para escolher qualquer posição.</span></div>
+      <div className="forge5050-control-grid forge5050-logo-grid">
+        <Range label={`Tamanho ${Math.round(Number(config.logo_scale || 0.18) * 100)}%`} value={config.logo_scale} min="0.04" max="0.60" step="0.01" onChange={(value) => update('logo_scale', value)} />
+        <Range label={`Opacidade ${Math.round(Number(config.logo_opacity ?? 1) * 100)}%`} value={config.logo_opacity} min="0" max="1" step="0.01" onChange={(value) => update('logo_opacity', value)} />
+      </div>
+    </>}
+  </div>;
+}
+function LogoOverlay({ logo, config, update }) {
+  const dragRef = useRef(null);
+  const x = Math.min(1, Math.max(0, Number(config.logo_x) || 0.5));
+  const y = Math.min(1, Math.max(0, Number(config.logo_y) || 0.15));
+  const scale = Math.min(0.6, Math.max(0.04, Number(config.logo_scale) || 0.18));
+  const opacity = Math.min(1, Math.max(0, Number(config.logo_opacity ?? 1)));
+  const move = (event) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const nextX = Math.min(1, Math.max(0, drag.x + (event.clientX - drag.startX) / drag.rect.width));
+    const nextY = Math.min(1, Math.max(0, drag.y + (event.clientY - drag.startY) / drag.rect.height));
+    update('logo_x', Number(nextX.toFixed(4)));
+    update('logo_y', Number(nextY.toFixed(4)));
+  };
+  const stop = () => { dragRef.current = null; };
+  return <img
+    className="forge5050-logo-overlay"
+    src={forge5050FileUrl(logo.url)}
+    alt="Logo sobre o vídeo"
+    draggable="false"
+    style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${scale * 100}%`, opacity }}
+    onDragStart={(event) => event.preventDefault()}
+    onPointerDown={(event) => {
+      const stage = event.currentTarget.closest('.forge5050-combined-stage');
+      if (!stage) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      dragRef.current = { startX: event.clientX, startY: event.clientY, x, y, rect: stage.getBoundingClientRect() };
+    }}
+    onPointerMove={move}
+    onPointerUp={stop}
+    onPointerCancel={stop}
+  />;
+}
 function PreviewVideo({ video, className, cropActive = false, whole = false, cropX = 0.5, cropY = 0.5, trimStart = 0, trimEnd = 0 }) {
   const videoRef = useRef(null);
   const start = Math.max(0, Number(trimStart) || 0);

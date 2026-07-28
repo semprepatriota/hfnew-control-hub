@@ -22,6 +22,16 @@ export const uploadForge5050Video = (id, slot, file) => {
   return fetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/upload?slot=${slot}`), { method: 'POST', body: form }).then(parse);
 };
 
+export const uploadForge5050Logo = (id, file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return fetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/logo`), { method: 'POST', body: form }).then(parse);
+};
+
+export const deleteForge5050Logo = (id) => fetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/logo`), {
+  method: 'DELETE',
+}).then(parse);
+
 export const saveForge5050Config = (id, config) => fetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/config`), {
   method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config),
 }).then(parse);
