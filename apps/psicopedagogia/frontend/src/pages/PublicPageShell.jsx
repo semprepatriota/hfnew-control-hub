@@ -11,7 +11,7 @@ export default function PublicPageShell({ eyebrow, title, children }) {
         <div className="public-links">
           <Link to="/privacidade">Privacidade</Link>
           <Link to="/termos">Termos de uso</Link>
-          <Link to="/">Voltar ao login</Link>
+          <Link to="/">Voltar ao aplicativo</Link>
         </div>
       </div>
     </main>

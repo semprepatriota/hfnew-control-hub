@@ -18,9 +18,9 @@
 
 * { box-sizing: border-box; }
 html { min-width: 320px; scroll-behavior: smooth; }
-body { margin: 0; color: var(--ink); background: var(--bg); font-family: Arial, "Segoe UI", sans-serif; line-height: 1.5; }
+body { margin: 0; overflow-x: hidden; color: var(--ink); background: var(--bg); font-family: Arial, "Segoe UI", sans-serif; line-height: 1.5; }
 button, input, textarea, select { font: inherit; }
-button { min-height: 40px; border: 0; border-radius: 6px; padding: 9px 13px; cursor: pointer; font-weight: 700; line-height: 1.2; }
+button { min-height: 40px; border: 0; border-radius: 6px; padding: 9px 13px; cursor: pointer; font-weight: 700; line-height: 1.2; touch-action: manipulation; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 input, textarea, select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 5px; padding: 10px 11px; color: var(--ink); background: var(--surface); }
 textarea { resize: vertical; }
@@ -72,7 +72,7 @@ h3 { margin-bottom: 7px; font-size: 16px; }
 .not-found-page h1, .not-found-page p { margin-bottom: 0; }
 
 .app-shell { min-height: 100vh; }
-.app-header { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; padding: 18px max(20px, calc((100vw - 1280px) / 2 + 20px)); color: #ffffff; background: #17365d; box-shadow: 0 4px 14px rgba(23, 54, 93, 0.16); }
+.app-header { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center; padding: 18px max(20px, calc((100vw - 1280px) / 2 + 20px)); color: #ffffff; background: #17365d; box-shadow: 0 4px 14px rgba(23, 54, 93, 0.16); }
 .header-brand h1 { margin: 0; font-size: 22px; }
 .header-brand .eyebrow { color: #b9dcf3; }
 .main-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
@@ -98,7 +98,7 @@ h3 { margin-bottom: 7px; font-size: 16px; }
 .search-input { max-width: 300px; }
 .patient-selector { max-width: 280px; }
 
-.table-wrap { width: 100%; overflow-x: auto; }
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; border-radius: 5px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 th { color: #ffffff; background: var(--primary-dark); font-size: 12px; font-weight: 800; }
@@ -184,12 +184,13 @@ table strong { color: var(--primary-dark); }
 
 @media (max-width: 760px) {
   h1 { font-size: 24px; }
-  .app-header { display: flex; align-items: stretch; flex-direction: column; padding: 16px 18px; }
-  .main-nav { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
-  .header-actions { justify-content: space-between; max-width: none; }
+  input, textarea, select { font-size: 16px; }
+  .app-header { display: flex; align-items: stretch; flex-direction: column; gap: 14px; padding: 16px 18px; }
+  .main-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; overflow: visible; }
+  .nav-button { min-height: 44px; padding: 8px; font-size: 12px; white-space: normal; }
   .container { padding: 18px 14px 35px; }
   .panel { padding: 15px; }
-  .panel-heading, .welcome-band, .evaluation-item { align-items: stretch; flex-direction: column; }
+  .panel-heading, .welcome-band, .evaluation-item, .subsection-heading, .section-title-row { align-items: stretch; flex-direction: column; }
   .metrics-grid, .form-grid, .case-grid, .integration-columns, .technical-table { grid-template-columns: 1fr; }
   .span-2 { grid-column: auto; }
   .search-input, .patient-selector { max-width: none; }
@@ -198,8 +199,10 @@ table strong { color: var(--primary-dark); }
   .instrument-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .technical-table div { border-right: 0; }
   .hypothesis-grid, .report-outline { grid-template-columns: 1fr; }
-  .form-actions { justify-content: stretch; }
-  .form-actions button { flex: 1; }
+  .form-actions { align-items: stretch; justify-content: stretch; flex-direction: column; }
+  .form-actions button, .table-actions button { width: 100%; }
+  .compact-message { margin: 0; }
+  .status-pill { align-self: flex-start; }
 }
 
 @media (max-width: 480px) {

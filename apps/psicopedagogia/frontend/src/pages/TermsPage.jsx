@@ -11,7 +11,7 @@ export default function TermsPage() {
       <h2>Conteudo dos instrumentos</h2>
       <p>Itens, estimulos, gabaritos e normas devem ser utilizados somente de acordo com fontes autorizadas e qualificacao profissional.</p>
       <h2>Disponibilidade</h2>
-      <p>Esta versao esta em preparacao para hospedagem. O armazenamento local pode ser perdido quando os dados do navegador forem removidos.</p>
+      <p>Os registros ficam no navegador utilizado e podem ser perdidos quando os dados locais forem removidos. Mantenha os documentos exportados em local seguro.</p>
     </PublicPageShell>
   );
 }

@@ -11,10 +11,18 @@ const defaultProfessionalProfile = {
   email: '',
 };
 
+const STORAGE_NAMESPACE = 'hfnew-psi:';
+
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const storageKey = (key) => `${STORAGE_NAMESPACE}${key}`;
+
+const readStoredValue = (key) => (
+  localStorage.getItem(storageKey(key)) ?? localStorage.getItem(key)
+);
+
 const readStoredList = (key) => {
-  const value = localStorage.getItem(key);
+  const value = readStoredValue(key);
   if (!value) return [];
 
   try {
@@ -22,13 +30,13 @@ const readStoredList = (key) => {
     return Array.isArray(parsedValue) ? parsedValue : [];
   } catch (error) {
     console.error(`Erro ao carregar ${key}:`, error);
-    localStorage.removeItem(key);
+    localStorage.removeItem(storageKey(key));
     return [];
   }
 };
 
 const readStoredObject = (key, fallback) => {
-  const value = localStorage.getItem(key);
+  const value = readStoredValue(key);
   if (!value) return fallback;
 
   try {
@@ -38,13 +46,17 @@ const readStoredObject = (key, fallback) => {
       : fallback;
   } catch (error) {
     console.error(`Erro ao carregar ${key}:`, error);
-    localStorage.removeItem(key);
+    localStorage.removeItem(storageKey(key));
     return fallback;
   }
 };
 
 const writeStoredList = (key, value) => {
-  localStorage.setItem(key, JSON.stringify(value));
+  localStorage.setItem(storageKey(key), JSON.stringify(value));
+};
+
+const writeStoredObject = (key, value) => {
+  localStorage.setItem(storageKey(key), JSON.stringify(value));
 };
 
 export const DataProvider = ({ children }) => {
@@ -192,7 +204,7 @@ export const DataProvider = ({ children }) => {
   const saveProfessionalProfile = (profileData) => {
     const updatedProfile = { ...defaultProfessionalProfile, ...profileData };
     setProfessionalProfile(updatedProfile);
-    localStorage.setItem('professionalProfile', JSON.stringify(updatedProfile));
+    writeStoredObject('professionalProfile', updatedProfile);
     return updatedProfile;
   };
 
