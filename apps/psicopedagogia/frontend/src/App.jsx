@@ -10,6 +10,7 @@ import {
   INTEGRATION_DOMAINS,
   INVESTIGATIVE_HYPOTHESES,
 } from './services/instruments';
+import { importPatientDocuments } from './services/patientDocumentImport';
 import './styles/global.css';
 
 const today = new Date().toISOString().slice(0, 10);
@@ -137,6 +138,30 @@ const downloadRamWord = (patient, professionalProfile, patientApplications, pati
   URL.revokeObjectURL(url);
 };
 
+const patientSheetHtml = (patient) => `<!doctype html><html><head><meta charset="utf-8"><title>Ficha - ${escapeHtml(patient.name)}</title><style>body{font-family:Arial,sans-serif;color:#17365D;line-height:1.48;margin:36px}h1{color:#17365D;border-bottom:2px solid #2E75B6;padding-bottom:8px}h2{color:#2E75B6;margin-top:24px;font-size:18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{padding:10px;background:#F7FAFC;border:1px solid #D9E5EF}.field strong{display:block;color:#17365D;font-size:12px;text-transform:uppercase}.block{margin:12px 0;padding:12px;background:#F7FAFC;border-left:4px solid #168B8C;white-space:normal}</style></head><body><h1>Ficha de cadastro</h1><div class="grid"><div class="field"><strong>Nome completo</strong>${escapeHtml(patient.name)}</div><div class="field"><strong>Data de nascimento</strong>${escapeHtml(formatDate(patient.birthDate))}</div><div class="field"><strong>Escola</strong>${escapeHtml(patient.school || 'Nao informado')}</div><div class="field"><strong>Serie ou ano escolar</strong>${escapeHtml(patient.schoolYear || 'Nao informado')}</div><div class="field"><strong>Responsavel</strong>${escapeHtml(patient.guardian || 'Nao informado')}</div><div class="field"><strong>Telefone</strong>${escapeHtml(patient.guardianPhone || 'Nao informado')}</div></div><h2>Queixa principal</h2><div class="block">${escapeHtml(patient.mainConcern || 'Nao informado')}</div><h2>Motivo da avaliacao</h2><div class="block">${escapeHtml(patient.evaluationReason || 'Nao informado')}</div><h2>Historico escolar</h2><div class="block">${escapeHtml(patient.schoolHistory || 'Nao informado')}</div><h2>Historico do desenvolvimento</h2><div class="block">${escapeHtml(patient.developmentHistory || 'Nao informado')}</div><h2>Observacoes socioemocionais</h2><div class="block">${escapeHtml(patient.socioemotionalNotes || 'Nao informado')}</div><h2>Documentos e anexos</h2><div class="block">${escapeHtml(patient.documents || 'Nenhum registro')}</div><h2>Observacoes da profissional</h2><div class="block">${escapeHtml(patient.observations || 'Nao informado')}</div><p><strong>Nota:</strong> ficha para organizacao e revisao profissional.</p></body></html>`;
+
+const downloadPatientWord = (patient) => {
+  const blob = new Blob([patientSheetHtml(patient)], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Ficha-${safeFileName(patient.name)}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const printPatientSheet = (patient) => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+  printWindow.opener = null;
+  printWindow.document.write(patientSheetHtml(patient));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+};
+
 function Header({ activeView, onNavigate }) {
   const navigation = [
     ['dashboard', 'Visao geral', APP_ROUTES.dashboard],
@@ -222,7 +247,64 @@ function ProfessionalProfileForm() {
   );
 }
 
-function PatientForm({ editingPatient, onSaved, onCancel }) {
+function PatientDocumentImport({ onDraftReady, onClose }) {
+  const [files, setFiles] = useState([]);
+  const [consent, setConsent] = useState(false);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [reading, setReading] = useState(false);
+
+  const handleFiles = (event) => {
+    setFiles(Array.from(event.target.files || []));
+    setStatus('');
+    setError('');
+  };
+
+  const handleImport = async () => {
+    setError('');
+    setStatus('');
+    setReading(true);
+    try {
+      const result = await importPatientDocuments(files, setStatus);
+      const documentNote = `Leitura local de: ${result.documents}. Revise as informacoes antes de salvar.`;
+      onDraftReady({
+        ...result.extracted,
+        documents: documentNote,
+      });
+      setFiles([]);
+      setStatus(`Rascunho preenchido com base em ${result.textLength} caracteres identificados. Revise todos os campos abaixo.`);
+    } catch (importError) {
+      setError(importError.message || 'Nao foi possivel ler os arquivos selecionados.');
+    } finally {
+      setReading(false);
+    }
+  };
+
+  return (
+    <section className="panel patient-import-panel" aria-labelledby="patient-import-title">
+      <div className="panel-heading">
+        <div><p className="eyebrow">Cadastro assistido</p><h2 id="patient-import-title">Importar dados do futuro paciente</h2><p className="muted">PDF, Word .docx, imagem ou texto. A leitura acontece neste navegador e preenche apenas um rascunho da ficha.</p></div>
+        <button type="button" className="btn-secondary" onClick={onClose}>Fechar importacao</button>
+      </div>
+      {error && <div className="error-message">{error}</div>}
+      {status && <div className="info-box import-progress">{status}</div>}
+      <div className="import-layout">
+        <label className="file-import-zone" htmlFor="patient-document-import">
+          <input id="patient-document-import" type="file" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/jpeg,image/png,image/webp" multiple onChange={handleFiles} disabled={reading} />
+          <strong>{files.length ? `${files.length} arquivo(s) selecionado(s)` : 'Selecionar arquivos'}</strong>
+          <span>Use PDF, Word .docx, JPG, PNG, WEBP ou TXT. Ate 5 arquivos de 12 MB cada.</span>
+        </label>
+        <div className="import-file-list" aria-live="polite">
+          {files.length ? files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>) : <span>Nenhum arquivo selecionado.</span>}
+        </div>
+      </div>
+      <label className="checkbox-row import-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={reading} />Confirmo que tenho autorizacao para tratar esses dados e que vou revisar a ficha antes de salvar.</label>
+      <div className="form-actions"><button type="button" className="btn-primary" onClick={handleImport} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documentos...' : 'Ler e preencher ficha'}</button></div>
+    </section>
+  );
+}
+
+function PatientForm({ editingPatient, importDraft, onImportDraftConsumed, onSaved, onCancel }) {
   const { addPatient, updatePatient } = useData();
   const [form, setForm] = useState(emptyPatient);
   const [error, setError] = useState('');
@@ -231,6 +313,13 @@ function PatientForm({ editingPatient, onSaved, onCancel }) {
     setForm(editingPatient ? { ...emptyPatient, ...editingPatient } : emptyPatient);
     setError('');
   }, [editingPatient]);
+
+  useEffect(() => {
+    if (!importDraft) return;
+    setForm({ ...emptyPatient, ...importDraft });
+    setError('Revise os campos preenchidos pela leitura antes de salvar a ficha.');
+    onImportDraftConsumed?.();
+  }, [importDraft, onImportDraftConsumed]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -316,7 +405,7 @@ function PatientCase({ patient, onStartApplication, onEdit, onNavigate }) {
 
   return (
     <section className="panel case-panel" aria-labelledby="case-title">
-      <div className="panel-heading"><div><p className="eyebrow">Ficha individual</p><h2 id="case-title">{patient.name}</h2><p className="muted">{age ? `${age.years} anos` : 'Idade nao calculada'} | {patient.school || 'Escola nao informada'}</p></div><div className="button-row"><button type="button" className="btn-secondary" onClick={() => onEdit(patient)}>Editar ficha</button><button type="button" className="btn-primary" onClick={onStartApplication}>Nova aplicacao</button></div></div>
+      <div className="panel-heading"><div><p className="eyebrow">Ficha individual</p><h2 id="case-title">{patient.name}</h2><p className="muted">{age ? `${age.years} anos` : 'Idade nao calculada'} | {patient.school || 'Escola nao informada'}</p></div><div className="button-row"><button type="button" className="btn-secondary" onClick={() => onEdit(patient)}>Editar ficha</button><button type="button" className="btn-secondary" onClick={() => downloadPatientWord(patient)}>Baixar ficha Word</button><button type="button" className="btn-secondary" onClick={() => printPatientSheet(patient)}>Salvar ficha PDF</button><button type="button" className="btn-primary" onClick={onStartApplication}>Nova aplicacao</button></div></div>
       <div className="case-grid">
         <div><span className="field-label">Queixa principal</span><p>{patient.mainConcern || 'Nao informado'}</p></div>
         <div><span className="field-label">Motivo da avaliacao</span><p>{patient.evaluationReason || 'Nao informado'}</p></div>
@@ -544,6 +633,8 @@ function Workspace() {
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [editingPatient, setEditingPatient] = useState(null);
   const [editingApplication, setEditingApplication] = useState(null);
+  const [showPatientImport, setShowPatientImport] = useState(false);
+  const [patientImportDraft, setPatientImportDraft] = useState(null);
 
   const navigateToView = (view) => {
     if (view !== 'applications') setEditingApplication(null);
@@ -552,11 +643,17 @@ function Workspace() {
   const selectPatient = (patientId) => { setSelectedPatientId(patientId); navigateToView('patients'); };
   const startApplication = (patientId = selectedPatientId) => { setSelectedPatientId(patientId); setEditingApplication(null); navigateToView('applications'); };
   const openApplication = (application) => { setEditingApplication(application); setSelectedPatientId(application.patientId); navigateToView('applications'); };
+  const openPatientImport = () => {
+    setEditingPatient(null);
+    setShowPatientImport(true);
+    navigateToView('patients');
+  };
 
   const renderActivePage = () => {
     if (activeView === 'patients') {
       return <>
-        <PatientForm editingPatient={editingPatient} onSaved={() => { setEditingPatient(null); navigateToView('patients'); }} onCancel={() => setEditingPatient(null)} />
+        {showPatientImport && <PatientDocumentImport onClose={() => setShowPatientImport(false)} onDraftReady={(draft) => { setEditingPatient(null); setPatientImportDraft(draft); setShowPatientImport(false); window.setTimeout(() => document.getElementById('patient-form-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); }} />}
+        <PatientForm editingPatient={editingPatient} importDraft={patientImportDraft} onImportDraftConsumed={() => setPatientImportDraft(null)} onSaved={() => { setEditingPatient(null); navigateToView('patients'); }} onCancel={() => setEditingPatient(null)} />
         <PatientList selectedPatientId={selectedPatientId} onSelect={selectPatient} onEdit={(patient) => { setEditingPatient(patient); setSelectedPatientId(patient.id); }} />
         {patients.find((patient) => patient.id === selectedPatientId) && <PatientCase patient={patients.find((patient) => patient.id === selectedPatientId)} onStartApplication={() => startApplication(selectedPatientId)} onEdit={(patient) => setEditingPatient(patient)} onNavigate={navigateToView} />}
       </>;
@@ -567,7 +664,7 @@ function Workspace() {
     if (activeView === 'reports') return <ReportView selectedPatientId={selectedPatientId} onPatientChange={setSelectedPatientId} />;
     if (activeView === 'profile') return <ProfessionalProfileForm />;
     return <>
-      <div className="welcome-band"><div><p className="eyebrow">Fluxo de trabalho</p><h2>Organize cada caso com registro, revisao e integracao.</h2><p>O sistema calcula e organiza. A profissional interpreta, revisa, valida e assina.</p></div><div className="button-row"><button type="button" className="btn-primary" onClick={() => { setEditingPatient(null); navigateToView('patients'); }}>Cadastrar adolescente</button><button type="button" className="btn-secondary" onClick={() => startApplication()}>Nova aplicacao</button></div></div>
+      <div className="welcome-band"><div><p className="eyebrow">Fluxo de trabalho</p><h2>Organize cada caso com registro, revisao e integracao.</h2><p>O sistema calcula e organiza. A profissional interpreta, revisa, valida e assina.</p></div><div className="button-row"><button type="button" className="btn-primary" onClick={() => { setEditingPatient(null); navigateToView('patients'); }}>Cadastrar adolescente</button><button type="button" className="btn-secondary" onClick={openPatientImport}>Importar documentos</button><button type="button" className="btn-secondary" onClick={() => startApplication()}>Nova aplicacao</button></div></div>
       <ProfessionalProfileForm />
       <RecentApplications onEdit={openApplication} />
     </>;

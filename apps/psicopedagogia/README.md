@@ -8,6 +8,10 @@ O fluxo de login foi removido por solicitação. O aplicativo abre diretamente n
 
 Os registros ficam no `localStorage` do navegador em `psi.hfnew.com.br`. Como o app contém informações sensíveis, use somente em computador controlado e mantenha cópias seguras dos relatórios exportados.
 
+## Importação assistida
+
+Na tela inicial, o botão `Importar documentos` abre a leitura local de até cinco arquivos por vez: PDF, Word `.docx`, texto, JPG, PNG ou WEBP. A extração ocorre no navegador e apenas preenche um rascunho revisável da ficha; os anexos não são enviados nem armazenados no servidor. Para documentos Word antigos, converta `.doc` para `.docx` ou PDF antes da importação.
+
 ## Páginas
 
 - `/`: visão geral.
