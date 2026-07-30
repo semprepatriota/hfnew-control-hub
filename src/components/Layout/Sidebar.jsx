@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  GraduationCap,
   Zap,
   Brain,
   Hammer,
@@ -31,6 +32,14 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   };
 
   const menuItems = [
+    {
+      id: 'psychopedagogy',
+      label: 'Psicopedagogia',
+      path: 'https://psi.hfnew.com.br/',
+      icon: GraduationCap,
+      color: 'neon-yellow',
+      external: true
+    },
     {
       id: 1,
       label: 'Painel',
@@ -165,10 +174,15 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
             const Icon = item.icon;
             const active = isActive(item.path);
 
+            const itemProps = item.external
+              ? { href: item.path, target: '_blank', rel: 'noopener noreferrer' }
+              : { to: item.path };
+            const ItemComponent = item.external ? 'a' : Link;
+
             return (
-              <Link
+              <ItemComponent
                 key={item.id}
-                to={item.path}
+                {...itemProps}
                 className={`nav-item ${active ? 'active' : ''} ${item.color}`}
                 title={!isOpen ? item.label : ''}
                 onClick={handleNavigate}
@@ -188,7 +202,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
                 )}
 
                 {active && <div className="nav-item-glow"></div>}
-              </Link>
+                </ItemComponent>
             );
           })}
         </nav>

@@ -137,6 +137,21 @@
   box-shadow: 0 0 10px #FFD700;
 }
 
+.nav-item.neon-yellow {
+  color: #FFE66D;
+}
+
+.nav-item.neon-yellow::before {
+  background: #FFE000;
+  box-shadow: 0 0 10px #FFE000;
+}
+
+.nav-item.neon-yellow:hover {
+  background: rgba(255, 224, 0, 0.1);
+  color: #FFF3A6;
+  border-color: rgba(255, 224, 0, 0.38);
+}
+
 .nav-item.neon-red::before {
   background: #FF0000;
   box-shadow: 0 0 10px #FF0000;
