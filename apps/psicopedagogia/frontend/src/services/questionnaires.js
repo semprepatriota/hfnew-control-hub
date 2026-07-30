@@ -1,0 +1,320 @@
+const question = (id, text, section = '') => ({ id: String(id), text, section });
+
+const yesNo = [
+  { id: 'sim', label: 'Sim', score: null },
+  { id: 'nao', label: 'Nao', score: null },
+];
+
+const frequencyFour = [
+  { id: 'raramente', label: 'Raramente', score: null },
+  { id: 'algumas-vezes', label: 'Algumas vezes', score: null },
+  { id: 'frequentemente', label: 'Frequentemente', score: null },
+  { id: 'muito-frequentemente', label: 'Muito frequentemente', score: null },
+];
+
+const connersOptions = [
+  { id: '0', label: 'Nunca', score: 0 },
+  { id: '1', label: 'As vezes', score: 1 },
+  { id: '2', label: 'Frequentemente', score: 2 },
+  { id: '3', label: 'Sempre', score: 3 },
+];
+
+const eleOptions = [
+  { id: '1', label: 'Nunca', score: 1 },
+  { id: '2', label: 'Raramente', score: 2 },
+  { id: '3', label: 'As vezes', score: 3 },
+  { id: '4', label: 'Frequentemente/Sempre', score: 4 },
+];
+
+const snapOptions = [
+  { id: 'nem-um-pouco', label: 'Nem um pouco', score: null },
+  { id: 'so-um-pouco', label: 'So um pouco', score: null },
+  { id: 'bastante', label: 'Bastante', score: null },
+  { id: 'demais', label: 'Demais', score: null },
+];
+
+const sdqOptions = [
+  { id: 'falso', label: 'Falso', score: null },
+  { id: 'mais-ou-menos', label: 'Mais ou menos verdadeiro', score: null },
+  { id: 'verdadeiro', label: 'Verdadeiro', score: null },
+];
+
+const attentionItems = [
+  'A aluna ou o aluno e inquieto, agitando maos ou pes e tendo dificuldade para permanecer sentado.',
+  'Fala muito e frequentemente interrompe assuntos alheios.',
+  'Responde perguntas de forma impulsiva e precipitada.',
+  'Parece nao escutar direito o que as pessoas falam.',
+  'Nao permanece em atividades que demandem muita concentracao, como escrita, leitura ou montagem.',
+  'Qualquer movimentacao ou barulho pode distrair do que estiver fazendo.',
+  'Distrai-se com detalhes e comete erros simples nas atividades ou tarefas.',
+  'Tem dificuldade para seguir instrucoes ou realizar atividades em sequencia.',
+  'E facilmente distraido por sons, movimentos ou outras coisas ao redor.',
+  'Precisa de supervisao constante para nao cometer erros simples.',
+  'Frequentemente parece nao ouvir quando alguem fala diretamente com ele.',
+  'Prefere fazer somente coisas de que gosta ou que considera interessantes, com possivel hiperfoco.',
+  'Tem dificuldade em seguir instrucoes, mesmo quando dadas diretamente.',
+  'Esquece combinados, objetos pessoais, roupas ou brinquedos e precisa ser lembrado.',
+  'Apresenta dificuldade para compreender tarefas que envolvam localizacao ou orientacao espacial.',
+];
+
+const attentionObservationItems = [
+  'Nao consegue ficar parado; corre, pula, escala ou se remexe na cadeira.',
+  'Nao consegue permanecer quieto por muito tempo.',
+  'Quando precisa ficar sentado, mexe-se, tamborila ou brinca com objetos ao redor.',
+  'Na sala de aula, levanta muitas vezes, perturba colegas ou pede para sair.',
+  'Nao demonstra interesse por brincadeiras ou atividades mais calmas.',
+  'Tem muita energia e parece estar sempre acelerado.',
+  'Fala muito, chegando a ser cansativo para as pessoas.',
+  'Interrompe as pessoas e nao espera sua vez.',
+  'Nao gosta de esperar e quer tudo imediatamente.',
+];
+
+const teste1Items = [
+  'Com que frequencia voce comete erros por falta de atencao quando precisa trabalhar em um projeto chato ou dificil?',
+  'Com que frequencia voce tem dificuldade para manter a atencao em um trabalho chato ou repetitivo?',
+  'Com que frequencia voce tem dificuldade para se concentrar no que as pessoas dizem, mesmo quando falam diretamente com voce?',
+  'Com que frequencia voce deixa um projeto pela metade depois de fazer as partes mais dificeis?',
+  'Com que frequencia voce tem dificuldade para fazer um trabalho que exige organizacao?',
+  'Quando precisa fazer algo que exige muita concentracao, com que frequencia voce evita ou adia o inicio?',
+  'Com que frequencia voce coloca as coisas fora do lugar ou tem dificuldade para encontra-las em casa ou no trabalho?',
+  'Com que frequencia voce se distrai com atividades ou barulho ao seu redor?',
+  'Com que frequencia voce tem dificuldade para lembrar de compromissos ou obrigacoes?',
+  'Com que frequencia voce se distrai com atividades ou barulho ao seu redor?',
+  'Pessoas proximas ja notaram sua hiperatividade ou desatencao?',
+  'Voce sente que seus sintomas prejudicam sua vida social, profissional ou academica?',
+];
+
+const eleItems = [
+  'Demora mais tempo que os colegas para ler palavras.',
+  'Demora mais tempo que os colegas para ler textos.',
+  'Troca letras ao ler silabas e palavras na leitura oral.',
+  'Fica ensaiando a palavra antes de ler oralmente.',
+  'Gagueja, treme, fica vermelho ou relê palavras ao ler oralmente.',
+  'Inventa, chuta, troca a palavra ou tenta adivinhar palavras na leitura.',
+  'Nao compreende o que le ou nao entende o que aconteceu no texto.',
+  'Troca, omite ou acrescenta letras na escrita.',
+  'Escreve textos simples, pobres em ideias e detalhes quando comparado aos colegas.',
+  'Conta oralmente uma historia melhor do que consegue escreve-la.',
+  'Demora mais tempo que os colegas nos momentos de copia.',
+  'Tem letra dificil de ler e entender.',
+  'Evita situacoes que envolvem leitura e escrita.',
+  'Tem dificuldade para identificar ou produzir rimas.',
+  'Demora para lembrar nomes de pessoas, objetos, sentimentos ou conteudos ja conhecidos.',
+  'Tem dificuldade para memorizar listas ou sequencias de informacoes.',
+];
+
+const tdaItems = [
+  'Voce frequentemente se sente inquieto ou agitado?',
+  'Tem dificuldade em permanecer sentado por longos periodos?',
+  'Encontra-se constantemente movendo os pes ou as maos?',
+  'Costuma interromper os outros durante as conversas?',
+  'Tem dificuldade em esperar sua vez em situacoes sociais?',
+  'Sente uma sensacao de impaciencia cronica?',
+  'Frequentemente muda de atividades rapidamente?',
+  'Tem dificuldade em se concentrar em uma tarefa por muito tempo?',
+  'Encontra-se distraido por pensamentos ou impulsos?',
+  'Sente dificuldade em relaxar e descansar?',
+];
+
+const deficitItems = [
+  'As batatas sao cozidas em agua fria.',
+  'Depois que chove muito, o chao fica todo molhado.',
+  'O trem de carga carrega muitos passageiros e so anda nos trilhos.',
+  'O aviao e mais rapido que o navio porque voa e o navio nao.',
+  'Os pintinhos nascem de ovos, mas os gatinhos nascem da barriga da mae.',
+  'Eu gosto de ir ao cinema; la estudamos muito.',
+  'Minha mae assa o bolo na geladeira.',
+  'Meu pai e mais velho do que eu, mas meu avo e mais velho que meu pai.',
+  'Os cavalos moram no chiqueiro e os porcos moram na cocheira.',
+  'Quando vou viajar, arrumo minhas roupas e as guardo na maquina.',
+];
+
+const connersItems = [
+  'Desperta a noite.',
+  'Tem medo diante de novas situacoes.',
+  'Tem medo de gente.',
+  'Tem medo de estar sozinho.',
+  'Preocupa-se com doencas e mortes.',
+  'Mostra-se tenso e rigido.',
+  'Apresenta sacudidas ou espasmos musculares.',
+  'Apresenta tremores.',
+  'Sente dores de cabeca.',
+  'Sente dores de estomago.',
+  'Tem vomitos.',
+  'Queixa-se de enfermidades e dores.',
+  'Deixa-se levar por outras criancas.',
+  'Desafia e intimida os demais.',
+  'E valente ou arrogante e desrespeita seus superiores.',
+  'E descarado com os adultos.',
+  'E timido diante dos amigos.',
+  'Teme nao agradar seus amigos.',
+  'Tem amigos.',
+  'E malicioso com seus irmaos.',
+  'Briga constantemente.',
+  'Critica muito outras criancas.',
+  'Aprende na escola.',
+  'Gosta de ir a escola.',
+  'Tem medo de ir a escola.',
+  'Desobedece as normas da escola.',
+  'Mente, culpando os demais dos seus erros.',
+  'Realiza roubos de seus pais.',
+  'Realiza roubos na escola.',
+  'Rouba em lojas, barracas e outros lugares.',
+  'Tem problemas com a policia.',
+  'Pretende fazer tudo bem feito ou perfeito.',
+  'Necessita fazer sempre as coisas da mesma maneira.',
+  'Tem objetivos muito altos.',
+  'Distrai-se facilmente.',
+  'Mostra-se nervoso e inquieto.',
+  'Nao pode ficar quieto.',
+  'Sobe em todas as partes.',
+  'Desperta-se muito cedo.',
+  'Nao fica quieto durante as refeicoes.',
+  'Se comeca a fazer uma coisa repetitivamente, e impossivel parar.',
+  'Seus atos dao a impressao de serem movidos por um motor.',
+];
+
+const snapItems = [
+  'Nao consegue prestar muita atencao a detalhes ou comete erros por descuido nos trabalhos da escola ou tarefas.',
+  'Tem dificuldade de manter a atencao em tarefas ou atividades de lazer.',
+  'Parece nao estar ouvindo quando se fala diretamente com ele.',
+  'Nao segue instrucoes ate o fim e nao termina deveres, tarefas e obrigacoes.',
+  'Tem dificuldade para organizar tarefas e atividades.',
+  'Evita, nao gosta ou se envolve contra a vontade em tarefas que exigem esforco mental prolongado.',
+  'Perde coisas necessarias para atividades, como brinquedos, deveres, lapis ou livros.',
+  'Distrai-se com estimulos externos.',
+  'E esquecido em atividades do dia a dia.',
+  'Mexe com as maos ou os pes ou se remexe na cadeira.',
+  'Sai do lugar na sala de aula ou em situacoes em que se espera que fique sentado.',
+  'Corre de um lado para outro ou sobe demais nas coisas em situacoes inapropriadas.',
+  'Tem dificuldade em brincar ou envolver-se em atividades de lazer de forma calma.',
+  'Nao para ou frequentemente esta a mil por hora.',
+  'Fala em excesso.',
+  'Responde as perguntas de forma precipitada antes de serem terminadas.',
+  'Tem dificuldade de esperar sua vez.',
+  'Interrompe os outros ou se intromete em conversas e jogos.',
+];
+
+const sdqItems = [
+  'Tem consideracao pelos sentimentos de outras pessoas.',
+  'Nao consegue parar sentado quando faz licao ou come; mexe-se muito.',
+  'Queixa-se de dor de cabeca, dor de barriga ou enjoo.',
+  'Tem boa vontade em compartilhar doces, brinquedos e lapis.',
+  'Frequentemente tem acessos de raiva ou crises de birra.',
+  'E solitario e prefere brincar sozinho.',
+  'Geralmente e obediente e faz o que os adultos pedem.',
+  'Tem muitas preocupacoes e parece preocupado com tudo.',
+  'Tenta ser atencioso se alguem parece magoado ou aflito.',
+  'Esta sempre agitado, balancando pernas ou mexendo as maos.',
+  'Tem pelo menos um bom amigo ou amiga.',
+  'Frequentemente briga com outras criancas ou as amedronta.',
+  'Frequentemente parece triste, desanimado ou choroso.',
+  'Em geral, e querido por outras criancas.',
+  'Facilmente perde a concentracao.',
+  'Fica inseguro quando faz algo pela primeira vez e perde a confianca.',
+  'E gentil com criancas mais novas.',
+  'Frequentemente engana ou mente.',
+  'Outras criancas pegam no pe ou o atormentam.',
+  'Frequentemente se oferece para ajudar outras pessoas.',
+  'Pensa nas coisas antes de faze-las.',
+  'Rouba coisas de casa, da escola ou de outros lugares.',
+  'Da-se melhor com adultos do que com outras criancas.',
+  'Tem muitos medos e assusta-se facilmente.',
+  'Completa as tarefas que comeca e tem boa concentracao.',
+];
+
+const mchatItems = [
+  'Se voce apontar para algo do outro lado da sala, a crianca olha para o que esta apontando?',
+  'Ja alguma vez se interrogou se a sua crianca poderia ser surda?',
+  'A sua crianca brinca ao faz-de-conta?',
+  'A sua crianca gosta de trepar para as coisas?',
+  'A sua crianca faz movimentos invulgares com os dedos perto dos olhos?',
+  'A sua crianca aponta com um dedo para pedir algo ou conseguir ajuda?',
+  'A sua crianca aponta com um dedo para mostrar algo interessante?',
+  'A sua crianca esta interessada noutras criancas?',
+  'A sua crianca mostra-lhe coisas trazendo-as ou levantando-as para que as veja?',
+  'A sua crianca responde quando e chamada pelo nome?',
+  'Quando sorri para a sua crianca, ela sorri de volta?',
+  'A sua crianca fica incomodada com ruidos do quotidiano?',
+  'A sua crianca ja anda?',
+  'A sua crianca olha nos olhos quando voce fala ou brinca com ela?',
+  'A sua crianca tenta imitar aquilo que voce faz?',
+  'Se voce virar a cabeca para olhar algo, a sua crianca olha para ver o que e?',
+  'A sua crianca tenta que voce olhe para ela?',
+  'A sua crianca compreende quando voce lhe diz para fazer alguma coisa?',
+  'Quando acontece algo novo, a sua crianca olha para a sua cara para ver sua reacao?',
+  'A sua crianca gosta de atividades com movimento, como ser embalada ou balancada?',
+];
+
+const toQuestions = (items, section = '') => items.map((text, index) => question(index + 1, text, section));
+
+export const QUESTIONNAIRES = {
+  'rastreio-tdah-adolescente': {
+    title: 'Teste de TDAH para adolescente',
+    note: 'Responder com base no comportamento observado nos ultimos seis meses. O material nao informa ponto de corte.',
+    options: yesNo,
+    scoringMode: 'manual',
+    items: [...toQuestions(attentionItems, 'Observe se o aprendente ou paciente'), ...toQuestions(attentionObservationItems, 'Aspectos para observacao')],
+  },
+  'questionario-funcoes-executivas': {
+    title: 'Teste 1 - rastreio atencional',
+    note: 'Registrar a frequencia habitual. O material nao informa regra de correcao normativa.',
+    options: frequencyFour,
+    scoringMode: 'manual',
+    items: toQuestions(teste1Items),
+  },
+  ele: {
+    title: 'Escala de Leitura e Escrita - ELE | Versao professores',
+    note: 'Responder pela frequencia observada nos ultimos seis meses. O material informa escala de 1 a 4, minimo 16 e maximo 64.',
+    options: eleOptions,
+    scoringMode: 'raw',
+    maximum: 64,
+    items: toQuestions(eleItems),
+    supplementalFields: ['Desempenho em portugues comparado a turma', 'Recebe reforco, apoio ou adaptacao pedagogica?', 'Evoluiu consideravelmente em leitura e escrita?'],
+  },
+  'tda-hiperatividade': {
+    title: 'Teste TDA - hiperatividade fisica e/ou mental',
+    note: 'Modelo para adolescente e adulto com respostas sim/nao. O material nao informa ponto de corte.',
+    options: yesNo,
+    scoringMode: 'manual',
+    items: toQuestions(tdaItems),
+  },
+  'conners-pais-42': {
+    title: 'Escala Conners - Pais | 42 itens',
+    note: 'A escala do arquivo apresenta Nunca=0, As vezes=1, Frequentemente=2 e Sempre=3. As normas e fatores devem vir da versao oficial.',
+    options: connersOptions,
+    scoringMode: 'raw',
+    maximum: 126,
+    items: toQuestions(connersItems, 'Comportamento habitual em casa'),
+  },
+  'prova-atencao-concentracao': {
+    title: 'Teste para detectar deficit de atencao e concentracao',
+    note: 'O professor le as frases para o entrevistado e registra Sim ou Nao. O arquivo nao fornece chave de correcao.',
+    options: yesNo,
+    scoringMode: 'manual',
+    items: toQuestions(deficitItems, 'Prova de atencao'),
+  },
+  'mchat-rf': {
+    title: 'M-CHAT-R/F',
+    note: 'Conteudo mantido apenas para registro do material enviado. Este instrumento e infantil e permanece bloqueado para adolescentes.',
+    options: yesNo,
+    scoringMode: 'manual',
+    blocked: true,
+    items: toQuestions(mchatItems),
+  },
+  'snap-iv-escola': {
+    title: 'SNAP-IV - Escola',
+    note: 'Questionario escolar com quatro niveis de resposta. O arquivo nao informa uma regra propria de correcao; nao calcular ponto de corte automaticamente.',
+    options: snapOptions,
+    scoringMode: 'manual',
+    items: toQuestions(snapItems),
+  },
+  sdq: {
+    title: 'Questionario de Capacidades e Dificuldades - SDQ',
+    note: 'Questionario com 25 itens e tres niveis de resposta, seguido de perguntas de impacto. O arquivo nao fornece regra completa de correcao.',
+    options: sdqOptions,
+    scoringMode: 'manual',
+    items: toQuestions(sdqItems),
+    supplementalFields: ['Comentario ou preocupacoes', 'Dificuldade na escola', 'Tempo de existencia', 'Impacto para o adolescente e para a turma'],
+  },
+};

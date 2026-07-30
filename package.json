@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:psicopedagogia": "npm --prefix apps/psicopedagogia/frontend run build",
     "preview": "vite preview"
   },
   "dependencies": {
