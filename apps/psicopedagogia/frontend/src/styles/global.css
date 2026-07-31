@@ -108,6 +108,16 @@ h3 { margin-bottom: 7px; font-size: 16px; }
 .import-file-list span { padding: 7px 9px; color: var(--muted); background: #ffffff; border: 1px solid #e0eaf2; border-radius: 4px; font-size: 13px; }
 .import-consent { max-width: 850px; color: var(--ink); }
 .import-progress { margin-top: 0; }
+.document-review-panel { margin: 16px 0; padding: 16px; background: #fbfdff; border: 1px solid #b7c9d6; border-top: 4px solid var(--olive); }
+.compact-import-layout { margin-top: 12px; }
+.compact-file-zone { min-height: 106px; }
+.document-review-details { margin-top: 16px; padding: 12px; background: #f7fafc; border: 1px solid var(--line); }
+.document-review-details summary { color: var(--primary-dark); cursor: pointer; font-weight: 800; }
+.document-review-details[open] summary { margin-bottom: 12px; }
+.document-text-preview { width: 100%; min-height: 180px; margin-top: 14px; padding: 11px; color: var(--ink); background: #ffffff; border: 1px solid var(--line); line-height: 1.5; resize: vertical; }
+.document-comparison-wrap { margin-top: 12px; }
+.document-comparison-table { min-width: 760px; }
+.document-comparison-table td:nth-child(1) { min-width: 330px; }
 
 .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; border-radius: 5px; }
 table { width: 100%; border-collapse: collapse; }

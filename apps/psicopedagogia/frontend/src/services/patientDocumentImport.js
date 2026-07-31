@@ -118,7 +118,7 @@ const extractFileText = async (file, onProgress) => {
   return extractImageText(file, onProgress);
 };
 
-export const importPatientDocuments = async (files, onProgress) => {
+export const readImportedDocuments = async (files, onProgress) => {
   const fileList = Array.from(files || []);
   if (!fileList.length) throw new Error('Selecione ao menos um arquivo para leitura.');
   if (fileList.length > MAX_FILES) throw new Error(`Selecione no maximo ${MAX_FILES} arquivos por vez.`);
@@ -139,7 +139,71 @@ export const importPatientDocuments = async (files, onProgress) => {
   const rawText = cleanText(parts.join('\n\n'));
   if (!rawText) throw new Error('Nao foi possivel identificar texto legivel nos arquivos selecionados. Tente uma imagem mais nitida ou um PDF/DOCX com texto selecionavel.');
 
-  const extracted = extractPatientDraft(rawText);
-  const documents = fileList.map((file) => file.name).join(', ');
-  return { extracted, documents, textLength: rawText.length };
+  return {
+    documents: fileList.map((file) => file.name).join(', '),
+    fileNames: fileList.map((file) => file.name),
+    text: rawText,
+    textLength: rawText.length,
+  };
+};
+
+const normalizedMatch = (value) => cleanText(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const optionForResponse = (value, options) => {
+  const normalized = normalizedMatch(value);
+  if (!normalized || normalized.length > 120) return null;
+  const candidates = options.filter((option) => {
+    const label = normalizedMatch(option.label);
+    const id = normalizedMatch(option.id);
+    return normalized === label
+      || normalized === id
+      || normalized === `x ${label}`
+      || normalized === `marcado ${label}`
+      || normalized === `resposta ${label}`
+      || normalized.endsWith(` resposta ${label}`);
+  });
+  return candidates.length === 1 ? candidates[0].id : null;
+};
+
+export const detectQuestionnaireAnswers = (rawText, questionnaire) => {
+  if (!questionnaire?.items?.length || !questionnaire?.options?.length) return {};
+  const detected = {};
+  let pendingIndex = null;
+
+  rawText.split('\n').forEach((line) => {
+    const numbered = line.match(/^\s*(\d{1,3})\s*[.)\-:]\s*(.*)$/);
+    if (numbered) {
+      const index = Number(numbered[1]) - 1;
+      pendingIndex = index >= 0 && index < questionnaire.items.length ? index : null;
+      if (pendingIndex !== null) {
+        const response = optionForResponse(numbered[2], questionnaire.options);
+        if (response) {
+          detected[pendingIndex] = response;
+          pendingIndex = null;
+        }
+      }
+      return;
+    }
+
+    if (pendingIndex !== null && line.trim()) {
+      const response = optionForResponse(line, questionnaire.options);
+      if (response) detected[pendingIndex] = response;
+      pendingIndex = null;
+    }
+  });
+
+  return detected;
+};
+
+export const importPatientDocuments = async (files, onProgress) => {
+  const imported = await readImportedDocuments(files, onProgress);
+  return {
+    ...imported,
+    extracted: extractPatientDraft(imported.text),
+  };
 };

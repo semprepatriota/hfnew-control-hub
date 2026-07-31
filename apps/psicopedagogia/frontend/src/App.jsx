@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { DataProvider } from './contexts/DataContext';
 import { useData } from './hooks/useData';
@@ -10,7 +10,7 @@ import {
   INTEGRATION_DOMAINS,
   INVESTIGATIVE_HYPOTHESES,
 } from './services/instruments';
-import { importPatientDocuments } from './services/patientDocumentImport';
+import { detectQuestionnaireAnswers, importPatientDocuments, readImportedDocuments } from './services/patientDocumentImport';
 import './styles/global.css';
 
 const today = new Date().toISOString().slice(0, 10);
@@ -453,12 +453,81 @@ function QuestionnaireBlock({ instrument, answers, onChange, supplementalAnswers
   return <div className="questionnaire-block"><div className="section-title-row"><div><p className="eyebrow">Bloco 2 - Aplicacao</p><h3>{questionnaire.title}</h3></div><span className="status-pill status-blue">{answeredCount}/{questionnaire.items.length} respondidos</span></div><div className="info-box"><strong>Nota tecnica:</strong> {questionnaire.note} Marque somente uma alternativa em cada item.</div><div className="table-wrap"><table className="questionnaire-table"><thead><tr><th>N.</th><th>Indicador investigado</th>{questionnaire.options.map((option) => <th key={option.id}>{option.id}</th>)}</tr></thead><tbody>{questionnaire.items.map((item, index) => { const itemText = typeof item === 'string' ? item : item.text; return <tr key={typeof item === 'string' ? item : item.id}><td>{index + 1}</td><td>{itemText}</td>{questionnaire.options.map((option) => <td key={option.id}><label className="response-cell"><input type="radio" name={`question-${index}`} checked={answers[index] === option.id} onChange={() => onChange(index, option.id)} /><span>{option.id}</span></label></td>)}</tr>; })}</tbody></table></div><div className="questionnaire-summary">{hasScoring ? <><strong>Resultado automatico do protocolo:</strong> {total}/{questionnaire.maximum || questionnaire.items.length} pontos | {(total / (questionnaire.maximum || questionnaire.items.length) * 100).toFixed(1)}%{range ? ` | ${range.label}` : ' | revisar conforme o manual.'}</> : <><strong>Registro atual:</strong> {answeredCount} de {questionnaire.items.length} respostas. O arquivo nao define ponto de corte ou regra automatica; a interpretacao deve ser manual.</>}</div>{questionnaire.ranges?.length ? <div className="range-table"><table><thead><tr><th>Pontuacao</th><th>Porcentagem</th><th>Leitura descritiva</th></tr></thead><tbody>{questionnaire.ranges.map((item) => <tr key={item.range}><td>{item.range}</td><td>{item.percentage}</td><td>{item.label}</td></tr>)}</tbody></table></div> : null}{questionnaire.supplementalFields?.length ? <div className="supplemental-fields"><div className="section-title-row"><h3>Campos complementares</h3></div>{questionnaire.supplementalFields.map((field, index) => <div className="form-group" key={field}><label htmlFor={`supplemental-${index}`}>{field}</label><textarea id={`supplemental-${index}`} rows="2" value={supplementalAnswers[index] || ''} onChange={(event) => onSupplementalChange(index, event.target.value)} /></div>)}</div> : null}</div>;
 }
 
+function SchoolResponseImport({ instrument, answers, documentReview, onDocumentRead, onApplySuggestions }) {
+  const [files, setFiles] = useState([]);
+  const [consent, setConsent] = useState(false);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [reading, setReading] = useState(false);
+  const questionnaire = instrument?.questionnaire;
+  const detectedCount = Object.keys(documentReview?.detectedAnswers || {}).length;
+
+  const readFiles = async () => {
+    setError('');
+    setStatus('');
+    setReading(true);
+    try {
+      const imported = await readImportedDocuments(files, setStatus);
+      const detectedAnswers = detectQuestionnaireAnswers(imported.text, questionnaire);
+      onDocumentRead({
+        fileNames: imported.fileNames,
+        extractedText: imported.text.slice(0, 30000),
+        textLength: imported.textLength,
+        detectedAnswers,
+        readAt: new Date().toISOString(),
+      });
+      setFiles([]);
+      setStatus(questionnaire
+        ? `${Object.keys(detectedAnswers).length} resposta(s) claramente identificada(s). Revise antes de aplicar.`
+        : 'Documento lido. Este instrumento nao possui questionario estruturado para comparacao automatica.');
+    } catch (readError) {
+      setError(readError.message || 'Nao foi possivel ler o documento selecionado.');
+    } finally {
+      setReading(false);
+    }
+  };
+
+  return (
+    <section className="document-review-panel" aria-labelledby="school-document-title">
+      <div className="section-title-row"><div><p className="eyebrow">Leitura para revisao</p><h3 id="school-document-title">Documento respondido pela escola</h3></div>{documentReview && <span className="status-pill status-blue">{detectedCount} sugestao(oes)</span>}</div>
+      <p className="muted">Importe o PDF ou Word .docx respondido. O leitor organiza o texto para comparacao; a correcao e a decisao final continuam sendo suas.</p>
+      {error && <div className="error-message">{error}</div>}
+      {status && <div className="info-box import-progress">{status}</div>}
+      <div className="import-layout compact-import-layout">
+        <label className="file-import-zone compact-file-zone" htmlFor="school-response-import">
+          <input id="school-response-import" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple onChange={(event) => { setFiles(Array.from(event.target.files || [])); setError(''); setStatus(''); }} disabled={reading} />
+          <strong>{files.length ? `${files.length} arquivo(s) selecionado(s)` : 'Selecionar PDF ou Word'}</strong>
+          <span>Ate 5 arquivos de 12 MB cada.</span>
+        </label>
+        <div className="import-file-list">{files.length ? files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>) : <span>Escolha o documento respondido pela escola.</span>}</div>
+      </div>
+      <label className="checkbox-row import-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={reading} />Confirmo que tenho autorizacao para ler esse documento e vou revisar toda sugestao antes de usar.</label>
+      <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler para revisao'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions}>Aplicar sugestoes em campos vazios</button>}</div>
+      {documentReview && <details className="document-review-details"><summary>Ver leitura e comparacao</summary><p className="muted">Arquivos: {documentReview.fileNames.join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.extractedText && <textarea className="document-text-preview" rows="10" readOnly value={documentReview.extractedText} aria-label="Texto extraido do documento" />}</details>}
+    </section>
+  );
+}
+
+function DocumentAnswerComparison({ questionnaire, answers, documentReview }) {
+  const documentAnswers = documentReview.detectedAnswers || {};
+  const indexes = [...new Set([...Object.keys(documentAnswers), ...Object.keys(answers)])].map(Number).sort((first, second) => first - second);
+  if (!Object.keys(documentAnswers).length) return <div className="warning-box">Nenhuma resposta foi reconhecida com seguranca. Confira o texto extraido abaixo e registre as respostas manualmente.</div>;
+  const answerLabel = (id) => questionnaire.options.find((option) => option.id === id)?.label || (id ? String(id) : 'Nao preenchida');
+  const status = (documentAnswer, manualAnswer) => {
+    if (!manualAnswer) return 'Pendente de revisao';
+    return documentAnswer === manualAnswer ? 'Confere' : 'Revisar divergencia';
+  };
+  return <div className="table-wrap document-comparison-wrap"><table className="document-comparison-table"><thead><tr><th>Item</th><th>Documento</th><th>Formulario</th><th>Comparacao</th></tr></thead><tbody>{indexes.map((index) => { const item = questionnaire.items[index]; const itemText = typeof item === 'string' ? item : item?.text; const documentAnswer = documentAnswers[index]; const manualAnswer = answers[index]; const match = status(documentAnswer, manualAnswer); return <tr key={index}><td><strong>{index + 1}.</strong> {itemText}</td><td>{answerLabel(documentAnswer)}</td><td>{answerLabel(manualAnswer)}</td><td><span className={`status-pill ${match === 'Confere' ? 'status-green' : 'status-yellow'}`}>{match}</span></td></tr>; })}</tbody></table></div>;
+}
+
 function EvaluationForm({ initialApplication, onSaved }) {
   const { patients, instruments, saveApplication, updateApplication } = useData();
   const [form, setForm] = useState(emptyApplication);
   const [results, setResults] = useState([makeResult()]);
   const [answers, setAnswers] = useState({});
   const [supplementalAnswers, setSupplementalAnswers] = useState({});
+  const [documentReview, setDocumentReview] = useState(null);
+  const previousInstrumentId = useRef('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const patient = patients.find((item) => item.id === form.patientId);
@@ -466,16 +535,19 @@ function EvaluationForm({ initialApplication, onSaved }) {
   const eligibility = getEligibility(instrument, patient);
 
   useEffect(() => {
+    previousInstrumentId.current = initialApplication?.testId || '';
     if (initialApplication) {
       setForm({ ...emptyApplication, ...initialApplication, reviewConfirmed: Boolean(initialApplication.reviewConfirmed) });
       setResults(initialApplication.results?.length ? initialApplication.results : [makeResult()]);
       setAnswers(initialApplication.answers || {});
       setSupplementalAnswers(initialApplication.supplementalAnswers || {});
+      setDocumentReview(initialApplication.sourceDocumentReview || null);
     } else {
       setForm({ ...emptyApplication });
       setResults([makeResult()]);
       setAnswers({});
       setSupplementalAnswers({});
+      setDocumentReview(null);
     }
     setError('');
     setSuccess('');
@@ -484,6 +556,8 @@ function EvaluationForm({ initialApplication, onSaved }) {
   useEffect(() => {
     if (!instrument?.questionnaire) setAnswers({});
     if (!instrument?.questionnaire) setSupplementalAnswers({});
+    if (previousInstrumentId.current && previousInstrumentId.current !== form.testId) setDocumentReview(null);
+    previousInstrumentId.current = form.testId;
   }, [form.testId]);
 
   const handleChange = (event) => {
@@ -537,6 +611,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
       results: questionnaireResult ? [...normalizedResults, questionnaireResult] : manualQuestionnaireResult ? [...normalizedResults, manualQuestionnaireResult] : normalizedResults,
       answers,
       supplementalAnswers,
+      sourceDocumentReview: documentReview,
       quantitativeAnalysis: form.quantitativeAnalysis.trim(),
       qualitativeAnalysis: form.qualitativeAnalysis.trim(),
       limitations: form.limitations.trim() || instrument.limitation,
@@ -563,6 +638,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
           <div className="form-group"><label htmlFor="conditions">Condicoes de aplicacao</label><input id="conditions" name="conditions" placeholder="Ambiente, interrupcoes e recursos" value={form.conditions} onChange={handleChange} /></div>
         </div>
         {instrument && <div className="technical-summary"><strong>{instrument.name}</strong><span>{instrument.description}</span><span>Dominios relacionados: {instrument.domains.join(', ')}</span></div>}
+        <SchoolResponseImport instrument={instrument} answers={answers} documentReview={documentReview} onDocumentRead={(review) => { setDocumentReview(review); setForm((current) => ({ ...current, conditions: current.conditions || `Documento escolar lido: ${review.fileNames.join(', ')}` })); }} onApplySuggestions={() => setAnswers((current) => { const next = { ...current }; Object.entries(documentReview?.detectedAnswers || {}).forEach(([index, value]) => { if (!next[index]) next[index] = value; }); return next; })} />
         <QuestionnaireBlock instrument={instrument} answers={answers} onChange={(index, value) => setAnswers((current) => ({ ...current, [index]: value }))} supplementalAnswers={supplementalAnswers} onSupplementalChange={(index, value) => setSupplementalAnswers((current) => ({ ...current, [index]: value }))} />
         <div className="form-group"><label htmlFor="behaviorObservations">Observacoes comportamentais</label><textarea id="behaviorObservations" name="behaviorObservations" rows="3" value={form.behaviorObservations} onChange={handleChange} /></div>
         <ResultEditor results={results} onChange={setResults} />

@@ -12,6 +12,8 @@ Os registros ficam no `localStorage` do navegador em `psi.hfnew.com.br`. Como o 
 
 Na tela inicial, o botão `Importar documentos` abre a leitura local de até cinco arquivos por vez: PDF, Word `.docx`, texto, JPG, PNG ou WEBP. A extração ocorre no navegador e apenas preenche um rascunho revisável da ficha; os anexos não são enviados nem armazenados no servidor. Para documentos Word antigos, converta `.doc` para `.docx` ou PDF antes da importação.
 
+Na etapa `Nova aplicação`, o bloco `Documento respondido pela escola` aceita PDF, Word `.docx` ou texto respondido. Quando a estrutura for reconhecível, ele compara as respostas lidas com as respostas do formulário e permite aplicar apenas sugestões em campos ainda vazios. O arquivo original não é armazenado; ao salvar o rascunho, permanece somente o texto extraído local necessário para a revisão.
+
 ## Páginas
 
 - `/`: visão geral.
