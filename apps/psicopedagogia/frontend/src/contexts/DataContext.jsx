@@ -167,6 +167,28 @@ export const DataProvider = ({ children }) => {
     return updatedApplications.find((application) => application.id === applicationId);
   };
 
+  const deleteApplications = (applicationIds) => {
+    const ids = new Set(Array.from(applicationIds || []).filter(Boolean));
+    if (!ids.size) return 0;
+
+    const updatedApplications = applications.filter((application) => !ids.has(application.id));
+    const removedCount = applications.length - updatedApplications.length;
+    if (!removedCount) return 0;
+
+    const updatedReports = reports.map((report) => (
+      Array.isArray(report.applicationIds)
+        ? { ...report, applicationIds: report.applicationIds.filter((id) => !ids.has(id)), updatedAt: new Date().toISOString() }
+        : report
+    ));
+
+    setApplications(updatedApplications);
+    setReports(updatedReports);
+    writeStoredList('applications', updatedApplications);
+    writeStoredList('evaluations', updatedApplications);
+    writeStoredList('reports', updatedReports);
+    return removedCount;
+  };
+
   const saveHypotheses = (patientId, selectedHypotheses, notes) => {
     const nextRecord = {
       id: makeId('hypotheses'),
@@ -228,6 +250,7 @@ export const DataProvider = ({ children }) => {
     deletePatient,
     saveApplication,
     updateApplication,
+    deleteApplications,
     saveEvaluation: saveApplication,
     saveHypotheses,
     saveReportDraft,

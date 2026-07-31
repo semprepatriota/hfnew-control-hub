@@ -713,10 +713,34 @@ function EvaluationForm({ initialApplication, onSaved }) {
   );
 }
 
-function RecentApplications({ onEdit }) {
-  const { applications, patients, instruments } = useData();
+function RecentApplications({ onEdit, onDeleted }) {
+  const { applications, patients, instruments, deleteApplications } = useData();
+  const [selectedIds, setSelectedIds] = useState([]);
   const rows = applications.slice().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 10);
-  return <section className="panel" aria-labelledby="recent-title"><div className="panel-heading"><div><p className="eyebrow">Historico</p><h2 id="recent-title">Aplicacoes recentes</h2></div></div>{rows.length === 0 ? <p className="empty-state">Nenhuma aplicacao registrada.</p> : <div className="evaluation-list">{rows.map((application) => { const patient = patients.find((item) => item.id === application.patientId); const instrument = instruments.find((item) => item.id === application.instrumentId || item.id === application.testId); return <article key={application.id} className="evaluation-item"><div><strong>{patient?.name || 'Adolescente removido'}</strong><span>{application.instrumentName} | {formatDate(application.updatedAt)}</span></div><div className="button-row"><span className={`status-pill ${application.status === 'completed' ? 'status-green' : 'status-blue'}`}>{application.status === 'completed' ? 'Concluida' : 'Rascunho'}</span><button type="button" className="btn-secondary" onClick={() => onEdit(application)}>Editar</button>{application.status === 'completed' && <button type="button" className="btn-primary" onClick={() => downloadApplicationWord(patient, application, instrument)}>Abrir Word</button>}</div></article>; })}</div>}</section>;
+  const selectedSet = new Set(selectedIds);
+  const allSelected = rows.length > 0 && rows.every((application) => selectedSet.has(application.id));
+
+  useEffect(() => {
+    const available = new Set(applications.map((application) => application.id));
+    setSelectedIds((current) => current.filter((id) => available.has(id)));
+  }, [applications]);
+
+  const toggleSelection = (applicationId) => setSelectedIds((current) => (
+    current.includes(applicationId) ? current.filter((id) => id !== applicationId) : [...current, applicationId]
+  ));
+
+  const toggleAll = () => setSelectedIds(allSelected ? [] : rows.map((application) => application.id));
+
+  const handleDeleteSelected = () => {
+    if (!selectedIds.length) return;
+    const count = selectedIds.length;
+    if (!window.confirm(`Excluir ${count} aplicacao(oes) selecionada(s)? Esta acao remove os registros do Historico deste navegador.`)) return;
+    const removed = deleteApplications(selectedIds);
+    if (removed) onDeleted?.(selectedIds);
+    setSelectedIds([]);
+  };
+
+  return <section className="panel" aria-labelledby="recent-title"><div className="panel-heading"><div><p className="eyebrow">Historico</p><h2 id="recent-title">Aplicacoes recentes</h2></div>{rows.length > 0 && <div className="recent-selection-actions"><label className="selection-checkbox"><input type="checkbox" checked={allSelected} onChange={toggleAll} />Selecionar exibidas</label><button type="button" className="btn-danger-outline" onClick={handleDeleteSelected} disabled={!selectedIds.length}>Excluir selecionadas{selectedIds.length ? ` (${selectedIds.length})` : ''}</button></div>}</div>{rows.length === 0 ? <p className="empty-state">Nenhuma aplicacao registrada.</p> : <div className="evaluation-list">{rows.map((application) => { const patient = patients.find((item) => item.id === application.patientId); const instrument = instruments.find((item) => item.id === application.instrumentId || item.id === application.testId); return <article key={application.id} className={`evaluation-item recent-application${selectedSet.has(application.id) ? ' selected' : ''}`}><label className="selection-checkbox row-selection"><input type="checkbox" checked={selectedSet.has(application.id)} onChange={() => toggleSelection(application.id)} aria-label={`Selecionar aplicacao de ${patient?.name || 'adolescente removido'}`} /><span>Selecionar</span></label><div className="recent-application-main"><strong>{patient?.name || 'Adolescente removido'}</strong><span>{application.instrumentName} | {formatDate(application.updatedAt)}</span></div><div className="button-row"><span className={`status-pill ${application.status === 'completed' ? 'status-green' : 'status-blue'}`}>{application.status === 'completed' ? 'Concluida' : 'Rascunho'}</span><button type="button" className="btn-secondary" onClick={() => onEdit(application)}>Editar</button>{application.status === 'completed' && <button type="button" className="btn-primary" onClick={() => downloadApplicationWord(patient, application, instrument)}>Abrir Word</button>}</div></article>; })}</div>}</section>;
 }
 
 function IntegrationView({ selectedPatientId, onPatientChange }) {
@@ -798,14 +822,14 @@ function Workspace() {
       </>;
     }
     if (activeView === 'instruments') return <InstrumentLibrary />;
-    if (activeView === 'applications') return <><EvaluationForm initialApplication={editingApplication} onSaved={() => {}} /><RecentApplications onEdit={openApplication} /></>;
+    if (activeView === 'applications') return <><EvaluationForm initialApplication={editingApplication} onSaved={() => {}} /><RecentApplications onEdit={openApplication} onDeleted={(ids) => setEditingApplication((current) => ids.includes(current?.id) ? null : current)} /></>;
     if (activeView === 'integration') return <IntegrationView selectedPatientId={selectedPatientId} onPatientChange={setSelectedPatientId} />;
     if (activeView === 'reports') return <ReportView selectedPatientId={selectedPatientId} onPatientChange={setSelectedPatientId} />;
     if (activeView === 'profile') return <ProfessionalProfileForm />;
     return <>
       <div className="welcome-band"><div><p className="eyebrow">Fluxo de trabalho</p><h2>Organize cada caso com registro, revisao e integracao.</h2><p>O sistema calcula e organiza. A profissional interpreta, revisa, valida e assina.</p></div><div className="button-row"><button type="button" className="btn-primary" onClick={() => { setEditingPatient(null); navigateToView('patients'); }}>Cadastrar adolescente</button><button type="button" className="btn-secondary" onClick={openPatientImport}>Importar documentos</button><button type="button" className="btn-secondary" onClick={() => startApplication()}>Nova aplicacao</button></div></div>
       <ProfessionalProfileForm />
-      <RecentApplications onEdit={openApplication} />
+      <RecentApplications onEdit={openApplication} onDeleted={(ids) => setEditingApplication((current) => ids.includes(current?.id) ? null : current)} />
     </>;
   };
 
