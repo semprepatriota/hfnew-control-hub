@@ -155,11 +155,94 @@ const extractPdfText = async (file, onProgress, maxPages) => {
   };
 };
 
+const WORD_NAMESPACE = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+const wordName = (node) => String(node?.localName || node?.nodeName || '')
+  .replace(/^w:/, '');
+
+const wordElements = (node, name) => {
+  if (!node) return [];
+  const namespaced = Array.from(node.getElementsByTagNameNS?.(WORD_NAMESPACE, name) || []);
+  return namespaced.length ? namespaced : Array.from(node.getElementsByTagName?.(`w:${name}`) || []);
+};
+
+const directWordChildren = (node, name) => Array.from(node?.childNodes || [])
+  .filter((child) => child.nodeType === 1 && wordName(child) === name);
+
+const wordAttribute = (node, name) => node?.getAttributeNS?.(WORD_NAMESPACE, name)
+  || node?.getAttribute?.(`w:${name}`)
+  || node?.getAttribute?.(name)
+  || '';
+
+const wordText = (node) => {
+  const text = wordElements(node, 't').map((item) => item.textContent || '').join('');
+  const tabs = wordElements(node, 'tab').length;
+  const breaks = wordElements(node, 'br').length + wordElements(node, 'cr').length;
+  return cleanText(`${text}${tabs ? ' '.repeat(tabs) : ''}${breaks ? '\n'.repeat(breaks) : ''}`);
+};
+
+const WORD_MARKER = /(?:\[\s*(?:x|marcado|selecionado)\s*\]|\(\s*x\s*\)|[\u2713\u2714\u2611\u2612\u2705\u25cf\u25c9\u29bf]|(?:^|\s)x(?:\s|$))/i;
+
+const isWordResponseMarked = (node, text = '') => {
+  if (WORD_MARKER.test(text)) return true;
+  if (wordElements(node, 'checkBox').length || wordElements(node, 'checked').length) return true;
+
+  const highlight = wordElements(node, 'highlight')
+    .some((item) => !['', 'none', 'auto'].includes(wordAttribute(item, 'val').toLowerCase()));
+  const shading = wordElements(node, 'shd')
+    .some((item) => !['', 'auto', 'ffffff', 'transparent'].includes(wordAttribute(item, 'fill').toLowerCase()));
+  if (highlight || shading) return true;
+
+  // Alguns formularios usam somente a cor da fonte para registrar uma resposta.
+  // Isso e aceito apenas em trechos curtos, depois confirmados contra as opcoes do teste.
+  return text.length > 0 && text.length <= 60 && wordElements(node, 'color')
+    .some((item) => !['', 'auto'].includes(wordAttribute(item, 'val').toLowerCase()));
+};
+
+const wordCellDetails = (cell) => {
+  const runs = wordElements(cell, 'r');
+  const runParts = runs.map((run) => {
+    const text = wordText(run);
+    return { text, marked: isWordResponseMarked(run, text) };
+  }).filter((part) => part.text || part.marked);
+  const text = cleanText(runParts.map((part) => part.text).join(' ')) || wordText(cell);
+  const marked = isWordResponseMarked(cell, text) || runParts.some((part) => part.marked);
+  return { text, marked };
+};
+
+const docxStructuredResponseText = async (file) => {
+  const jszipModule = await import('jszip');
+  const JSZip = jszipModule.default || jszipModule;
+  const archive = await JSZip.loadAsync(await file.arrayBuffer());
+  const documentXml = await archive.file('word/document.xml')?.async('text');
+  if (!documentXml) return '';
+
+  const document = new DOMParser().parseFromString(documentXml, 'application/xml');
+  if (document.querySelector('parsererror')) return '';
+
+  const tableRows = wordElements(document, 'tr').map((row) => {
+    const cells = directWordChildren(row, 'tc').map(wordCellDetails);
+    if (!cells.length) return '';
+    return cleanText(cells.map((cell) => `${cell.marked ? '[marcado] ' : ''}${cell.text}`.trim()).join(' | '));
+  }).filter(Boolean);
+
+  const markedParagraphs = wordElements(document, 'p').map((paragraph) => {
+    const text = wordText(paragraph);
+    return text && isWordResponseMarked(paragraph, text) ? `[marcado] ${text}` : '';
+  }).filter(Boolean);
+
+  const rows = [...new Set([...tableRows, ...markedParagraphs])];
+  return rows.length ? cleanText(`Marcacoes estruturais do Word\n${rows.join('\n')}`) : '';
+};
+
 const extractDocxText = async (file, maxEstimatedPages) => {
-  const mammothModule = await import('mammoth');
+  const [mammothModule, structuredResponseText] = await Promise.all([
+    import('mammoth'),
+    docxStructuredResponseText(file).catch(() => ''),
+  ]);
   const mammoth = mammothModule.default || mammothModule;
   const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-  const text = cleanText(result.value);
+  const text = cleanText([result.value, structuredResponseText].filter(Boolean).join('\n\n'));
   const estimatedPages = Math.max(1, Math.ceil(text.length / 3000));
   if (maxEstimatedPages && estimatedPages > maxEstimatedPages) {
     throw new Error(`${file.name}: o Word possui aproximadamente ${estimatedPages} paginas de texto. Para a revisao assistida, use ate ${maxEstimatedPages} paginas ou exporte um recorte em PDF.`);
@@ -275,7 +358,7 @@ const scanText = (value) => cleanText(value)
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase()
-  .replace(/[✓✔☒✅]/g, '[x]')
+  .replace(/[\u2713\u2714\u2611\u2612\u2705\u25cf\u25c9\u29bf]/g, '[x]')
   .replace(/[–—]/g, '-')
   .replace(/\s+/g, ' ')
   .trim();
@@ -288,13 +371,14 @@ const optionAliases = (option) => [...new Set([option.id, option.label]
 const markedOptionIds = (line, options) => {
   const scanned = scanText(line);
   const marked = new Set();
-  const marker = '(?:\\[\\s*x\\s*\\]|\\(\\s*x\\s*\\)|\\bx\\b)';
+  const marker = '(?:\\[\\s*(?:x|marcado|selecionado)\\s*\\]|\\(\\s*x\\s*\\)|\\bx\\b)';
 
   options.forEach((option) => {
     optionAliases(option).forEach((alias) => {
       const value = escapeRegExp(alias).replace(/\\ /g, '\\s+');
-      const before = new RegExp(`${marker}\\s*(?:opcao\\s*)?${value}(?=\\s|$|[|,;])`, 'i');
-      const after = new RegExp(`(?:^|\\s)${value}\\s*${marker}(?=\\s|$|[|,;])`, 'i');
+      const separator = '(?:[|,;:-]\\s*)?';
+      const before = new RegExp(`${marker}\\s*${separator}(?:opcao\\s*)?${value}(?=\\s|$|[|,;])`, 'i');
+      const after = new RegExp(`(?:^|\\s)${value}\\s*${separator}${marker}(?=\\s|$|[|,;])`, 'i');
       if (before.test(scanned) || after.test(scanned)) marked.add(option.id);
     });
   });
@@ -318,7 +402,7 @@ const markedOptionIds = (line, options) => {
 const exactOptionIds = (value, options) => {
   const cleaned = scanText(value)
     .replace(/^(?:resposta|opcao|alternativa|marcacao|assinalado|marcado)\s*(?:e|:|-)?\s*/i, '')
-    .replace(/^(?:\[\s*x\s*\]|\(\s*x\s*\)|x)\s*/, '')
+    .replace(/^(?:\[\s*(?:x|marcado|selecionado)\s*\]|\(\s*x\s*\)|x)\s*/, '')
     .trim();
   const direct = optionForResponse(cleaned, options);
   return direct ? [direct] : [];
