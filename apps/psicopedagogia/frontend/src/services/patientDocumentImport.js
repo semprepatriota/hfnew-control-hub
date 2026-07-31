@@ -66,6 +66,35 @@ export const extractPatientDraft = (rawText) => {
   };
 };
 
+const pdfPageText = (content) => {
+  const items = (content.items || [])
+    .filter((item) => String(item.str || '').trim())
+    .map((item, order) => ({
+      text: String(item.str || '').trim(),
+      x: Number(item.transform?.[4] || 0),
+      y: Number(item.transform?.[5] || 0),
+      order,
+    }));
+
+  if (!items.length) return '';
+
+  // PDF text is usually emitted word by word. Rebuild visual rows before
+  // scanning answers so a marked option stays with its numbered item.
+  const rows = new Map();
+  items.forEach((item) => {
+    const rowKey = Math.round(item.y / 4) * 4;
+    if (!rows.has(rowKey)) rows.set(rowKey, []);
+    rows.get(rowKey).push(item);
+  });
+
+  return cleanText([...rows.entries()]
+    .sort(([firstY], [secondY]) => secondY - firstY)
+    .map(([, row]) => row.sort((first, second) => first.x - second.x || first.order - second.order)
+      .map((item) => item.text)
+      .join(' '))
+    .join('\n'));
+};
+
 const extractPdfText = async (file, onProgress, maxPages) => {
   const [{ GlobalWorkerOptions, getDocument }, workerModule] = await Promise.all([
     import('pdfjs-dist/legacy/build/pdf.mjs'),
@@ -85,7 +114,8 @@ const extractPdfText = async (file, onProgress, maxPages) => {
       onProgress?.(`Lendo PDF: pagina ${pageNumber} de ${pdf.numPages}.`);
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
-      let pageText = cleanText(content.items.map((item) => item.str || '').join(' '));
+      let pageText = pdfPageText(content);
+      let ocrUsed = false;
 
       if (pageText.length < 12) {
         onProgress?.(`PDF escaneado: reconhecendo pagina ${pageNumber} de ${pdf.numPages}.`);
@@ -99,7 +129,7 @@ const extractPdfText = async (file, onProgress, maxPages) => {
             },
           });
         }
-        const viewport = page.getViewport({ scale: 1.5 });
+        const viewport = page.getViewport({ scale: 1.8 });
         const canvas = document.createElement('canvas');
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
@@ -107,15 +137,22 @@ const extractPdfText = async (file, onProgress, maxPages) => {
         await page.render({ canvasContext: context, viewport }).promise;
         const result = await ocrWorker.recognize(canvas);
         pageText = cleanText(result.data.text);
+        ocrUsed = true;
       }
 
-      pages.push(pageText);
+      pages.push({ pageNumber, text: pageText, ocrUsed });
     }
   } finally {
     if (ocrWorker) await ocrWorker.terminate();
   }
 
-  return { text: cleanText(pages.join('\n')), pageCount: pdf.numPages, pageCountMode: 'exact' };
+  return {
+    text: cleanText(pages.map((page) => `Pagina ${page.pageNumber}\n${page.text}`).join('\n\n')),
+    pageCount: pdf.numPages,
+    pageCountMode: 'exact',
+    ocrPageCount: pages.filter((page) => page.ocrUsed).length,
+    pages,
+  };
 };
 
 const extractDocxText = async (file, maxEstimatedPages) => {
@@ -127,7 +164,13 @@ const extractDocxText = async (file, maxEstimatedPages) => {
   if (maxEstimatedPages && estimatedPages > maxEstimatedPages) {
     throw new Error(`${file.name}: o Word possui aproximadamente ${estimatedPages} paginas de texto. Para a revisao assistida, use ate ${maxEstimatedPages} paginas ou exporte um recorte em PDF.`);
   }
-  return { text, pageCount: estimatedPages, pageCountMode: 'estimated' };
+  return {
+    text,
+    pageCount: estimatedPages,
+    pageCountMode: 'estimated',
+    ocrPageCount: 0,
+    pages: [{ pageNumber: 1, text, ocrUsed: false }],
+  };
 };
 
 const extractImageText = async (file, onProgress) => {
@@ -142,7 +185,8 @@ const extractImageText = async (file, onProgress) => {
 
   try {
     const result = await worker.recognize(file);
-    return { text: cleanText(result.data.text), pageCount: 1, pageCountMode: 'exact' };
+    const text = cleanText(result.data.text);
+    return { text, pageCount: 1, pageCountMode: 'exact', ocrPageCount: 1, pages: [{ pageNumber: 1, text, ocrUsed: true }] };
   } finally {
     await worker.terminate();
   }
@@ -152,7 +196,10 @@ const extractFileText = async (file, onProgress, options = {}) => {
   const fileName = file.name.toLowerCase();
   if (file.type === 'application/pdf' || fileName.endsWith('.pdf')) return extractPdfText(file, onProgress, options.maxPdfPages);
   if (fileName.endsWith('.docx')) return extractDocxText(file, options.maxEstimatedWordPages);
-  if (file.type === 'text/plain' || fileName.endsWith('.txt')) return { text: cleanText(await file.text()), pageCount: null, pageCountMode: 'not-applicable' };
+  if (file.type === 'text/plain' || fileName.endsWith('.txt')) {
+    const text = cleanText(await file.text());
+    return { text, pageCount: null, pageCountMode: 'not-applicable', ocrPageCount: 0, pages: [{ pageNumber: 1, text, ocrUsed: false }] };
+  }
   return extractImageText(file, onProgress);
 };
 
@@ -170,12 +217,19 @@ export const readImportedDocuments = async (files, onProgress, options = {}) => 
 
   const parts = [];
   const pageDetails = [];
+  const pages = [];
   for (let index = 0; index < fileList.length; index += 1) {
     const file = fileList[index];
     onProgress?.(`Lendo ${index + 1} de ${fileList.length}: ${file.name}`);
     const result = await extractFileText(file, onProgress, options);
     if (result.text) parts.push(`Documento: ${file.name}\n${result.text}`);
-    pageDetails.push({ fileName: file.name, pageCount: result.pageCount, pageCountMode: result.pageCountMode });
+    pageDetails.push({
+      fileName: file.name,
+      pageCount: result.pageCount,
+      pageCountMode: result.pageCountMode,
+      ocrPageCount: result.ocrPageCount || 0,
+    });
+    (result.pages || []).forEach((page) => pages.push({ ...page, fileName: file.name }));
   }
 
   const rawText = cleanText(parts.join('\n\n'));
@@ -188,6 +242,7 @@ export const readImportedDocuments = async (files, onProgress, options = {}) => 
     text: rawText,
     textLength: rawText.length,
     pageDetails,
+    pages,
   };
 };
 
@@ -214,35 +269,112 @@ const optionForResponse = (value, options) => {
   return candidates.length === 1 ? candidates[0].id : null;
 };
 
-export const detectQuestionnaireAnswers = (rawText, questionnaire) => {
-  if (!questionnaire?.items?.length || !questionnaire?.options?.length) return {};
-  const detected = {};
-  let pendingIndex = null;
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  rawText.split('\n').forEach((line) => {
-    const numbered = line.match(/^\s*(\d{1,3})\s*[.)\-:]\s*(.*)$/);
-    if (numbered) {
-      const index = Number(numbered[1]) - 1;
-      pendingIndex = index >= 0 && index < questionnaire.items.length ? index : null;
-      if (pendingIndex !== null) {
-        const response = optionForResponse(numbered[2], questionnaire.options);
-        if (response) {
-          detected[pendingIndex] = response;
-          pendingIndex = null;
-        }
-      }
-      return;
+const scanText = (value) => cleanText(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[✓✔☒✅]/g, '[x]')
+  .replace(/[–—]/g, '-')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const optionAliases = (option) => [...new Set([option.id, option.label]
+  .map((value) => scanText(value))
+  .filter(Boolean))]
+  .sort((first, second) => second.length - first.length);
+
+const markedOptionIds = (line, options) => {
+  const scanned = scanText(line);
+  const marked = new Set();
+  const marker = '(?:\\[\\s*x\\s*\\]|\\(\\s*x\\s*\\)|\\bx\\b)';
+
+  options.forEach((option) => {
+    optionAliases(option).forEach((alias) => {
+      const value = escapeRegExp(alias).replace(/\\ /g, '\\s+');
+      const before = new RegExp(`${marker}\\s*(?:opcao\\s*)?${value}(?=\\s|$|[|,;])`, 'i');
+      const after = new RegExp(`(?:^|\\s)${value}\\s*${marker}(?=\\s|$|[|,;])`, 'i');
+      if (before.test(scanned) || after.test(scanned)) marked.add(option.id);
+    });
+  });
+
+  const explicitNumeric = scanned.match(/(?:resposta|opcao|alternativa|marcacao)\s*(?:e|:|-)?\s*\[?\s*([0-9a-z-]+)\s*\]?/i);
+  if (explicitNumeric) {
+    const direct = optionForResponse(explicitNumeric[1], options);
+    if (direct) marked.add(direct);
+  }
+
+  // Grids extracted from PDF often look like: "1 ... 0 1 2 [3]".
+  // A bracketed value is accepted only when it matches exactly one option.
+  [...scanned.matchAll(/\[\s*([0-9a-z-]+)\s*\]/gi)].forEach((match) => {
+    const direct = optionForResponse(match[1], options);
+    if (direct) marked.add(direct);
+  });
+
+  return [...marked];
+};
+
+const exactOptionIds = (value, options) => {
+  const cleaned = scanText(value)
+    .replace(/^(?:resposta|opcao|alternativa|marcacao|assinalado|marcado)\s*(?:e|:|-)?\s*/i, '')
+    .replace(/^(?:\[\s*x\s*\]|\(\s*x\s*\)|x)\s*/, '')
+    .trim();
+  const direct = optionForResponse(cleaned, options);
+  return direct ? [direct] : [];
+};
+
+const answerCandidatesFromLine = (line, options) => {
+  const marked = markedOptionIds(line, options);
+  if (marked.length) return marked;
+  return exactOptionIds(line, options);
+};
+
+const questionIndexFromLine = (line, questionnaire) => {
+  const match = String(line || '').match(/^\s*(?:(?:quest[aã]o|pergunta|item)\s*)?(\d{1,3})\s*(?:[.)\-:|]|\b)/i);
+  if (!match) return null;
+  const index = Number(match[1]) - 1;
+  return index >= 0 && index < questionnaire.items.length ? index : null;
+};
+
+export const detectQuestionnaireAnswerDetails = (rawText, questionnaire) => {
+  if (!questionnaire?.items?.length || !questionnaire?.options?.length) {
+    return { answers: {}, evidence: {}, ambiguousItems: [] };
+  }
+
+  const answers = {};
+  const evidence = {};
+  const ambiguous = new Set();
+  const lines = cleanText(rawText).split('\n').map((line) => line.trim()).filter(Boolean);
+
+  lines.forEach((line, lineIndex) => {
+    const itemIndex = questionIndexFromLine(line, questionnaire);
+    if (itemIndex === null || answers[itemIndex] || ambiguous.has(itemIndex)) return;
+
+    const numberedPrefix = line.replace(/^\s*(?:(?:quest[aã]o|pergunta|item)\s*)?\d{1,3}\s*(?:[.)\-:|]|\b)\s*/i, '');
+    const candidates = new Set(answerCandidatesFromLine(numberedPrefix, questionnaire.options));
+
+    // Some school forms place the checked alternative on the next visual row.
+    for (let offset = 1; candidates.size === 0 && offset <= 3; offset += 1) {
+      const following = lines[lineIndex + offset];
+      if (!following || questionIndexFromLine(following, questionnaire) !== null) break;
+      answerCandidatesFromLine(following, questionnaire.options).forEach((candidate) => candidates.add(candidate));
     }
 
-    if (pendingIndex !== null && line.trim()) {
-      const response = optionForResponse(line, questionnaire.options);
-      if (response) detected[pendingIndex] = response;
-      pendingIndex = null;
+    if (candidates.size === 1) {
+      const answer = [...candidates][0];
+      answers[itemIndex] = answer;
+      evidence[itemIndex] = line.slice(0, 260);
+    } else if (candidates.size > 1) {
+      ambiguous.add(itemIndex);
+      evidence[itemIndex] = line.slice(0, 260);
     }
   });
 
-  return detected;
+  return { answers, evidence, ambiguousItems: [...ambiguous].sort((first, second) => first - second) };
 };
+
+export const detectQuestionnaireAnswers = (rawText, questionnaire) => detectQuestionnaireAnswerDetails(rawText, questionnaire).answers;
 
 const CORRECTION_RULE_HEADING = /^\s*(?:\d+[.)\-:]?\s*)?(?:regras?\s+(?:de\s+)?corre[cç][aã]o|crit[eé]rios?\s+(?:de\s+)?corre[cç][aã]o|instru[cç][oõ]es?\s+(?:para\s+)?corre[cç][aã]o|orienta[cç][oõ]es?\s+(?:para\s+)?corre[cç][aã]o|gabarito|pontua[cç][aã]o|corre[cç][aã]o|como\s+corrigir|interpreta[cç][aã]o\s+dos\s+resultados?)\b/i;
 
@@ -259,12 +391,13 @@ export const extractCorrectionRules = (rawText) => {
 
 export const analyzeSchoolCorrectionDocument = (rawText, questionnaire) => {
   const rules = extractCorrectionRules(rawText);
-  const detectedAnswers = detectQuestionnaireAnswers(rawText, questionnaire);
+  const answerAnalysis = detectQuestionnaireAnswerDetails(rawText, questionnaire);
   return {
     correctionRules: rules.text,
     rulesFound: rules.found,
     rulesStartLine: rules.startLine,
-    detectedAnswers,
+    detectedAnswers: answerAnalysis.answers,
+    answerAnalysis,
   };
 };
 

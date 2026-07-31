@@ -461,6 +461,8 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
   const [reading, setReading] = useState(false);
   const questionnaire = instrument?.questionnaire;
   const detectedCount = Object.keys(documentReview?.detectedAnswers || {}).length;
+  const ambiguousCount = documentReview?.answerAnalysis?.ambiguousItems?.length || 0;
+  const totalItems = questionnaire?.items?.length || 0;
 
   const readFiles = async () => {
     setError('');
@@ -474,14 +476,15 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
         extractedText: imported.text,
         textLength: imported.textLength,
         pageDetails: imported.pageDetails,
+        pages: imported.pages,
         ...analysis,
         rulesConfirmed: false,
         readAt: new Date().toISOString(),
       });
       setFiles([]);
-      setStatus(analysis.rulesFound
-        ? `${Object.keys(analysis.detectedAnswers).length} resposta(s) claramente identificada(s). As regras de correcao foram separadas para sua confirmacao.`
-        : 'Documento lido, mas nenhuma secao de regras de correcao foi identificada. Confira o texto e informe as regras antes de aplicar sugestoes.');
+      const detected = Object.keys(analysis.detectedAnswers).length;
+      const ambiguous = analysis.answerAnalysis?.ambiguousItems?.length || 0;
+      setStatus(`${detected}${questionnaire ? ` de ${questionnaire.items.length}` : ''} resposta(s) identificada(s) com seguranca.${ambiguous ? ` ${ambiguous} item(ns) ficaram ambiguos e exigem conferencia.` : ''} ${analysis.rulesFound ? 'As regras de correcao foram separadas para sua confirmacao.' : 'Nenhuma secao de regras foi localizada automaticamente; revise o texto e informe as regras antes de concluir.'}`);
     } catch (readError) {
       setError(readError.message || 'Nao foi possivel ler o documento selecionado.');
     } finally {
@@ -491,8 +494,8 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
 
   return (
     <section className="document-review-panel" aria-labelledby="school-document-title">
-      <div className="section-title-row"><div><p className="eyebrow">Leitura e correcao assistida</p><h3 id="school-document-title">Documento respondido pela escola</h3></div>{documentReview && <span className="status-pill status-blue">{detectedCount} sugestao(oes)</span>}</div>
-      <p className="muted">Importe um PDF de ate 20 paginas ou um Word .docx equivalente. O leitor separa respostas e regras de correcao; a validacao final continua sendo sua.</p>
+      <div className="section-title-row"><div><p className="eyebrow">Leitura e correcao assistida</p><h3 id="school-document-title">Documento respondido pela escola</h3></div>{documentReview && <span className="status-pill status-blue">{detectedCount}/{totalItems || '-'} respostas seguras</span>}</div>
+      <p className="muted">Importe um PDF de ate 20 paginas ou um Word .docx equivalente. O leitor preserva linhas, tenta reconhecer marcacoes e separa regras de correcao. A conferência final continua sendo obrigatoriamente sua.</p>
       {error && <div className="error-message">{error}</div>}
       {status && <div className="info-box import-progress">{status}</div>}
       <div className="import-layout compact-import-layout">
@@ -505,21 +508,25 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
       </div>
       <label className="checkbox-row import-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={reading} />Confirmo que tenho autorizacao para ler esse documento e vou revisar toda sugestao antes de usar.</label>
       <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler documento completo'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions} disabled={!documentReview?.rulesConfirmed}>Aplicar sugestoes em campos vazios</button>}</div>
-      {documentReview && <details className="document-review-details" open><summary>Regras, leitura e comparacao</summary><p className="muted">Arquivo: {documentReview.fileNames.join(', ')}. {documentReview.pageDetails?.map((item) => `${item.pageCount || 'Sem'} pagina(s)${item.pageCountMode === 'estimated' ? ' estimada(s)' : ''}`).join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p><div className="form-group"><label htmlFor="document-correction-rules">Regras de correcao identificadas</label><textarea id="document-correction-rules" className="document-text-preview" rows="9" value={documentReview.correctionRules || ''} onChange={(event) => onRulesChange(event.target.value)} placeholder="O leitor nao encontrou uma secao de regras. Cole ou ajuste aqui as regras que aparecem no documento." /></div><label className="checkbox-row import-consent"><input type="checkbox" checked={Boolean(documentReview.rulesConfirmed)} onChange={(event) => onRulesConfirm(event.target.checked)} />Revisei as regras acima e confirmo que correspondem ao documento recebido.</label>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.extractedText && <textarea className="document-text-preview" rows="14" readOnly value={documentReview.extractedText} aria-label="Texto completo extraido do documento" />}</details>}
+      {documentReview && <details className="document-review-details" open><summary>Regras, leitura e comparacao</summary><p className="muted">Arquivo: {documentReview.fileNames.join(', ')}. {documentReview.pageDetails?.map((item) => `${item.pageCount || 'Sem'} pagina(s)${item.pageCountMode === 'estimated' ? ' estimada(s)' : ''}${item.ocrPageCount ? `, OCR em ${item.ocrPageCount}` : ''}`).join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p><div className="document-scan-summary"><span className="status-pill status-blue">{detectedCount}/{totalItems || '-'} identificadas</span><span className={`status-pill ${ambiguousCount ? 'status-yellow' : 'status-green'}`}>{ambiguousCount ? `${ambiguousCount} ambigua(s)` : 'Sem ambiguidade detectada'}</span><span className={`status-pill ${documentReview.rulesFound ? 'status-green' : 'status-yellow'}`}>{documentReview.rulesFound ? 'Regras localizadas' : 'Regras nao localizadas'}</span></div><div className="form-group"><label htmlFor="document-correction-rules">Regras de correcao identificadas</label><textarea id="document-correction-rules" className="document-text-preview" rows="9" value={documentReview.correctionRules || ''} onChange={(event) => onRulesChange(event.target.value)} placeholder="O leitor nao encontrou uma secao de regras. Cole ou ajuste aqui as regras que aparecem no documento." /></div><label className="checkbox-row import-consent"><input type="checkbox" checked={Boolean(documentReview.rulesConfirmed)} onChange={(event) => onRulesConfirm(event.target.checked)} />Revisei as regras acima e confirmo que correspondem ao documento recebido.</label>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.pages?.length ? <details className="document-page-audit"><summary>Conferir leitura pagina por pagina</summary><p className="muted">Use esta conferencia quando uma resposta nao for encontrada, estiver ambigua ou a escola enviar paginas escaneadas.</p>{documentReview.pages.map((page) => <article className="document-page" key={`${page.fileName}-${page.pageNumber}`}><strong>{page.fileName} | pagina {page.pageNumber}{page.ocrUsed ? ' | OCR aplicado' : ''}</strong><textarea className="document-text-preview" rows="7" readOnly value={page.text || 'Nenhum texto identificado nesta pagina.'} aria-label={`Texto extraido da pagina ${page.pageNumber}`} /></article>)}</details> : null}{documentReview.extractedText && <details className="document-page-audit"><summary>Texto completo extraido</summary><textarea className="document-text-preview" rows="14" readOnly value={documentReview.extractedText} aria-label="Texto completo extraido do documento" /></details>}</details>}
     </section>
   );
 }
 
 function DocumentAnswerComparison({ questionnaire, answers, documentReview }) {
   const documentAnswers = documentReview.detectedAnswers || {};
-  const indexes = [...new Set([...Object.keys(documentAnswers), ...Object.keys(answers)])].map(Number).sort((first, second) => first - second);
-  if (!Object.keys(documentAnswers).length) return <div className="warning-box">Nenhuma resposta foi reconhecida com seguranca. Confira o texto extraido abaixo e registre as respostas manualmente.</div>;
+  const answerAnalysis = documentReview.answerAnalysis || {};
+  const ambiguousItems = new Set(answerAnalysis.ambiguousItems || []);
+  const indexes = questionnaire.items.map((_, index) => index);
+  if (!Object.keys(documentAnswers).length && !ambiguousItems.size) return <div className="warning-box">Nenhuma resposta foi reconhecida com seguranca. Confira a leitura pagina por pagina e registre as respostas manualmente antes de concluir.</div>;
   const answerLabel = (id) => questionnaire.options.find((option) => option.id === id)?.label || (id ? String(id) : 'Nao preenchida');
-  const status = (documentAnswer, manualAnswer) => {
+  const status = (index, documentAnswer, manualAnswer) => {
+    if (ambiguousItems.has(index)) return 'Marcacao ambigua';
+    if (!documentAnswer) return 'Nao identificado';
     if (!manualAnswer) return 'Pendente de revisao';
     return documentAnswer === manualAnswer ? 'Confere' : 'Revisar divergencia';
   };
-  return <div className="table-wrap document-comparison-wrap"><table className="document-comparison-table"><thead><tr><th>Item</th><th>Documento</th><th>Formulario</th><th>Comparacao</th></tr></thead><tbody>{indexes.map((index) => { const item = questionnaire.items[index]; const itemText = typeof item === 'string' ? item : item?.text; const documentAnswer = documentAnswers[index]; const manualAnswer = answers[index]; const match = status(documentAnswer, manualAnswer); return <tr key={index}><td><strong>{index + 1}.</strong> {itemText}</td><td>{answerLabel(documentAnswer)}</td><td>{answerLabel(manualAnswer)}</td><td><span className={`status-pill ${match === 'Confere' ? 'status-green' : 'status-yellow'}`}>{match}</span></td></tr>; })}</tbody></table></div>;
+  return <div className="table-wrap document-comparison-wrap"><table className="document-comparison-table"><thead><tr><th>Item</th><th>Documento</th><th>Formulario</th><th>Comparacao</th></tr></thead><tbody>{indexes.map((index) => { const item = questionnaire.items[index]; const itemText = typeof item === 'string' ? item : item?.text; const documentAnswer = documentAnswers[index]; const manualAnswer = answers[index]; const match = status(index, documentAnswer, manualAnswer); const evidence = answerAnalysis.evidence?.[index]; return <tr key={index}><td><strong>{index + 1}.</strong> {itemText}</td><td>{documentAnswer ? <>{answerLabel(documentAnswer)}{evidence && <small className="document-evidence">Leitura: {evidence}</small>}</> : ambiguousItems.has(index) ? <span className="muted">Mais de uma marcacao reconhecida</span> : <span className="muted">Nao identificado</span>}</td><td>{answerLabel(manualAnswer)}</td><td><span className={`status-pill ${match === 'Confere' ? 'status-green' : 'status-yellow'}`}>{match}</span></td></tr>; })}</tbody></table></div>;
 }
 
 function EvaluationForm({ initialApplication, onSaved }) {
@@ -573,6 +580,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
     if (!patient || !instrument) { setError('Selecione o adolescente e o instrumento.'); return; }
     if (eligibility.blocked) { setError(eligibility.warning); return; }
     if (status === 'completed' && !form.reviewConfirmed) { setError('Confirme a revisao profissional antes de concluir.'); return; }
+    if (status === 'completed' && documentReview && !documentReview.rulesConfirmed) { setError('Confirme as regras de correcao do documento antes de concluir a aplicacao.'); return; }
     const validResults = results.filter((result) => result.area.trim());
     const questionnaire = instrument.questionnaire;
     const answeredCount = questionnaire ? Object.keys(answers).length : 0;
@@ -593,7 +601,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
       const maximum = questionnaire.maximum || questionnaire.items.length;
       const percentage = Number(((score / maximum) * 100).toFixed(1));
       const range = questionnaire.ranges?.find((item) => score >= Number(item.range.split(' ')[0]) && score <= Number(item.range.split(' ')[2])) || questionnaire.ranges?.[questionnaire.ranges.length - 1];
-      return { id: `questionnaire-${Date.now()}`, area: 'Pontuacao total do questionario', score, maximum, percentage, classification: range?.label || 'Resultado descritivo', observation: 'Resultado calculado conforme a regra expressa no arquivo enviado.' };
+      return { id: `questionnaire-${Date.now()}`, area: 'Pontuacao total do questionario', score, maximum, percentage, classification: range?.label || 'Resultado descritivo', observation: 'Resultado calculado conforme a regra cadastrada para este instrumento; conferir com o documento e manual aplicavel.' };
     })() : null;
     const manualQuestionnaireResult = questionnaire && questionnaire.scoringMode !== 'raw' && answeredCount === questionnaire.items.length ? {
       id: `questionnaire-${Date.now()}`,
