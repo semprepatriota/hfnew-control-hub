@@ -67,7 +67,7 @@ const makeAutomaticResult = (questionnaire, outcome) => ({
   score: outcome?.canScore ? outcome.score : '',
   maximum: outcome?.canScore ? outcome.maximum : '',
   percentage: outcome?.canScore ? outcome.percentage : '',
-  classification: outcome?.classification || 'Aguardando leitura do documento',
+  classification: outcome?.classification || 'Informacoes parciais do documento',
   observation: outcome?.observation || 'Envie o documento respondido para preencher o instrumento.',
 });
 
@@ -475,7 +475,7 @@ function ResultEditor({ results, onChange }) {
   const addResult = () => onChange([...results, makeResult()]);
   const removeResult = (id) => onChange(results.length > 1 ? results.filter((result) => result.id !== id) : results);
 
-  return <div className="result-editor"><div className="section-title-row"><h3>Resultado por area</h3><button type="button" className="btn-secondary" onClick={addResult}>Adicionar area</button></div><div className="table-wrap"><table className="results-table"><thead><tr><th>Area avaliada</th><th>Pontuacao</th><th>Maximo</th><th>Porcentagem</th><th>Classificacao</th><th>Observacao</th><th></th></tr></thead><tbody>{results.map((result) => { const percentage = result.score !== '' && result.maximum !== '' && Number(result.maximum) > 0 ? (Number(result.score) / Number(result.maximum)) * 100 : ''; return <tr key={result.id}><td><input value={result.area} onChange={(event) => updateResult(result.id, 'area', event.target.value)} placeholder="Ex.: Atencao" /></td><td><input type="number" min="0" value={result.score} onChange={(event) => updateResult(result.id, 'score', event.target.value)} /></td><td><input type="number" min="0" value={result.maximum} onChange={(event) => updateResult(result.id, 'maximum', event.target.value)} /></td><td>{percentage === '' ? <span className="muted">-</span> : <strong>{percentage.toFixed(1)}%</strong>}</td><td><select value={result.classification} onChange={(event) => updateResult(result.id, 'classification', event.target.value)}><option>Preservada</option><option>Atencao</option><option>Investigacao necessaria</option><option>Indicadores elevados</option><option>Inconclusivo</option></select></td><td><input value={result.observation} onChange={(event) => updateResult(result.id, 'observation', event.target.value)} placeholder="Registro qualitativo" /></td><td><button type="button" className="icon-button" title="Remover area" onClick={() => removeResult(result.id)}>x</button></td></tr>; })}</tbody></table></div></div>;
+  return <div className="result-editor"><div className="section-title-row"><div><h3>Resultado por area</h3><p className="muted">Preenchimento parcial e permitido: o sistema registra somente o que estiver disponivel no teste e no documento.</p></div><button type="button" className="btn-secondary" onClick={addResult}>Adicionar area</button></div><div className="table-wrap"><table className="results-table"><thead><tr><th>Area avaliada</th><th>Pontuacao</th><th>Maximo</th><th>Porcentagem</th><th>Classificacao</th><th>Observacao</th><th></th></tr></thead><tbody>{results.map((result) => { const percentage = result.score !== '' && result.maximum !== '' && Number(result.maximum) > 0 ? (Number(result.score) / Number(result.maximum)) * 100 : ''; return <tr key={result.id}><td><input value={result.area} onChange={(event) => updateResult(result.id, 'area', event.target.value)} placeholder="Ex.: Atencao" /></td><td><input type="number" min="0" value={result.score} onChange={(event) => updateResult(result.id, 'score', event.target.value)} /></td><td><input type="number" min="0" value={result.maximum} onChange={(event) => updateResult(result.id, 'maximum', event.target.value)} /></td><td>{percentage === '' ? <span className="muted">-</span> : <strong>{percentage.toFixed(1)}%</strong>}</td><td><select value={result.classification} onChange={(event) => updateResult(result.id, 'classification', event.target.value)}><option>Informacoes parciais do documento</option><option>Preservada</option><option>Atencao</option><option>Investigacao necessaria</option><option>Indicadores elevados</option><option>Inconclusivo</option></select></td><td><input value={result.observation} onChange={(event) => updateResult(result.id, 'observation', event.target.value)} placeholder="Registro qualitativo" /></td><td><button type="button" className="icon-button" title="Remover area" onClick={() => removeResult(result.id)}>x</button></td></tr>; })}</tbody></table></div></div>;
 }
 
 function QuestionnaireBlock({ instrument, answers, documentReview, onChange, supplementalAnswers, onSupplementalChange }) {
@@ -670,7 +670,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
       score: '',
       maximum: '',
       percentage: '',
-      classification: automaticOutcome?.classification || 'Regra de pontuacao nao configurada',
+      classification: automaticOutcome?.classification || 'Informacoes parciais do documento',
       observation: automaticOutcome?.observation || `${answeredCount} de ${questionnaire.items.length} respostas registradas; o arquivo nao define correcao automatica.`,
     } : null;
     const payload = {

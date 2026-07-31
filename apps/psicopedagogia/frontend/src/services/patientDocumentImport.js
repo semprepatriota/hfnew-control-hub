@@ -456,9 +456,9 @@ export const calculateQuestionnaireOutcome = (questionnaire, answers, rulesText 
       score: null,
       maximum: null,
       percentage: null,
-      classification: 'Regra de pontuacao nao configurada',
+      classification: 'Informacoes parciais do documento',
       observation: complete
-        ? 'Respostas preenchidas. Cadastre ou confirme a regra de pontuacao deste instrumento antes de gerar classificacao.'
+        ? 'Respostas preenchidas. O documento nao trouxe regra suficiente para calcular pontuacao, maximo ou classificacao.'
         : `${answeredCount} de ${questionnaire.items.length} respostas preenchidas; faltam ${missingItems.length} item(ns).`,
       source: null,
       sourceLabel: 'Sem regra de pontuacao automatica',
