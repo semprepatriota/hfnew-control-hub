@@ -389,6 +389,113 @@ export const extractCorrectionRules = (rawText) => {
   };
 };
 
+const rangeBounds = (range) => {
+  const match = String(range || '').match(/(\d+(?:[.,]\d+)?)\s*(?:a|ate|até|-)\s*(\d+(?:[.,]\d+)?)/i);
+  if (!match) return null;
+  return { min: Number(match[1].replace(',', '.')), max: Number(match[2].replace(',', '.')) };
+};
+
+const documentScoreMap = (rulesText, options) => {
+  const source = scanText(rulesText);
+  if (!source) return null;
+  const scores = {};
+
+  options.forEach((option) => {
+    const values = new Set();
+    optionAliases(option).forEach((alias) => {
+      const escaped = escapeRegExp(alias).replace(/\\ /g, '\\s+');
+      const afterLabel = new RegExp(`(?:^|\\s)${escaped}\\s*(?:vale|equivale\\s+a|corresponde\\s+a|=|:|-)\\s*(\\d{1,3})(?=\\s|$|[;,])`, 'i');
+      const beforeLabel = new RegExp(`(?:^|\\s)(\\d{1,3})\\s*(?:=|:|-)\\s*${escaped}(?=\\s|$|[;,])`, 'i');
+      const match = source.match(afterLabel) || source.match(beforeLabel);
+      if (match) values.add(Number(match[1]));
+    });
+    if (values.size === 1) scores[option.id] = [...values][0];
+  });
+
+  return Object.keys(scores).length === options.length ? scores : null;
+};
+
+const documentScoreRanges = (rulesText) => cleanText(rulesText)
+  .split('\n')
+  .map((line) => {
+    const match = line.match(/^\s*(\d+(?:[.,]\d+)?)\s*(?:a|ate|até|-)\s*(\d+(?:[.,]\d+)?)\s*(?:pontos?)?\s*(?:-|:|=)\s*(.{3,160})$/i);
+    if (!match) return null;
+    return {
+      range: `${match[1]} a ${match[2]}`,
+      label: cleanText(match[3]),
+    };
+  })
+  .filter(Boolean);
+
+const scoreMapForQuestionnaire = (questionnaire, rulesText) => {
+  const configured = Object.fromEntries((questionnaire.options || [])
+    .filter((option) => typeof option.score === 'number')
+    .map((option) => [option.id, option.score]));
+  if (Object.keys(configured).length === questionnaire.options.length) {
+    return { scores: configured, source: 'instrumento' };
+  }
+  const fromDocument = documentScoreMap(rulesText, questionnaire.options || []);
+  return fromDocument ? { scores: fromDocument, source: 'documento' } : null;
+};
+
+export const calculateQuestionnaireOutcome = (questionnaire, answers, rulesText = '') => {
+  if (!questionnaire?.items?.length || !questionnaire?.options?.length) return null;
+  const answerMap = answers || {};
+  const answeredCount = questionnaire.items.filter((_, index) => Boolean(answerMap[index])).length;
+  const missingItems = questionnaire.items.map((_, index) => index).filter((index) => !answerMap[index]);
+  const scoreMap = scoreMapForQuestionnaire(questionnaire, rulesText);
+  const complete = answeredCount === questionnaire.items.length;
+
+  if (!scoreMap) {
+    return {
+      complete,
+      canScore: false,
+      answeredCount,
+      totalItems: questionnaire.items.length,
+      missingItems,
+      score: null,
+      maximum: null,
+      percentage: null,
+      classification: 'Regra de pontuacao nao configurada',
+      observation: complete
+        ? 'Respostas preenchidas. Cadastre ou confirme a regra de pontuacao deste instrumento antes de gerar classificacao.'
+        : `${answeredCount} de ${questionnaire.items.length} respostas preenchidas; faltam ${missingItems.length} item(ns).`,
+      source: null,
+      sourceLabel: 'Sem regra de pontuacao automatica',
+    };
+  }
+
+  const score = questionnaire.items.reduce((total, _, index) => total + (scoreMap.scores[answerMap[index]] ?? 0), 0);
+  const theoreticalMaximum = questionnaire.items.length * Math.max(...Object.values(scoreMap.scores));
+  const maximum = Number(questionnaire.maximum) || theoreticalMaximum;
+  const percentage = maximum > 0 ? Number(((score / maximum) * 100).toFixed(1)) : null;
+  const ranges = questionnaire.ranges?.length ? questionnaire.ranges : documentScoreRanges(rulesText);
+  const matchedRange = complete ? ranges.find((item) => {
+    const bounds = rangeBounds(item.range);
+    return bounds && score >= bounds.min && score <= bounds.max;
+  }) : null;
+  const classification = !complete
+    ? 'Preenchimento incompleto'
+    : matchedRange?.label || 'Pontuacao calculada - revisar classificacao';
+
+  return {
+    complete,
+    canScore: true,
+    answeredCount,
+    totalItems: questionnaire.items.length,
+    missingItems,
+    score,
+    maximum,
+    percentage,
+    classification,
+    observation: complete
+      ? `Pontuacao calculada automaticamente pela regra do ${scoreMap.source}. Conferir com o documento e o manual aplicavel antes de concluir.`
+      : `Pontuacao parcial calculada pela regra do ${scoreMap.source}. Faltam ${missingItems.length} item(ns) para o resultado final.`,
+    source: scoreMap.source,
+    sourceLabel: scoreMap.source === 'instrumento' ? 'Regra cadastrada no instrumento' : 'Regra identificada no documento',
+  };
+};
+
 export const analyzeSchoolCorrectionDocument = (rawText, questionnaire) => {
   const rules = extractCorrectionRules(rawText);
   const answerAnalysis = detectQuestionnaireAnswerDetails(rawText, questionnaire);
@@ -398,6 +505,7 @@ export const analyzeSchoolCorrectionDocument = (rawText, questionnaire) => {
     rulesStartLine: rules.startLine,
     detectedAnswers: answerAnalysis.answers,
     answerAnalysis,
+    automaticOutcome: calculateQuestionnaireOutcome(questionnaire, answerAnalysis.answers, rules.text),
   };
 };
 
