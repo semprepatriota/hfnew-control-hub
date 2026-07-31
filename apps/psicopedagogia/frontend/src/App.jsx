@@ -10,7 +10,7 @@ import {
   INTEGRATION_DOMAINS,
   INVESTIGATIVE_HYPOTHESES,
 } from './services/instruments';
-import { detectQuestionnaireAnswers, importPatientDocuments, readImportedDocuments } from './services/patientDocumentImport';
+import { analyzeSchoolCorrectionDocument, importPatientDocuments, readImportedDocuments, SCHOOL_DOCUMENT_OPTIONS } from './services/patientDocumentImport';
 import './styles/global.css';
 
 const today = new Date().toISOString().slice(0, 10);
@@ -453,7 +453,7 @@ function QuestionnaireBlock({ instrument, answers, onChange, supplementalAnswers
   return <div className="questionnaire-block"><div className="section-title-row"><div><p className="eyebrow">Bloco 2 - Aplicacao</p><h3>{questionnaire.title}</h3></div><span className="status-pill status-blue">{answeredCount}/{questionnaire.items.length} respondidos</span></div><div className="info-box"><strong>Nota tecnica:</strong> {questionnaire.note} Marque somente uma alternativa em cada item.</div><div className="table-wrap"><table className="questionnaire-table"><thead><tr><th>N.</th><th>Indicador investigado</th>{questionnaire.options.map((option) => <th key={option.id}>{option.id}</th>)}</tr></thead><tbody>{questionnaire.items.map((item, index) => { const itemText = typeof item === 'string' ? item : item.text; return <tr key={typeof item === 'string' ? item : item.id}><td>{index + 1}</td><td>{itemText}</td>{questionnaire.options.map((option) => <td key={option.id}><label className="response-cell"><input type="radio" name={`question-${index}`} checked={answers[index] === option.id} onChange={() => onChange(index, option.id)} /><span>{option.id}</span></label></td>)}</tr>; })}</tbody></table></div><div className="questionnaire-summary">{hasScoring ? <><strong>Resultado automatico do protocolo:</strong> {total}/{questionnaire.maximum || questionnaire.items.length} pontos | {(total / (questionnaire.maximum || questionnaire.items.length) * 100).toFixed(1)}%{range ? ` | ${range.label}` : ' | revisar conforme o manual.'}</> : <><strong>Registro atual:</strong> {answeredCount} de {questionnaire.items.length} respostas. O arquivo nao define ponto de corte ou regra automatica; a interpretacao deve ser manual.</>}</div>{questionnaire.ranges?.length ? <div className="range-table"><table><thead><tr><th>Pontuacao</th><th>Porcentagem</th><th>Leitura descritiva</th></tr></thead><tbody>{questionnaire.ranges.map((item) => <tr key={item.range}><td>{item.range}</td><td>{item.percentage}</td><td>{item.label}</td></tr>)}</tbody></table></div> : null}{questionnaire.supplementalFields?.length ? <div className="supplemental-fields"><div className="section-title-row"><h3>Campos complementares</h3></div>{questionnaire.supplementalFields.map((field, index) => <div className="form-group" key={field}><label htmlFor={`supplemental-${index}`}>{field}</label><textarea id={`supplemental-${index}`} rows="2" value={supplementalAnswers[index] || ''} onChange={(event) => onSupplementalChange(index, event.target.value)} /></div>)}</div> : null}</div>;
 }
 
-function SchoolResponseImport({ instrument, answers, documentReview, onDocumentRead, onApplySuggestions }) {
+function SchoolResponseImport({ instrument, answers, documentReview, onDocumentRead, onApplySuggestions, onRulesChange, onRulesConfirm }) {
   const [files, setFiles] = useState([]);
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState('');
@@ -467,19 +467,21 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
     setStatus('');
     setReading(true);
     try {
-      const imported = await readImportedDocuments(files, setStatus);
-      const detectedAnswers = detectQuestionnaireAnswers(imported.text, questionnaire);
+      const imported = await readImportedDocuments(files, setStatus, SCHOOL_DOCUMENT_OPTIONS);
+      const analysis = analyzeSchoolCorrectionDocument(imported.text, questionnaire);
       onDocumentRead({
         fileNames: imported.fileNames,
-        extractedText: imported.text.slice(0, 30000),
+        extractedText: imported.text,
         textLength: imported.textLength,
-        detectedAnswers,
+        pageDetails: imported.pageDetails,
+        ...analysis,
+        rulesConfirmed: false,
         readAt: new Date().toISOString(),
       });
       setFiles([]);
-      setStatus(questionnaire
-        ? `${Object.keys(detectedAnswers).length} resposta(s) claramente identificada(s). Revise antes de aplicar.`
-        : 'Documento lido. Este instrumento nao possui questionario estruturado para comparacao automatica.');
+      setStatus(analysis.rulesFound
+        ? `${Object.keys(analysis.detectedAnswers).length} resposta(s) claramente identificada(s). As regras de correcao foram separadas para sua confirmacao.`
+        : 'Documento lido, mas nenhuma secao de regras de correcao foi identificada. Confira o texto e informe as regras antes de aplicar sugestoes.');
     } catch (readError) {
       setError(readError.message || 'Nao foi possivel ler o documento selecionado.');
     } finally {
@@ -489,21 +491,21 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
 
   return (
     <section className="document-review-panel" aria-labelledby="school-document-title">
-      <div className="section-title-row"><div><p className="eyebrow">Leitura para revisao</p><h3 id="school-document-title">Documento respondido pela escola</h3></div>{documentReview && <span className="status-pill status-blue">{detectedCount} sugestao(oes)</span>}</div>
-      <p className="muted">Importe o PDF ou Word .docx respondido. O leitor organiza o texto para comparacao; a correcao e a decisao final continuam sendo suas.</p>
+      <div className="section-title-row"><div><p className="eyebrow">Leitura e correcao assistida</p><h3 id="school-document-title">Documento respondido pela escola</h3></div>{documentReview && <span className="status-pill status-blue">{detectedCount} sugestao(oes)</span>}</div>
+      <p className="muted">Importe um PDF de ate 20 paginas ou um Word .docx equivalente. O leitor separa respostas e regras de correcao; a validacao final continua sendo sua.</p>
       {error && <div className="error-message">{error}</div>}
       {status && <div className="info-box import-progress">{status}</div>}
       <div className="import-layout compact-import-layout">
         <label className="file-import-zone compact-file-zone" htmlFor="school-response-import">
-          <input id="school-response-import" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple onChange={(event) => { setFiles(Array.from(event.target.files || [])); setError(''); setStatus(''); }} disabled={reading} />
-          <strong>{files.length ? `${files.length} arquivo(s) selecionado(s)` : 'Selecionar PDF ou Word'}</strong>
-          <span>Ate 5 arquivos de 12 MB cada.</span>
+          <input id="school-response-import" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => { setFiles(Array.from(event.target.files || [])); setError(''); setStatus(''); }} disabled={reading} />
+          <strong>{files.length ? files[0].name : 'Selecionar PDF ou Word'}</strong>
+          <span>Um documento por vez. PDF: ate 20 paginas e 12 MB.</span>
         </label>
         <div className="import-file-list">{files.length ? files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>) : <span>Escolha o documento respondido pela escola.</span>}</div>
       </div>
       <label className="checkbox-row import-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={reading} />Confirmo que tenho autorizacao para ler esse documento e vou revisar toda sugestao antes de usar.</label>
-      <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler para revisao'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions}>Aplicar sugestoes em campos vazios</button>}</div>
-      {documentReview && <details className="document-review-details"><summary>Ver leitura e comparacao</summary><p className="muted">Arquivos: {documentReview.fileNames.join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.extractedText && <textarea className="document-text-preview" rows="10" readOnly value={documentReview.extractedText} aria-label="Texto extraido do documento" />}</details>}
+      <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler documento completo'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions} disabled={!documentReview?.rulesConfirmed}>Aplicar sugestoes em campos vazios</button>}</div>
+      {documentReview && <details className="document-review-details" open><summary>Regras, leitura e comparacao</summary><p className="muted">Arquivo: {documentReview.fileNames.join(', ')}. {documentReview.pageDetails?.map((item) => `${item.pageCount || 'Sem'} pagina(s)${item.pageCountMode === 'estimated' ? ' estimada(s)' : ''}`).join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p><div className="form-group"><label htmlFor="document-correction-rules">Regras de correcao identificadas</label><textarea id="document-correction-rules" className="document-text-preview" rows="9" value={documentReview.correctionRules || ''} onChange={(event) => onRulesChange(event.target.value)} placeholder="O leitor nao encontrou uma secao de regras. Cole ou ajuste aqui as regras que aparecem no documento." /></div><label className="checkbox-row import-consent"><input type="checkbox" checked={Boolean(documentReview.rulesConfirmed)} onChange={(event) => onRulesConfirm(event.target.checked)} />Revisei as regras acima e confirmo que correspondem ao documento recebido.</label>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.extractedText && <textarea className="document-text-preview" rows="14" readOnly value={documentReview.extractedText} aria-label="Texto completo extraido do documento" />}</details>}
     </section>
   );
 }
@@ -638,7 +640,7 @@ function EvaluationForm({ initialApplication, onSaved }) {
           <div className="form-group"><label htmlFor="conditions">Condicoes de aplicacao</label><input id="conditions" name="conditions" placeholder="Ambiente, interrupcoes e recursos" value={form.conditions} onChange={handleChange} /></div>
         </div>
         {instrument && <div className="technical-summary"><strong>{instrument.name}</strong><span>{instrument.description}</span><span>Dominios relacionados: {instrument.domains.join(', ')}</span></div>}
-        <SchoolResponseImport instrument={instrument} answers={answers} documentReview={documentReview} onDocumentRead={(review) => { setDocumentReview(review); setForm((current) => ({ ...current, conditions: current.conditions || `Documento escolar lido: ${review.fileNames.join(', ')}` })); }} onApplySuggestions={() => setAnswers((current) => { const next = { ...current }; Object.entries(documentReview?.detectedAnswers || {}).forEach(([index, value]) => { if (!next[index]) next[index] = value; }); return next; })} />
+        <SchoolResponseImport instrument={instrument} answers={answers} documentReview={documentReview} onDocumentRead={(review) => { setDocumentReview(review); setForm((current) => ({ ...current, conditions: current.conditions || `Documento escolar lido: ${review.fileNames.join(', ')}` })); }} onRulesChange={(correctionRules) => setDocumentReview((current) => ({ ...current, correctionRules, rulesConfirmed: false }))} onRulesConfirm={(rulesConfirmed) => setDocumentReview((current) => ({ ...current, rulesConfirmed }))} onApplySuggestions={() => setAnswers((current) => { const next = { ...current }; Object.entries(documentReview?.detectedAnswers || {}).forEach(([index, value]) => { if (!next[index]) next[index] = value; }); return next; })} />
         <QuestionnaireBlock instrument={instrument} answers={answers} onChange={(index, value) => setAnswers((current) => ({ ...current, [index]: value }))} supplementalAnswers={supplementalAnswers} onSupplementalChange={(index, value) => setSupplementalAnswers((current) => ({ ...current, [index]: value }))} />
         <div className="form-group"><label htmlFor="behaviorObservations">Observacoes comportamentais</label><textarea id="behaviorObservations" name="behaviorObservations" rows="3" value={form.behaviorObservations} onChange={handleChange} /></div>
         <ResultEditor results={results} onChange={setResults} />
