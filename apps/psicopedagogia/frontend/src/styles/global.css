@@ -133,6 +133,8 @@ table { width: 100%; border-collapse: collapse; }
 th, td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 th { color: #ffffff; background: var(--primary-dark); font-size: 12px; font-weight: 800; }
 tbody tr:hover, .selected-row { background: #f1f7fc; }
+.questionnaire-table .question-unresolved { background: #fff8e8; }
+.questionnaire-table .question-unresolved td:first-child { color: #8a5c00; font-weight: 800; }
 .table-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 table strong { color: var(--primary-dark); }
 .results-table { min-width: 980px; }
