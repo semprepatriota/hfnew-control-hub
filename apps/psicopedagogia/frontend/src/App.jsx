@@ -513,7 +513,7 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
     setStatus('');
     setReading(true);
     try {
-      const imported = await readImportedDocuments(files, setStatus, SCHOOL_DOCUMENT_OPTIONS);
+      const imported = await readImportedDocuments(files, setStatus, { ...SCHOOL_DOCUMENT_OPTIONS, questionnaire });
       const analysis = analyzeSchoolCorrectionDocument(imported.text, questionnaire);
       onDocumentRead({
         fileNames: imported.fileNames,
@@ -521,6 +521,7 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
         textLength: imported.textLength,
         pageDetails: imported.pageDetails,
         pages: imported.pages,
+        tables: imported.tables,
         ...analysis,
         rulesConfirmed: false,
         readAt: new Date().toISOString(),
@@ -551,10 +552,40 @@ function SchoolResponseImport({ instrument, answers, documentReview, onDocumentR
         <div className="import-file-list">{files.length ? files.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>) : <span>Escolha o documento respondido pela escola.</span>}</div>
       </div>
       <label className="checkbox-row import-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} disabled={reading} />Confirmo que tenho autorizacao para ler esse documento e vou revisar toda sugestao antes de usar.</label>
-      <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler, preencher e calcular'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions} disabled={!documentReview?.rulesConfirmed}>Preencher itens vazios novamente</button>}</div>
-      {documentReview && <details className="document-review-details" open><summary>Regras, leitura e comparacao</summary><p className="muted">Arquivo: {documentReview.fileNames.join(', ')}. {documentReview.pageDetails?.map((item) => `${item.pageCount || 'Sem'} pagina(s)${item.pageCountMode === 'estimated' ? ' estimada(s)' : ''}${item.ocrPageCount ? `, OCR em ${item.ocrPageCount}` : ''}`).join(', ')}. Texto extraido: {documentReview.textLength} caracteres.</p><div className="document-scan-summary"><span className="status-pill status-blue">{detectedCount}/{totalItems || '-'} identificadas</span><span className={`status-pill ${ambiguousCount ? 'status-yellow' : 'status-green'}`}>{ambiguousCount ? `${ambiguousCount} ambigua(s)` : 'Sem ambiguidade detectada'}</span><span className={`status-pill ${documentReview.rulesFound ? 'status-green' : 'status-yellow'}`}>{documentReview.rulesFound ? 'Regras localizadas' : 'Regras nao localizadas'}</span></div><div className="form-group"><label htmlFor="document-correction-rules">Regras de correcao identificadas</label><textarea id="document-correction-rules" className="document-text-preview" rows="9" value={documentReview.correctionRules || ''} onChange={(event) => onRulesChange(event.target.value)} placeholder="O leitor nao encontrou uma secao de regras. Cole ou ajuste aqui as regras que aparecem no documento." /></div><label className="checkbox-row import-consent"><input type="checkbox" checked={Boolean(documentReview.rulesConfirmed)} onChange={(event) => onRulesConfirm(event.target.checked)} />Revisei as regras acima e confirmo que correspondem ao documento recebido.</label>{questionnaire && <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} />}{documentReview.pages?.length ? <details className="document-page-audit"><summary>Conferir leitura pagina por pagina</summary><p className="muted">Use esta conferencia quando uma resposta nao for encontrada, estiver ambigua ou a escola enviar paginas escaneadas.</p>{documentReview.pages.map((page) => <article className="document-page" key={`${page.fileName}-${page.pageNumber}`}><strong>{page.fileName} | pagina {page.pageNumber}{page.ocrUsed ? ' | OCR aplicado' : ''}</strong><textarea className="document-text-preview" rows="7" readOnly value={page.text || 'Nenhum texto identificado nesta pagina.'} aria-label={`Texto extraido da pagina ${page.pageNumber}`} /></article>)}</details> : null}{documentReview.extractedText && <details className="document-page-audit"><summary>Texto completo extraido</summary><textarea className="document-text-preview" rows="14" readOnly value={documentReview.extractedText} aria-label="Texto completo extraido do documento" /></details>}</details>}
+      <div className="button-row"><button type="button" className="btn-secondary" onClick={readFiles} disabled={!files.length || !consent || reading}>{reading ? 'Lendo documento...' : 'Ler, preencher e calcular'}</button>{questionnaire && detectedCount > 0 && <button type="button" className="btn-primary" onClick={onApplySuggestions}>Aplicar respostas seguras aos itens vazios</button>}</div>
+      {documentReview && (
+        <details className="document-review-details" open>
+          <summary>Leitura organizada para preenchimento do teste</summary>
+          <p className="muted">Arquivo: {documentReview.fileNames.join(', ')}. {documentReview.pageDetails?.map((item) => `${item.pageCount || 'Sem'} pagina(s)${item.pageCountMode === 'estimated' ? ' estimada(s)' : ''}${item.ocrPageCount ? `, OCR em ${item.ocrPageCount}` : ''}`).join(', ')}</p>
+          <div className="document-scan-summary">
+            <span className="status-pill status-blue">{detectedCount}/{totalItems || '-'} identificadas</span>
+            <span className={`status-pill ${ambiguousCount ? 'status-yellow' : 'status-green'}`}>{ambiguousCount ? `${ambiguousCount} ambigua(s)` : 'Sem ambiguidade detectada'}</span>
+            <span className={`status-pill ${documentReview.rulesFound ? 'status-green' : 'status-yellow'}`}>{documentReview.rulesFound ? 'Regras localizadas' : 'Regras nao localizadas'}</span>
+          </div>
+          <div className="document-review-grid">
+            <section className="document-review-column">
+              <h4>Regras de correcao identificadas</h4>
+              <p className="muted">Revise, complete ou ajuste as regras escritas no proprio documento antes de concluir a aplicacao.</p>
+              <div className="form-group"><textarea id="document-correction-rules" className="document-text-preview" rows="9" value={documentReview.correctionRules || ''} onChange={(event) => onRulesChange(event.target.value)} placeholder="O leitor nao encontrou uma secao de regras. Cole ou ajuste aqui as regras que aparecem no documento." /></div>
+              <label className="checkbox-row import-consent"><input type="checkbox" checked={Boolean(documentReview.rulesConfirmed)} onChange={(event) => onRulesConfirm(event.target.checked)} />Revisei as regras acima e confirmo que correspondem ao documento recebido.</label>
+            </section>
+            <section className="document-review-column document-answer-map">
+              <h4>Mapa para preenchimento do teste</h4>
+              <p className="muted">Cada resposta segura encontrada no documento e aplicada nos itens vazios abaixo. Itens sem leitura segura ficam para sua revisao.</p>
+              {questionnaire ? <DocumentAnswerComparison questionnaire={questionnaire} answers={answers} documentReview={documentReview} /> : <div className="warning-box">Selecione o instrumento antes de ler o documento para que as respostas possam ser relacionadas aos itens corretos.</div>}
+            </section>
+          </div>
+          <DocumentTablesPreview tables={documentReview.tables || []} />
+          {documentReview.pages?.length ? <details className="document-page-audit"><summary>Conferir leitura pagina por pagina</summary><p className="muted">Confira a pagina correspondente quando um item nao for identificado ou houver mais de uma marcacao. As tabelas estruturadas do Word aparecem separadamente acima.</p>{documentReview.pages.map((page) => <article className="document-page" key={`${page.fileName}-${page.pageNumber}`}><strong>{page.fileName} | pagina {page.pageNumber}{page.ocrUsed ? ' | OCR aplicado' : ''}</strong><textarea className="document-text-preview" rows="7" readOnly value={page.text || 'Nenhum texto identificado nesta pagina.'} aria-label={`Texto extraido da pagina ${page.pageNumber}`} /></article>)}</details> : null}
+        </details>
+      )}
     </section>
   );
+}
+
+function DocumentTablesPreview({ tables }) {
+  if (!tables.length) return null;
+  return <details className="document-page-audit document-tables-preview" open><summary>Tabelas identificadas no documento ({tables.length})</summary><p className="muted">As celulas marcadas aparecem destacadas. Quando o cabecalho da tabela corresponde as alternativas do teste, a alternativa relacionada tambem e indicada.</p>{tables.map((table) => <article className="document-table-preview" key={`${table.fileName}-${table.tableNumber}`}><strong>{table.fileName} | tabela {table.tableNumber}</strong><div className="table-wrap"><table><tbody>{table.rows.map((row) => <tr key={row.rowNumber}>{row.cells.map((cell, index) => <td key={`${row.rowNumber}-${index}`} className={cell.marked ? 'document-marked-cell' : ''}>{cell.text || (cell.marked ? 'Marcacao' : '-')}</td>)}{row.mappedOptions?.map((option) => <td className="document-mapped-cell" key={`${row.rowNumber}-${option.id}`}>Resposta: {option.label}</td>)}</tr>)}</tbody></table></div></article>)}</details>;
 }
 
 function DocumentAnswerComparison({ questionnaire, answers, documentReview }) {
@@ -562,7 +593,6 @@ function DocumentAnswerComparison({ questionnaire, answers, documentReview }) {
   const answerAnalysis = documentReview.answerAnalysis || {};
   const ambiguousItems = new Set(answerAnalysis.ambiguousItems || []);
   const indexes = questionnaire.items.map((_, index) => index);
-  if (!Object.keys(documentAnswers).length && !ambiguousItems.size) return <div className="warning-box">Nenhuma resposta foi reconhecida com seguranca. Confira a leitura pagina por pagina e registre as respostas manualmente antes de concluir.</div>;
   const answerLabel = (id) => questionnaire.options.find((option) => option.id === id)?.label || (id ? String(id) : 'Nao preenchida');
   const status = (index, documentAnswer, manualAnswer) => {
     if (ambiguousItems.has(index)) return 'Marcacao ambigua';
@@ -570,7 +600,8 @@ function DocumentAnswerComparison({ questionnaire, answers, documentReview }) {
     if (!manualAnswer) return 'Pendente de revisao';
     return documentAnswer === manualAnswer ? 'Confere' : 'Revisar divergencia';
   };
-  return <div className="table-wrap document-comparison-wrap"><table className="document-comparison-table"><thead><tr><th>Item</th><th>Documento</th><th>Formulario</th><th>Comparacao</th></tr></thead><tbody>{indexes.map((index) => { const item = questionnaire.items[index]; const itemText = typeof item === 'string' ? item : item?.text; const documentAnswer = documentAnswers[index]; const manualAnswer = answers[index]; const match = status(index, documentAnswer, manualAnswer); const evidence = answerAnalysis.evidence?.[index]; return <tr key={index}><td><strong>{index + 1}.</strong> {itemText}</td><td>{documentAnswer ? <>{answerLabel(documentAnswer)}{evidence && <small className="document-evidence">Leitura: {evidence}</small>}</> : ambiguousItems.has(index) ? <span className="muted">Mais de uma marcacao reconhecida</span> : <span className="muted">Nao identificado</span>}</td><td>{answerLabel(manualAnswer)}</td><td><span className={`status-pill ${match === 'Confere' ? 'status-green' : 'status-yellow'}`}>{match}</span></td></tr>; })}</tbody></table></div>;
+  const hasDetectedAnswers = Object.keys(documentAnswers).length > 0 || ambiguousItems.size > 0;
+  return <>{!hasDetectedAnswers && <div className="warning-box">Nenhuma resposta foi reconhecida com seguranca ainda. Abaixo esta o mapa completo do teste para facilitar a conferencia com o documento.</div>}<div className="table-wrap document-comparison-wrap"><table className="document-comparison-table"><thead><tr><th>Item</th><th>Documento</th><th>Formulario</th><th>Comparacao</th></tr></thead><tbody>{indexes.map((index) => { const item = questionnaire.items[index]; const itemText = typeof item === 'string' ? item : item?.text; const documentAnswer = documentAnswers[index]; const manualAnswer = answers[index]; const match = status(index, documentAnswer, manualAnswer); const evidence = answerAnalysis.evidence?.[index]; return <tr key={index}><td><strong>{index + 1}.</strong> {itemText}</td><td>{documentAnswer ? <>{answerLabel(documentAnswer)}{evidence && <small className="document-evidence">Leitura: {evidence}</small>}</> : ambiguousItems.has(index) ? <span className="muted">Mais de uma marcacao reconhecida</span> : <span className="muted">Nao identificado</span>}</td><td>{answerLabel(manualAnswer)}</td><td><span className={`status-pill ${match === 'Confere' ? 'status-green' : 'status-yellow'}`}>{match}</span></td></tr>; })}</tbody></table></div></>;
 }
 
 function EvaluationForm({ initialApplication, onSaved }) {

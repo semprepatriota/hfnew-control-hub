@@ -20,6 +20,13 @@ const cleanText = (value) => String(value || '')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
+const wordComparable = (value) => cleanText(value)
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
 const labelValue = (text, labels) => {
   const expression = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:${expression})\\s*[:\\-]\\s*([^\\n]{2,180})`, 'im'));
@@ -152,6 +159,7 @@ const extractPdfText = async (file, onProgress, maxPages) => {
     pageCountMode: 'exact',
     ocrPageCount: pages.filter((page) => page.ocrUsed).length,
     pages,
+    tables: [],
   };
 };
 
@@ -210,21 +218,83 @@ const wordCellDetails = (cell) => {
   return { text, marked };
 };
 
-const docxStructuredResponseText = async (file) => {
+const wordOptionId = (value, options = []) => {
+  const normalized = wordComparable(value);
+  if (!normalized || normalized.length > 100) return null;
+  const matches = options.filter((option) => {
+    const label = wordComparable(option.label);
+    const id = wordComparable(option.id);
+    return normalized === label
+      || normalized === id
+      || normalized === `opcao ${id}`
+      || normalized.includes(` ${label}`)
+      || normalized.includes(`${id} ${label}`);
+  });
+  return matches.length === 1 ? matches[0].id : null;
+};
+
+const wordTableDetails = (table, tableNumber, questionnaire) => {
+  const options = questionnaire?.options || [];
+  const rows = wordElements(table, 'tr').map((row) => directWordChildren(row, 'tc').map(wordCellDetails))
+    .filter((cells) => cells.length);
+  if (!rows.length) return null;
+
+  let headerRowIndex = -1;
+  let optionByColumn = {};
+  rows.slice(0, Math.min(rows.length, 6)).some((cells, index) => {
+    const found = {};
+    cells.forEach((cell, cellIndex) => {
+      const optionId = wordOptionId(cell.text, options);
+      if (optionId) found[cellIndex] = optionId;
+    });
+    if (Object.keys(found).length >= 2) {
+      headerRowIndex = index;
+      optionByColumn = found;
+      return true;
+    }
+    return false;
+  });
+
+  const structuredRows = rows.map((cells, rowIndex) => {
+    const mappedOptionIds = [...new Set(cells
+      .map((cell, cellIndex) => (cell.marked ? optionByColumn[cellIndex] : null))
+      .filter(Boolean))];
+    const content = cells
+      .map((cell) => `${cell.marked ? '[marcado] ' : ''}${cell.text}`.trim())
+      .filter(Boolean)
+      .join(' | ');
+    const mappedLabels = mappedOptionIds.map((id) => options.find((option) => option.id === id)?.label || id);
+    return {
+      rowNumber: rowIndex + 1,
+      cells: cells.map((cell) => ({ text: cell.text, marked: cell.marked })),
+      mappedOptionIds,
+      mappedOptions: mappedOptionIds.map((id) => ({ id, label: options.find((option) => option.id === id)?.label || id })),
+      text: cleanText([content, ...mappedLabels.map((label) => `[marcado] ${label}`)].filter(Boolean).join(' | ')),
+    };
+  });
+
+  return {
+    tableNumber,
+    headerRowIndex,
+    headers: headerRowIndex >= 0 ? rows[headerRowIndex].map((cell) => cell.text) : [],
+    rows: structuredRows,
+  };
+};
+
+const docxStructuredResponseText = async (file, questionnaire) => {
   const jszipModule = await import('jszip');
   const JSZip = jszipModule.default || jszipModule;
   const archive = await JSZip.loadAsync(await file.arrayBuffer());
   const documentXml = await archive.file('word/document.xml')?.async('text');
-  if (!documentXml) return '';
+  if (!documentXml) return { text: '', tables: [] };
 
   const document = new DOMParser().parseFromString(documentXml, 'application/xml');
-  if (document.querySelector('parsererror')) return '';
+  if (document.querySelector('parsererror')) return { text: '', tables: [] };
 
-  const tableRows = wordElements(document, 'tr').map((row) => {
-    const cells = directWordChildren(row, 'tc').map(wordCellDetails);
-    if (!cells.length) return '';
-    return cleanText(cells.map((cell) => `${cell.marked ? '[marcado] ' : ''}${cell.text}`.trim()).join(' | '));
-  }).filter(Boolean);
+  const tables = wordElements(document, 'tbl')
+    .map((table, index) => wordTableDetails(table, index + 1, questionnaire))
+    .filter(Boolean);
+  const tableRows = tables.flatMap((table) => table.rows.map((row) => row.text).filter(Boolean));
 
   const markedParagraphs = wordElements(document, 'p').map((paragraph) => {
     const text = wordText(paragraph);
@@ -232,17 +302,21 @@ const docxStructuredResponseText = async (file) => {
   }).filter(Boolean);
 
   const rows = [...new Set([...tableRows, ...markedParagraphs])];
-  return rows.length ? cleanText(`Marcacoes estruturais do Word\n${rows.join('\n')}`) : '';
+  return {
+    text: rows.length ? cleanText(`Marcacoes estruturais do Word\n${rows.join('\n')}`) : '',
+    tables,
+  };
 };
 
-const extractDocxText = async (file, maxEstimatedPages) => {
+const extractDocxText = async (file, maxEstimatedPages, questionnaire) => {
   const [mammothModule, structuredResponseText] = await Promise.all([
     import('mammoth'),
-    docxStructuredResponseText(file).catch(() => ''),
+    docxStructuredResponseText(file, questionnaire).catch(() => ({ text: '', tables: [] })),
   ]);
   const mammoth = mammothModule.default || mammothModule;
   const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-  const text = cleanText([result.value, structuredResponseText].filter(Boolean).join('\n\n'));
+  const rawText = cleanText(result.value);
+  const text = cleanText([rawText, structuredResponseText.text].filter(Boolean).join('\n\n'));
   const estimatedPages = Math.max(1, Math.ceil(text.length / 3000));
   if (maxEstimatedPages && estimatedPages > maxEstimatedPages) {
     throw new Error(`${file.name}: o Word possui aproximadamente ${estimatedPages} paginas de texto. Para a revisao assistida, use ate ${maxEstimatedPages} paginas ou exporte um recorte em PDF.`);
@@ -252,7 +326,8 @@ const extractDocxText = async (file, maxEstimatedPages) => {
     pageCount: estimatedPages,
     pageCountMode: 'estimated',
     ocrPageCount: 0,
-    pages: [{ pageNumber: 1, text, ocrUsed: false }],
+    pages: [{ pageNumber: 1, text: rawText, ocrUsed: false }],
+    tables: structuredResponseText.tables || [],
   };
 };
 
@@ -269,7 +344,7 @@ const extractImageText = async (file, onProgress) => {
   try {
     const result = await worker.recognize(file);
     const text = cleanText(result.data.text);
-    return { text, pageCount: 1, pageCountMode: 'exact', ocrPageCount: 1, pages: [{ pageNumber: 1, text, ocrUsed: true }] };
+    return { text, pageCount: 1, pageCountMode: 'exact', ocrPageCount: 1, pages: [{ pageNumber: 1, text, ocrUsed: true }], tables: [] };
   } finally {
     await worker.terminate();
   }
@@ -278,10 +353,10 @@ const extractImageText = async (file, onProgress) => {
 const extractFileText = async (file, onProgress, options = {}) => {
   const fileName = file.name.toLowerCase();
   if (file.type === 'application/pdf' || fileName.endsWith('.pdf')) return extractPdfText(file, onProgress, options.maxPdfPages);
-  if (fileName.endsWith('.docx')) return extractDocxText(file, options.maxEstimatedWordPages);
+  if (fileName.endsWith('.docx')) return extractDocxText(file, options.maxEstimatedWordPages, options.questionnaire);
   if (file.type === 'text/plain' || fileName.endsWith('.txt')) {
     const text = cleanText(await file.text());
-    return { text, pageCount: null, pageCountMode: 'not-applicable', ocrPageCount: 0, pages: [{ pageNumber: 1, text, ocrUsed: false }] };
+    return { text, pageCount: null, pageCountMode: 'not-applicable', ocrPageCount: 0, pages: [{ pageNumber: 1, text, ocrUsed: false }], tables: [] };
   }
   return extractImageText(file, onProgress);
 };
@@ -301,6 +376,7 @@ export const readImportedDocuments = async (files, onProgress, options = {}) => 
   const parts = [];
   const pageDetails = [];
   const pages = [];
+  const tables = [];
   for (let index = 0; index < fileList.length; index += 1) {
     const file = fileList[index];
     onProgress?.(`Lendo ${index + 1} de ${fileList.length}: ${file.name}`);
@@ -313,6 +389,7 @@ export const readImportedDocuments = async (files, onProgress, options = {}) => 
       ocrPageCount: result.ocrPageCount || 0,
     });
     (result.pages || []).forEach((page) => pages.push({ ...page, fileName: file.name }));
+    (result.tables || []).forEach((table) => tables.push({ ...table, fileName: file.name }));
   }
 
   const rawText = cleanText(parts.join('\n\n'));
@@ -326,6 +403,7 @@ export const readImportedDocuments = async (files, onProgress, options = {}) => 
     textLength: rawText.length,
     pageDetails,
     pages,
+    tables,
   };
 };
 
@@ -416,9 +494,21 @@ const answerCandidatesFromLine = (line, options) => {
 
 const questionIndexFromLine = (line, questionnaire) => {
   const match = String(line || '').match(/^\s*(?:(?:quest[aã]o|pergunta|item)\s*)?(\d{1,3})\s*(?:[.)\-:|]|\b)/i);
-  if (!match) return null;
-  const index = Number(match[1]) - 1;
-  return index >= 0 && index < questionnaire.items.length ? index : null;
+  if (match) {
+    const index = Number(match[1]) - 1;
+    return index >= 0 && index < questionnaire.items.length ? index : null;
+  }
+
+  // Alguns formularios Word repetem a pergunta em uma tabela, mas omitem o
+  // numero do item. Aceite apenas uma correspondencia textual unica.
+  const source = normalizedMatch(line);
+  if (source.length < 24) return null;
+  const matches = questionnaire.items.map((item, index) => {
+    const text = normalizedMatch(typeof item === 'string' ? item : item?.text);
+    const signature = text.split(' ').filter((word) => word.length > 2).slice(0, 6).join(' ');
+    return signature.length >= 18 && source.includes(signature) ? index : null;
+  }).filter((index) => index !== null);
+  return matches.length === 1 ? matches[0] : null;
 };
 
 export const detectQuestionnaireAnswerDetails = (rawText, questionnaire) => {
