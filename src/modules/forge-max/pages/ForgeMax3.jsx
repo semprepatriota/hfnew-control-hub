@@ -129,7 +129,7 @@ function ForgeMax3() {
     ? {
       ...sceneSelection.source_clip,
       id: previewScene.id,
-      asset_id: sceneSelection.asset_id,
+      asset_id: previewScene.asset_id || sceneSelection.asset_id,
       start_seconds: previewScene.start_seconds,
       end_seconds: previewScene.end_seconds,
     }
@@ -517,6 +517,7 @@ function ForgeMax3() {
       const scenes = (result.scenes || []).map((scene) => ({
         ...scene,
         id: `scene_${sourceClip.id}_${scene.index}_${Math.round(Number(scene.start_seconds) * 1000)}`,
+        asset_id: result.asset_id,
       }));
       setSceneSelection({
         clip_id: sourceClip.id,
@@ -545,7 +546,7 @@ function ForgeMax3() {
     if (!scene || !sceneSelection) return;
     setPreviewSceneId(scene.id);
     setSelectedTimelineClipId('');
-    setSelectedAssetId(sceneSelection.asset_id);
+    setSelectedAssetId(scene.asset_id || sceneSelection.asset_id);
     setPreviewCurrentTime(Number(scene.start_seconds) || 0);
     setPreviewPlaying(false);
   };
@@ -558,6 +559,70 @@ function ForgeMax3() {
         ? current.filter((sceneId) => sceneId !== scene.id)
         : [...current, scene.id]
     ));
+  };
+
+  const reorderDetectedScenes = (sourceSceneId, targetSceneId) => {
+    if (sourceSceneId === targetSceneId) return;
+    let changed = false;
+    setSceneSelection((current) => {
+      if (!current) return current;
+      const source = current.scenes.find((scene) => scene.id === sourceSceneId);
+      const target = current.scenes.find((scene) => scene.id === targetSceneId);
+      if (!source || !target || source.segment_type === 'timer' || target.segment_type === 'timer') return current;
+
+      const sceneIndexes = current.scenes.reduce((indexes, scene, index) => {
+        if (scene.segment_type !== 'timer') indexes.push(index);
+        return indexes;
+      }, []);
+      const orderedScenes = sceneIndexes.map((index) => current.scenes[index]);
+      const sourceIndex = orderedScenes.findIndex((scene) => scene.id === sourceSceneId);
+      const targetIndex = orderedScenes.findIndex((scene) => scene.id === targetSceneId);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+
+      const nextScenesOnly = [...orderedScenes];
+      const [movingScene] = nextScenesOnly.splice(sourceIndex, 1);
+      nextScenesOnly.splice(targetIndex, 0, movingScene);
+      const scenes = [...current.scenes];
+      sceneIndexes.forEach((timelineIndex, sceneIndex) => {
+        scenes[timelineIndex] = nextScenesOnly[sceneIndex];
+      });
+      changed = true;
+      return { ...current, scenes };
+    });
+    if (changed) setMessage('Ordem das cenas detectadas atualizada. Os blocos TIME permaneceram no mesmo ponto.');
+  };
+
+  const replaceDetectedSceneUpload = async (sceneId, file) => {
+    if (!file || !project?.project?.id || !sceneSelection) return;
+    const scene = sceneSelection.scenes.find((item) => item.id === sceneId);
+    if (!scene || scene.segment_type === 'timer') {
+      setError('Blocos TIME são fixos e não podem ser substituídos.');
+      return;
+    }
+
+    await runAction('replace-detected-scene', async () => {
+      const uploaded = await uploadForgeMaxVideo(project.project.id, file);
+      const newAsset = uploaded.assets?.[uploaded.assets.length - 1];
+      if (!newAsset?.id) throw new Error('O upload da nova cena não retornou um vídeo válido.');
+      const targetDuration = Math.max(0.1, Number(scene.end_seconds) - Number(scene.start_seconds));
+      const replacementDuration = Math.max(0.1, Math.min(Number(newAsset.duration) || targetDuration, targetDuration));
+
+      setProject(uploaded);
+      setSceneSelection((current) => current ? ({
+        ...current,
+        scenes: current.scenes.map((item) => (
+          item.id === sceneId
+            ? { ...item, asset_id: newAsset.id, start_seconds: 0, end_seconds: replacementDuration }
+            : item
+        )),
+      }) : current);
+      setSelectedSceneIds((current) => (current.includes(sceneId) ? current : [...current, sceneId]));
+      setPreviewSceneId(sceneId);
+      setSelectedTimelineClipId('');
+      setSelectedAssetId(newAsset.id);
+      await refreshProjects();
+      setMessage('Cena detectada substituída. O vídeo original foi preservado e o TIME continua no mesmo lugar.');
+    });
   };
 
   const commitDetectedScenes = async () => {
@@ -583,7 +648,7 @@ function ForgeMax3() {
         if (!keepFollowingTimer) continue;
       }
       replacements.push({
-        asset_id: sceneSelection.asset_id,
+        asset_id: segment.asset_id || sceneSelection.asset_id,
         start_seconds: segment.start_seconds,
         end_seconds: segment.end_seconds,
         volume: sourceClip.volume,
@@ -613,7 +678,7 @@ function ForgeMax3() {
     const firstInserted = updated.timeline.clips[insertedIndex];
     clearSceneSelection();
     setSelectedTimelineClipId(firstInserted?.id || '');
-    setSelectedAssetId(sceneSelection.asset_id);
+    setSelectedAssetId(firstInserted?.asset_id || sceneSelection.asset_id);
   };
 
   const handleDeleteRender = async () => {
@@ -1140,38 +1205,40 @@ function ForgeMax3() {
               </span>
               <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
             </div>
+            <ForgeMaxTimeline
+              embedded
+              assets={assets}
+              clips={timelineClips}
+              selectedClipId={selectedTimelineClipId}
+              busy={busy}
+              collapsed={timelineCollapsed}
+              onToggleCollapse={() => setTimelineCollapsed((current) => !current)}
+              resolveAssetUrl={forgeMaxFileUrl}
+              onSelect={selectTimelineClip}
+              onMove={moveTimelineClip}
+              onReorderScenes={reorderTimelineScenes}
+              onRemove={removeTimelineClip}
+              onReplaceSceneUpload={replaceTimelineSceneUpload}
+              onTrim={updateTimelineClip}
+              onSplitScenes={handleSplitScenes}
+              sceneThreshold={sceneThreshold}
+              onSceneThresholdChange={setSceneThreshold}
+              sceneSelection={sceneSelection}
+              selectedSceneIds={selectedSceneIds}
+              previewSceneId={previewSceneId}
+              onPreviewScene={previewDetectedScene}
+              onToggleScene={toggleDetectedScene}
+              onReorderDetectedScenes={reorderDetectedScenes}
+              onReplaceDetectedSceneUpload={replaceDetectedSceneUpload}
+              onCommitScenes={commitDetectedScenes}
+              onDiscardScenes={() => {
+                clearSceneSelection();
+                setMessage('Seleção de cenas descartada. A timeline não foi alterada.');
+              }}
+            />
           </>
         )}
       </section>
-
-      <ForgeMaxTimeline
-        assets={assets}
-        clips={timelineClips}
-        selectedClipId={selectedTimelineClipId}
-        busy={busy}
-        collapsed={timelineCollapsed}
-        onToggleCollapse={() => setTimelineCollapsed((current) => !current)}
-        resolveAssetUrl={forgeMaxFileUrl}
-        onSelect={selectTimelineClip}
-        onMove={moveTimelineClip}
-        onReorderScenes={reorderTimelineScenes}
-        onRemove={removeTimelineClip}
-        onReplaceSceneUpload={replaceTimelineSceneUpload}
-        onTrim={updateTimelineClip}
-        onSplitScenes={handleSplitScenes}
-        sceneThreshold={sceneThreshold}
-        onSceneThresholdChange={setSceneThreshold}
-        sceneSelection={sceneSelection}
-        selectedSceneIds={selectedSceneIds}
-        previewSceneId={previewSceneId}
-        onPreviewScene={previewDetectedScene}
-        onToggleScene={toggleDetectedScene}
-        onCommitScenes={commitDetectedScenes}
-        onDiscardScenes={() => {
-          clearSceneSelection();
-          setMessage('Seleção de cenas descartada. A timeline não foi alterada.');
-        }}
-      />
 
       <section className={`forge-max-render-panel ${renderCollapsed ? 'collapsed' : ''}`}>
         <div className="forge-max-render-header">

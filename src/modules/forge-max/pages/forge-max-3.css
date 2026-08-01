@@ -1034,6 +1034,15 @@
   gap: 12px;
 }
 
+.forge-max-preview-panel .forge-max-timeline-panel.embedded {
+  margin-top: 24px;
+  padding: 20px 0 0;
+  border: 0;
+  border-top: 1px solid var(--max-line);
+  border-radius: 0;
+  background: transparent;
+}
+
 .forge-max-timeline-cuts-header {
   display: flex;
   align-items: flex-end;
@@ -1699,11 +1708,11 @@
 
 .forge-max-scene-bank-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 9px;
-  max-height: 330px;
-  overflow: auto;
-  padding-right: 3px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .forge-max-scene-card {
@@ -1727,6 +1736,27 @@
 .forge-max-scene-card.timer {
   border-color: rgba(247, 188, 72, 0.62);
   background: rgba(75, 52, 12, 0.22);
+}
+
+.forge-max-scene-card[draggable="true"] {
+  cursor: grab;
+}
+
+.forge-max-scene-card.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.forge-max-scene-card.drop-target {
+  border-color: var(--max-green);
+  box-shadow: 0 0 0 2px rgba(119, 231, 180, 0.28);
+}
+
+.forge-max-scene-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .forge-max-scene-preview {

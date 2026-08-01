@@ -256,8 +256,11 @@ function ForgeMaxTimeline({
   previewSceneId,
   onPreviewScene,
   onToggleScene,
+  onReorderDetectedScenes,
+  onReplaceDetectedSceneUpload,
   onCommitScenes,
   onDiscardScenes,
+  embedded = false,
 }) {
   const totalDuration = clips.reduce((total, clip) => total + (
     Math.max(0, clip.end_seconds - clip.start_seconds) / Math.max(Number(clip.speed || 1), 0.5)
@@ -276,6 +279,7 @@ function ForgeMaxTimeline({
   const [previewClipIndex, setPreviewClipIndex] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [draggedClipId, setDraggedClipId] = useState('');
+  const [draggedSceneId, setDraggedSceneId] = useState('');
   const timelinePreviewRef = useRef(null);
 
   const previewClip = clips[previewClipIndex] || null;
@@ -411,7 +415,7 @@ function ForgeMaxTimeline({
   };
 
   return (
-    <section className={`forge-max-timeline-panel ${collapsed ? 'collapsed' : ''}`}>
+    <section className={`forge-max-timeline-panel ${embedded ? 'embedded' : ''} ${collapsed ? 'collapsed' : ''}`}>
       <div className="forge-max-timeline-header">
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>
@@ -459,10 +463,34 @@ function ForgeMaxTimeline({
               const isSelected = selectionOrder >= 0;
               const isPreviewing = scene.id === previewSceneId;
               const isTimer = scene.segment_type === 'timer';
-              const sceneAsset = assets.find((item) => item.id === sceneSelection?.asset_id);
-              const previewImageUrl = buildScenePreviewUrl(sceneAsset, sceneSelection?.clip_id, scene, resolveAssetUrl);
+              const sceneAsset = assets.find((item) => item.id === (scene.asset_id || sceneSelection?.asset_id));
+              const isReplacement = Boolean(scene.asset_id && scene.asset_id !== sceneSelection?.asset_id);
+              const previewImageUrl = isReplacement ? '' : buildScenePreviewUrl(sceneAsset, sceneSelection?.clip_id, scene, resolveAssetUrl);
               return (
-                <article key={scene.id} className={`forge-max-scene-card ${isTimer ? 'timer' : ''} ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''}`}>
+                <article
+                  key={scene.id}
+                  className={`forge-max-scene-card ${isTimer ? 'timer' : ''} ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''} ${draggedSceneId === scene.id ? 'dragging' : ''} ${!isTimer && draggedSceneId && draggedSceneId !== scene.id ? 'drop-target' : ''}`}
+                  draggable={!isTimer && !busy}
+                  onDragStart={(event) => {
+                    if (isTimer) return;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', scene.id);
+                    setDraggedSceneId(scene.id);
+                  }}
+                  onDragOver={(event) => {
+                    if (isTimer || !draggedSceneId || draggedSceneId === scene.id) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(event) => {
+                    if (isTimer) return;
+                    event.preventDefault();
+                    const sourceSceneId = event.dataTransfer.getData('text/plain') || draggedSceneId;
+                    if (sourceSceneId) onReorderDetectedScenes?.(sourceSceneId, scene.id);
+                    setDraggedSceneId('');
+                  }}
+                  onDragEnd={() => setDraggedSceneId('')}
+                >
                   <button type="button" className="forge-max-scene-preview" onClick={() => onPreviewScene?.(scene)} disabled={Boolean(busy)}>
                     {previewImageUrl && (
                       <img
@@ -480,9 +508,27 @@ function ForgeMaxTimeline({
                   {isTimer ? (
                     <span className="forge-max-scene-timer-fixed"><Clock3 size={14} /> Mantido entre cenas</span>
                   ) : (
-                    <button type="button" className={`forge-max-scene-select ${isSelected ? 'selected' : ''}`} onClick={() => onToggleScene?.(scene)} disabled={Boolean(busy)}>
-                      {isSelected ? <><Check size={14} /> Incluída</> : 'Incluir cena'}
-                    </button>
+                    <div className="forge-max-scene-card-actions" onClick={(event) => event.stopPropagation()}>
+                      <span className="forge-max-timeline-drag" title="Segure e arraste esta cena sobre outra para trocar a ordem.">
+                        <GripVertical size={14} /> Arraste
+                      </span>
+                      <label className="forge-max-timeline-quick-replace" title="Troca somente esta cena pelo novo vídeo enviado">
+                        <Upload size={13} /> Trocar cena
+                        <input
+                          type="file"
+                          accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                          disabled={Boolean(busy)}
+                          onChange={(event) => {
+                            const [file] = Array.from(event.target.files || []);
+                            if (file) onReplaceDetectedSceneUpload?.(scene.id, file);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+                      <button type="button" className={`forge-max-scene-select ${isSelected ? 'selected' : ''}`} onClick={() => onToggleScene?.(scene)} disabled={Boolean(busy)}>
+                        {isSelected ? <><Check size={14} /> Incluída</> : 'Incluir cena'}
+                      </button>
+                    </div>
                   )}
                 </article>
               );
