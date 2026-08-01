@@ -812,11 +812,12 @@
 }
 
 .forge-max-timeline-panel {
-  margin-top: 18px;
-  padding: 16px;
-  border: 1px solid var(--max-line);
+  margin-top: 42px;
+  padding: 20px;
+  border: 1px solid rgba(120, 186, 255, 0.48);
   border-radius: 8px;
   background: var(--max-panel);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.14);
 }
 
 .forge-max-render-panel {
