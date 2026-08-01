@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clock3, ListVideo, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward, X } from 'lucide-react';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -37,6 +37,15 @@ function ForgeMaxTimeline({
   onRemove,
   onTrim,
   onSplitScenes,
+  sceneThreshold = 0.25,
+  onSceneThresholdChange,
+  sceneSelection,
+  selectedSceneIds = [],
+  previewSceneId,
+  onPreviewScene,
+  onToggleScene,
+  onCommitScenes,
+  onDiscardScenes,
 }) {
   const totalDuration = clips.reduce((total, clip) => total + (
     Math.max(0, clip.end_seconds - clip.start_seconds) / Math.max(Number(clip.speed || 1), 0.5)
@@ -58,6 +67,7 @@ function ForgeMaxTimeline({
 
   const previewClip = clips[previewClipIndex] || null;
   const previewAsset = assets.find((item) => item.id === previewClip?.asset_id) || null;
+  const sceneChoices = sceneSelection?.scenes || [];
 
   useEffect(() => {
     if (!selectedClip) {
@@ -206,7 +216,7 @@ function ForgeMaxTimeline({
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>
           <h2>Timeline de Edição</h2>
-          <p>Organize a ordem e os cortes. Cada alteração é salva no projeto atual.</p>
+          <p>Organize a ordem e os cortes. A timeline aceita até 60 trechos e cada alteração é salva no projeto atual.</p>
         </div>
         <div className="forge-max-timeline-header-actions">
           <div className="forge-max-timeline-summary">
@@ -224,6 +234,47 @@ function ForgeMaxTimeline({
           </button>
         </div>
       </div>
+
+      {!collapsed && sceneChoices.length > 0 && (
+        <section className="forge-max-scene-bank">
+          <div className="forge-max-scene-bank-header">
+            <div>
+              <span className="forge-max-section-icon"><Scissors size={16} /></span>
+              <h3>Cenas detectadas</h3>
+              <p>Clique em uma cena para vê-la no preview. Marque na ordem desejada; essa ordem será usada na timeline.</p>
+            </div>
+            <div className="forge-max-scene-bank-actions">
+              <span>{selectedSceneIds.length}/{sceneChoices.length} selecionada(s)</span>
+              <button type="button" className="forge-max-scene-commit" onClick={onCommitScenes} disabled={!selectedSceneIds.length || Boolean(busy)}>
+                <ListPlus size={15} /> Puxar {selectedSceneIds.length || ''} corte(s) para timeline
+              </button>
+              <button type="button" className="forge-max-scene-discard" onClick={onDiscardScenes} disabled={Boolean(busy)} title="Descartar seleção de cenas">
+                <X size={15} /> Descartar
+              </button>
+            </div>
+          </div>
+          <div className="forge-max-scene-bank-grid">
+            {sceneChoices.map((scene) => {
+              const selectionOrder = selectedSceneIds.indexOf(scene.id);
+              const isSelected = selectionOrder >= 0;
+              const isPreviewing = scene.id === previewSceneId;
+              return (
+                <article key={scene.id} className={`forge-max-scene-card ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''}`}>
+                  <button type="button" className="forge-max-scene-preview" onClick={() => onPreviewScene?.(scene)} disabled={Boolean(busy)}>
+                    <span>Cena {String(scene.index).padStart(2, '0')}</span>
+                    <strong>{formatDuration(scene.start_seconds)} - {formatDuration(scene.end_seconds)}</strong>
+                    <small>{formatDuration(scene.end_seconds - scene.start_seconds)}</small>
+                    <Eye size={15} />
+                  </button>
+                  <button type="button" className={`forge-max-scene-select ${isSelected ? 'selected' : ''}`} onClick={() => onToggleScene?.(scene)} disabled={Boolean(busy)}>
+                    {isSelected ? <><Check size={14} /> Ordem {selectionOrder + 1}</> : 'Selecionar'}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {collapsed ? null : !clips.length ? (
         <div className="forge-max-timeline-empty">
@@ -329,9 +380,23 @@ function ForgeMaxTimeline({
                   <button type="button" className="forge-max-timeline-reset" onClick={resetDraftTrim} disabled={Boolean(busy)}>
                     <RotateCcw size={14} /> Resetar corte
                   </button>
-                  <button type="button" className="forge-max-timeline-scene-button" onClick={onSplitScenes} disabled={Boolean(busy)} title="Detectar mudanças de cena e dividir este clipe">
-                    <Scissors size={14} /> Separador de cenas
-                  </button>
+                  <div className="forge-max-scene-split-controls">
+                    <label title="Menor valor encontra mais mudanças de cena">
+                      <span>Sensibilidade {Number(sceneThreshold).toFixed(2)}</span>
+                      <input
+                        type="range"
+                        min="0.10"
+                        max="0.70"
+                        step="0.05"
+                        value={sceneThreshold}
+                        onChange={(event) => onSceneThresholdChange?.(Number(event.target.value))}
+                        disabled={Boolean(busy)}
+                      />
+                    </label>
+                    <button type="button" className="forge-max-timeline-scene-button" onClick={onSplitScenes} disabled={Boolean(busy)} title="Detectar e separar todas as mudanças de cena deste trecho">
+                      <Scissors size={14} /> Separar cenas
+                    </button>
+                  </div>
                 </div>
               </div>
 
