@@ -24,6 +24,15 @@ function buildClipTransform(clip) {
   return transforms.join(' ');
 }
 
+function buildClipPreviewUrl(asset, clip, resolveAssetUrl) {
+  const match = String(asset?.url || '').match(/\/api\/forge-max\/projects\/([^/]+)\/files\/library\//);
+  if (!match) return '';
+  const cacheKey = `${Math.round(Number(clip.start_seconds || 0) * 1000)}-${Math.round(Number(clip.end_seconds || 0) * 1000)}`;
+  const path = `/api/forge-max/projects/${encodeURIComponent(match[1])}/files/timeline/clip-preview/${encodeURIComponent(clip.id)}.jpg`;
+  const url = resolveAssetUrl(path);
+  return `${url}${url.includes('?') ? '&' : '?'}v=${cacheKey}`;
+}
+
 function TimelineClipCard({
   asset,
   clip,
@@ -39,12 +48,36 @@ function TimelineClipCard({
   const previewRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1) / Math.max(Number(clip.speed || 1), 0.5);
+  const previewImageUrl = buildClipPreviewUrl(asset, clip, resolveAssetUrl);
 
-  const seekToCutStart = () => {
+  const seekToCutStart = async () => {
     const player = previewRef.current;
     if (!player) return;
-    const start = Math.min(Number(clip.start_seconds) || 0, player.duration || Number(clip.start_seconds) || 0);
-    player.currentTime = start;
+    if (player.readyState < 1) {
+      await new Promise((resolve) => {
+        const timer = window.setTimeout(resolve, 900);
+        player.addEventListener('loadedmetadata', () => {
+          window.clearTimeout(timer);
+          resolve();
+        }, { once: true });
+      });
+    }
+    const requestedStart = Number(clip.start_seconds) || 0;
+    const duration = Number.isFinite(player.duration) ? player.duration : requestedStart;
+    const start = Math.min(requestedStart, duration);
+    if (Math.abs(player.currentTime - start) < 0.03) return;
+    await new Promise((resolve) => {
+      let complete = false;
+      const finish = () => {
+        if (complete) return;
+        complete = true;
+        window.clearTimeout(timer);
+        resolve();
+      };
+      const timer = window.setTimeout(finish, 350);
+      player.addEventListener('seeked', finish, { once: true });
+      player.currentTime = start;
+    });
   };
 
   const togglePreview = async (event) => {
@@ -52,12 +85,11 @@ function TimelineClipCard({
     const player = previewRef.current;
     if (!player) return;
     if (player.paused) {
-      if (player.currentTime >= (Number(clip.end_seconds) || 0) - 0.05) {
-        seekToCutStart();
-      }
+      setPlaying(true);
+      await seekToCutStart();
       player.playbackRate = Math.max(0.5, Math.min(2, Number(clip.speed || 1)));
       player.volume = Math.max(0, Math.min(1, Number(clip.volume ?? 1)));
-      await player.play().catch(() => {});
+      await player.play().catch(() => setPlaying(false));
       return;
     }
     player.pause();
@@ -77,14 +109,21 @@ function TimelineClipCard({
       onClick={() => onSelect(clip)}
     >
       <div className="forge-max-timeline-clip-preview">
+        {!playing && previewImageUrl && (
+          <img
+            src={previewImageUrl}
+            alt={`Prévia do corte ${index + 1}`}
+            className="forge-max-timeline-clip-image"
+            loading="lazy"
+          />
+        )}
         <video
           ref={previewRef}
           src={resolveAssetUrl(asset.url)}
           preload="metadata"
           playsInline
-          className="forge-max-timeline-clip-video"
+          className={`forge-max-timeline-clip-video ${playing ? 'playing' : ''}`}
           style={{ transform: buildClipTransform(clip) }}
-          onLoadedMetadata={seekToCutStart}
           onTimeUpdate={handleTimeUpdate}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
@@ -100,6 +139,19 @@ function TimelineClipCard({
           {playing ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <span className="forge-max-timeline-clip-order">{index + 1}</span>
+        <button
+          type="button"
+          className="forge-max-timeline-clip-delete"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove(clip.id);
+          }}
+          disabled={Boolean(busy)}
+          aria-label={`Excluir corte ${index + 1}`}
+          title="Excluir este corte"
+        >
+          <X size={14} />
+        </button>
       </div>
       <div className="forge-max-timeline-clip-title">
         <span>V{index + 1}</span>
@@ -118,7 +170,6 @@ function TimelineClipCard({
         </button>
         <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
         <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
-        <button type="button" className="forge-max-timeline-remove" onClick={() => onRemove(clip.id)} disabled={Boolean(busy)} aria-label="Excluir corte" title="Excluir corte"><X size={14} /></button>
       </div>
     </article>
   );

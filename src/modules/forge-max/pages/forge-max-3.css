@@ -922,8 +922,8 @@
 
 .forge-max-timeline-track {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 9px;
 }
 
 .forge-max-timeline-cuts-header {
@@ -1060,8 +1060,8 @@
 .forge-max-timeline-clip {
   min-width: 0;
   display: grid;
-  gap: 9px;
-  padding: 12px;
+  gap: 7px;
+  padding: 8px;
   border: 1px solid var(--max-line);
   border-radius: 8px;
   background: var(--max-panel-strong);
@@ -1087,6 +1087,23 @@
 }
 
 .forge-max-timeline-clip-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.forge-max-timeline-clip-video.playing {
+  opacity: 1;
+}
+
+.forge-max-timeline-clip-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1131,6 +1148,27 @@
   font-weight: 900;
 }
 
+.forge-max-timeline-clip-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid rgba(255, 111, 111, 0.65);
+  border-radius: 50%;
+  color: #ffe0e0;
+  background: rgba(101, 23, 29, 0.88);
+  cursor: pointer;
+}
+
+.forge-max-timeline-clip-delete:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .forge-max-timeline-clip-bar {
   width: 100%;
   height: 8px;
@@ -1168,14 +1206,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .forge-max-timeline-clip-meta {
   justify-content: space-between;
   gap: 10px;
   color: var(--max-muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .forge-max-timeline-trim {
@@ -1724,6 +1762,26 @@
 
   .forge-max-library-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forge-max-timeline-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .forge-max-timeline-cuts-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .forge-max-timeline-controls {
+    flex-wrap: wrap;
+  }
+
+  .forge-max-timeline-select {
+    flex: 1 1 100%;
+    width: 100% !important;
   }
 
   .forge-max-project-bar {
