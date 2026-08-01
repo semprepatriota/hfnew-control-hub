@@ -3,6 +3,7 @@ import {
   Clapperboard,
   ChevronDown,
   ChevronUp,
+  Clock3,
   CopyPlus,
   Download,
   Film,
@@ -22,6 +23,8 @@ import {
 } from 'lucide-react';
 import {
   createForgeMaxProject,
+  applyForgeMaxTimeTemplate,
+  deleteForgeMaxTimeTemplate,
   deleteForgeMaxRender,
   deleteForgeMaxMusic,
   deleteForgeMaxProject,
@@ -29,6 +32,7 @@ import {
   forgeMaxFileUrl,
   getForgeMaxHealth,
   getForgeMaxProject,
+  listForgeMaxTimeTemplates,
   listForgeMaxProjects,
   renderForgeMaxTimeline,
   detectForgeMaxTimelineScenes,
@@ -39,6 +43,7 @@ import {
   updateForgeMaxLogo,
   deleteForgeMaxLogo,
   updateForgeMaxTimeline,
+  uploadForgeMaxTimeTemplate,
 } from '../services/forgeMaxApi';
 import ForgeMaxTimeline from '../components/ForgeMaxTimeline';
 import './forge-max-3.css';
@@ -94,10 +99,15 @@ function ForgeMax3() {
   const [selectedAssetId, setSelectedAssetId] = useState('');
   const [selectedTimelineClipId, setSelectedTimelineClipId] = useState('');
   const [health, setHealth] = useState(null);
+  const [timeTemplates, setTimeTemplates] = useState([]);
+  const [selectedTimeTemplateId, setSelectedTimeTemplateId] = useState('');
+  const [selectedTimeSceneIds, setSelectedTimeSceneIds] = useState([]);
+  const [timeTemplateTitle, setTimeTemplateTitle] = useState('Novo modelo TIME');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
+  const [timeLibraryCollapsed, setTimeLibraryCollapsed] = useState(false);
   const [projectCollapsed, setProjectCollapsed] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
@@ -112,17 +122,21 @@ function ForgeMax3() {
   const [previewSceneId, setPreviewSceneId] = useState('');
   const [assetTrimDrafts, setAssetTrimDrafts] = useState({});
   const inputRef = useRef(null);
+  const timeTemplateInputRef = useRef(null);
   const logoInputRef = useRef(null);
   const musicInputRef = useRef(null);
   const previewVideoRef = useRef(null);
 
   const assets = project?.assets || [];
+  const sceneAssets = assets.filter((asset) => !asset.id.startsWith('max_time_'));
   const musicTracks = project?.music_tracks || [];
   const musicConfig = project?.music || { active_music_id: '', volume: 0.35 };
   const logoConfig = { ...DEFAULT_LOGO_CONFIG, ...(project?.logo_config || {}) };
   const selectedAsset = assets.find((item) => item.id === selectedAssetId) || null;
   const timelineClips = project?.timeline?.clips || [];
   const lastRender = project?.last_render || null;
+  const selectedTimeTemplate = timeTemplates.find((item) => item.id === selectedTimeTemplateId) || null;
+  const maxTemplateScenes = selectedTimeTemplate?.timers?.length || 0;
   const selectedTimelineClip = timelineClips.find((item) => item.id === selectedTimelineClipId) || null;
   const previewScene = sceneSelection?.scenes?.find((scene) => scene.id === previewSceneId) || null;
   const previewSceneClip = previewScene && sceneSelection
@@ -231,9 +245,19 @@ function ForgeMax3() {
     return data.projects || [];
   };
 
+  const refreshTimeTemplates = async () => {
+    const data = await listForgeMaxTimeTemplates();
+    const templates = data.templates || [];
+    setTimeTemplates(templates);
+    setSelectedTimeTemplateId((current) => (
+      templates.some((item) => item.id === current) ? current : (templates[0]?.id || '')
+    ));
+    return templates;
+  };
+
   useEffect(() => {
     runAction('bootstrap', async () => {
-      const [healthData, projectList] = await Promise.all([getForgeMaxHealth(), refreshProjects()]);
+      const [healthData, projectList] = await Promise.all([getForgeMaxHealth(), refreshProjects(), refreshTimeTemplates()]);
       setHealth(healthData);
       if (projectList[0]?.project?.id) {
         await loadProject(projectList[0].project.id);
@@ -397,7 +421,7 @@ function ForgeMax3() {
         updated = await uploadForgeMaxVideo(activeProject.project.id, file);
       }
       setProject(updated);
-      if (sceneSelection?.asset_id === assetId) {
+      if (sceneSelection?.asset_id && !updated.assets.some((asset) => asset.id === sceneSelection.asset_id)) {
         clearSceneSelection();
       }
       setSelectedAssetId((current) => current || updated.assets[0]?.id || '');
@@ -448,6 +472,60 @@ function ForgeMax3() {
         : (updated.timeline?.clips?.[0]?.id || ''));
       setMessage(successMessage);
       return updated;
+    });
+  };
+
+  const handleTimeTemplateUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await runAction('upload-time-template', async () => {
+      const title = timeTemplateTitle.trim() || file.name.replace(/\.[^.]+$/, '') || 'Modelo TIME';
+      const created = await uploadForgeMaxTimeTemplate(title, file);
+      const templates = await refreshTimeTemplates();
+      setSelectedTimeTemplateId(created.id || templates[templates.length - 1]?.id || '');
+      setMessage(`${created.title || title} foi salvo na Biblioteca de TIME com ${created.timers?.length || 0} marcador(es) extraído(s).`);
+    });
+  };
+
+  const removeTimeTemplate = async (templateId) => {
+    await runAction('delete-time-template', async () => {
+      await deleteForgeMaxTimeTemplate(templateId);
+      await refreshTimeTemplates();
+      setMessage('Modelo TIME removido da biblioteca. Nenhum vídeo de projeto foi apagado.');
+    });
+  };
+
+  const toggleTimeSceneAsset = (assetId) => {
+    setSelectedTimeSceneIds((current) => {
+      if (current.includes(assetId)) return current.filter((item) => item !== assetId);
+      if (current.length >= maxTemplateScenes) {
+        setError(`${selectedTimeTemplate?.title || 'Este modelo'} aceita até ${maxTemplateScenes} cenas.`);
+        return current;
+      }
+      setError('');
+      return [...current, assetId];
+    });
+  };
+
+  const applySelectedTimeTemplate = async () => {
+    if (!project?.project?.id || !selectedTimeTemplate) {
+      setError('Selecione um projeto e um modelo TIME antes de montar a estrutura.');
+      return;
+    }
+    if (selectedTimeSceneIds.length < 2) {
+      setError('Selecione pelo menos duas cenas para intercalar com os blocos TIME.');
+      return;
+    }
+    await runAction('apply-time-template', async () => {
+      const updated = await applyForgeMaxTimeTemplate(project.project.id, selectedTimeTemplate.id, selectedTimeSceneIds);
+      setProject(updated);
+      clearSceneSelection();
+      setSelectedTimelineClipId(updated.timeline?.clips?.[0]?.id || '');
+      setSelectedAssetId(selectedTimeSceneIds[0] || '');
+      setSelectedTimeSceneIds([]);
+      await refreshProjects();
+      setMessage(`Estrutura ${selectedTimeTemplate.title} aplicada. As cenas podem ser trocadas ou reordenadas; os blocos TIME ficaram protegidos.`);
     });
   };
 
@@ -1087,6 +1165,94 @@ function ForgeMax3() {
                 ))}
               </div>
             )
+          )}
+        </section>
+
+        <section className={`forge-max-panel forge-max-time-library ${timeLibraryCollapsed ? 'collapsed' : ''}`}>
+          <div className="forge-max-panel-header">
+            <div>
+              <span className="forge-max-section-icon"><Clock3 size={17} /></span>
+              <h2>Biblioteca de TIME</h2>
+              <p>Escolha um modelo e intercale as cenas. Os marcadores TIME ficam bloqueados entre elas.</p>
+            </div>
+            <div className="forge-max-panel-actions">
+              <label className="forge-max-time-upload">
+                <Upload size={15} /> Adicionar modelo
+                <input ref={timeTemplateInputRef} type="file" accept="video/*" disabled={Boolean(busy)} onChange={handleTimeTemplateUpload} />
+              </label>
+              <button type="button" className="forge-max-collapse" onClick={() => setTimeLibraryCollapsed((current) => !current)} aria-label={timeLibraryCollapsed ? 'Abrir biblioteca de TIME' : 'Recolher biblioteca de TIME'}>
+                {timeLibraryCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
+              </button>
+            </div>
+          </div>
+
+          {!timeLibraryCollapsed && (
+            <>
+              <div className="forge-max-time-import-row">
+                <label>
+                  <span>Nome do próximo modelo</span>
+                  <input value={timeTemplateTitle} maxLength={80} onChange={(event) => setTimeTemplateTitle(event.target.value)} disabled={Boolean(busy)} />
+                </label>
+                <small>Envie um vídeo modelo; o Forge extrai somente os intervalos TIME para reutilizar entre suas cenas.</small>
+              </div>
+
+              {!timeTemplates.length ? (
+                <div className="forge-max-time-empty">
+                  <Clock3 size={26} />
+                  <strong>Nenhum modelo TIME disponível</strong>
+                  <span>Adicione um dos quatro vídeos-modelo para montar a biblioteca.</span>
+                </div>
+              ) : (
+                <div className="forge-max-time-template-grid">
+                  {timeTemplates.map((template, index) => {
+                    const selected = template.id === selectedTimeTemplateId;
+                    return (
+                      <article key={template.id} className={`forge-max-time-template-card ${selected ? 'selected' : ''}`}>
+                        <button type="button" className="forge-max-time-template-preview" onClick={() => setSelectedTimeTemplateId(template.id)} disabled={Boolean(busy)}>
+                          <video src={forgeMaxFileUrl(template.source_url)} muted playsInline preload="metadata" onMouseEnter={handleHoverStart} onMouseLeave={handleHoverEnd} />
+                          <span>MODELO {String(index + 1).padStart(2, '0')}</span>
+                          {selected && <strong>Em uso</strong>}
+                        </button>
+                        <div className="forge-max-time-template-meta">
+                          <strong title={template.title}>{template.title}</strong>
+                          <span>{template.width}×{template.height} · {formatDuration(template.duration)}</span>
+                          <small>{template.timers?.length || 0} TIME(s) extraído(s)</small>
+                        </div>
+                        <button type="button" className="forge-max-time-template-delete" onClick={() => removeTimeTemplate(template.id)} disabled={Boolean(busy)} aria-label={`Excluir ${template.title}`} title="Excluir modelo TIME"><X size={14} /></button>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+
+              {selectedTimeTemplate && (
+                <div className="forge-max-time-builder">
+                  <div className="forge-max-time-builder-header">
+                    <div>
+                      <strong>{selectedTimeTemplate.title}</strong>
+                      <span>Selecione na ordem desejada até {maxTemplateScenes} cenas. O Forge preserva Cena → TIME em toda a sequência.</span>
+                    </div>
+                    <b>{selectedTimeSceneIds.length}/{maxTemplateScenes}</b>
+                  </div>
+                  <div className="forge-max-time-scene-picker">
+                    {sceneAssets.map((asset) => {
+                      const pickIndex = selectedTimeSceneIds.indexOf(asset.id);
+                      const picked = pickIndex >= 0;
+                      return (
+                        <button type="button" key={asset.id} className={picked ? 'selected' : ''} onClick={() => toggleTimeSceneAsset(asset.id)} disabled={Boolean(busy)}>
+                          <span>{picked ? String(pickIndex + 1).padStart(2, '0') : '+'}</span>
+                          <strong title={asset.filename}>{asset.filename}</strong>
+                          <small>{formatDuration(asset.duration)}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" className="forge-max-time-apply" onClick={applySelectedTimeTemplate} disabled={Boolean(busy) || selectedTimeSceneIds.length < 2}>
+                    <Clock3 size={16} /> Montar com {selectedTimeSceneIds.length || ''} cena(s) e TIME
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
 

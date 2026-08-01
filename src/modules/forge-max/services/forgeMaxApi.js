@@ -13,6 +13,26 @@ export async function getForgeMaxHealth() {
   return parseResponse(await fetch(apiUrl('/api/forge-max/health'), { cache: 'no-store' }));
 }
 
+export async function listForgeMaxTimeTemplates() {
+  return parseResponse(await fetch(apiUrl('/api/forge-max/time-templates'), { cache: 'no-store' }));
+}
+
+export async function uploadForgeMaxTimeTemplate(title, file) {
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl('/api/forge-max/time-templates'), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function deleteForgeMaxTimeTemplate(templateId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/time-templates/${encodeURIComponent(templateId)}`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function listForgeMaxProjects() {
   return parseResponse(await fetch(apiUrl('/api/forge-max/projects'), { cache: 'no-store' }));
 }
@@ -70,6 +90,14 @@ export async function updateForgeMaxTimeline(projectId, clips) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clips }),
+  }));
+}
+
+export async function applyForgeMaxTimeTemplate(projectId, templateId, sceneAssetIds) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/timeline/apply-time-template`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template_id: templateId, scene_asset_ids: sceneAssetIds }),
   }));
 }
 
