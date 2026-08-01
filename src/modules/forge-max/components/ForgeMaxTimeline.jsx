@@ -33,6 +33,16 @@ function buildClipPreviewUrl(asset, clip, resolveAssetUrl) {
   return `${url}${url.includes('?') ? '&' : '?'}v=${cacheKey}`;
 }
 
+function buildScenePreviewUrl(asset, clipId, scene, resolveAssetUrl) {
+  const match = String(asset?.url || '').match(/\/api\/forge-max\/projects\/([^/]+)\/files\/library\//);
+  if (!match || !clipId) return '';
+  const start = Math.round(Number(scene.start_seconds || 0) * 1000);
+  const end = Math.round(Number(scene.end_seconds || 0) * 1000);
+  const path = `/api/forge-max/projects/${encodeURIComponent(match[1])}/files/timeline/scene-preview/${encodeURIComponent(clipId)}.jpg?start_seconds=${start / 1000}&end_seconds=${end / 1000}`;
+  const url = resolveAssetUrl(path);
+  return `${url}${url.includes('?') ? '&' : '?'}v=${start}-${end}`;
+}
+
 function TimelineClipCard({
   asset,
   clip,
@@ -396,9 +406,19 @@ function ForgeMaxTimeline({
               const selectionOrder = selectedSceneIds.indexOf(scene.id);
               const isSelected = selectionOrder >= 0;
               const isPreviewing = scene.id === previewSceneId;
+              const sceneAsset = assets.find((item) => item.id === sceneSelection?.asset_id);
+              const previewImageUrl = buildScenePreviewUrl(sceneAsset, sceneSelection?.clip_id, scene, resolveAssetUrl);
               return (
                 <article key={scene.id} className={`forge-max-scene-card ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''}`}>
                   <button type="button" className="forge-max-scene-preview" onClick={() => onPreviewScene?.(scene)} disabled={Boolean(busy)}>
+                    {previewImageUrl && (
+                      <img
+                        src={previewImageUrl}
+                        alt={`Prévia da cena ${scene.index}`}
+                        className="forge-max-scene-thumbnail"
+                        loading="lazy"
+                      />
+                    )}
                     <span>Cena {String(scene.index).padStart(2, '0')}</span>
                     <strong>{formatDuration(scene.start_seconds)} - {formatDuration(scene.end_seconds)}</strong>
                     <small>{formatDuration(scene.end_seconds - scene.start_seconds)}</small>

@@ -1538,6 +1538,17 @@
   cursor: pointer;
 }
 
+.forge-max-scene-thumbnail {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid rgba(159, 185, 204, 0.24);
+  border-radius: 4px;
+  background: #071014;
+}
+
 .forge-max-scene-preview span {
   color: var(--max-green);
   font-size: 11px;
