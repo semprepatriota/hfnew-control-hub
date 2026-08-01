@@ -480,9 +480,9 @@
 
 .forge-max-preview-stage {
   position: relative;
-  width: min(100%, 340px);
+  width: min(100%, 250px);
   aspect-ratio: 9 / 16;
-  max-height: 560px;
+  max-height: 444px;
   margin: 0 auto;
   overflow: hidden;
   border: 1px solid rgba(120, 186, 255, 0.26);
@@ -500,7 +500,7 @@
 .forge-max-preview-scrubber {
   display: grid;
   gap: 10px;
-  width: min(100%, 340px);
+  width: min(100%, 250px);
   margin: 12px auto 0;
 }
 
