@@ -921,10 +921,42 @@
 }
 
 .forge-max-timeline-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.forge-max-timeline-cuts-header {
   display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 6px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 10px;
+}
+
+.forge-max-timeline-cuts-header strong,
+.forge-max-timeline-cuts-header span {
+  display: block;
+}
+
+.forge-max-timeline-cuts-header strong {
+  color: var(--max-ink);
+  font-size: 13px;
+}
+
+.forge-max-timeline-cuts-header span {
+  margin-top: 4px;
+  color: var(--max-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.forge-max-timeline-cuts-header > span {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--max-green);
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .forge-max-timeline-ruler {
@@ -1026,19 +1058,77 @@
 }
 
 .forge-max-timeline-clip {
-  min-width: 240px;
+  min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 9px;
   padding: 12px;
   border: 1px solid var(--max-line);
   border-radius: 8px;
   background: var(--max-panel-strong);
   cursor: pointer;
+  overflow: hidden;
 }
 
 .forge-max-timeline-clip.selected {
   border-color: var(--max-green);
   box-shadow: 0 0 0 1px rgba(119, 231, 180, 0.18);
+}
+
+.forge-max-timeline-clip-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(120, 186, 255, 0.3);
+  border-radius: 6px;
+  background: #020408;
+}
+
+.forge-max-timeline-clip-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.forge-max-timeline-clip-play,
+.forge-max-timeline-clip-order {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+
+.forge-max-timeline-clip-play {
+  inset: 50% auto auto 50%;
+  width: 38px;
+  height: 38px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(3, 8, 13, 0.76);
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+}
+
+.forge-max-timeline-clip-play:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.forge-max-timeline-clip-order {
+  top: 7px;
+  left: 7px;
+  width: 23px;
+  height: 23px;
+  border: 1px solid rgba(119, 231, 180, 0.7);
+  border-radius: 50%;
+  color: #eafff2;
+  background: rgba(4, 18, 14, 0.84);
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .forge-max-timeline-clip-bar {
@@ -1114,8 +1204,30 @@
 }
 
 .forge-max-timeline-controls {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.forge-max-timeline-select {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  min-width: 93px;
+  gap: 5px;
+  padding: 0 8px !important;
+  border-color: rgba(120, 186, 255, 0.52) !important;
+  color: #cae5ff !important;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forge-max-timeline-select.selected {
+  border-color: rgba(119, 231, 180, 0.65) !important;
+  color: #c7ffe1 !important;
+  background: rgba(21, 73, 55, 0.38) !important;
 }
 
 .forge-max-timeline-editor,

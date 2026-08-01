@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward, X } from 'lucide-react';
 
 function formatDuration(seconds) {
@@ -22,6 +22,106 @@ function buildClipTransform(clip) {
   if (clip.flip_horizontal) transforms.push('scaleX(-1)');
   if (clip.flip_vertical) transforms.push('scaleY(-1)');
   return transforms.join(' ');
+}
+
+function TimelineClipCard({
+  asset,
+  clip,
+  index,
+  canMoveNext,
+  selected,
+  busy,
+  resolveAssetUrl,
+  onSelect,
+  onMove,
+  onRemove,
+}) {
+  const previewRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1) / Math.max(Number(clip.speed || 1), 0.5);
+
+  const seekToCutStart = () => {
+    const player = previewRef.current;
+    if (!player) return;
+    const start = Math.min(Number(clip.start_seconds) || 0, player.duration || Number(clip.start_seconds) || 0);
+    player.currentTime = start;
+  };
+
+  const togglePreview = async (event) => {
+    event.stopPropagation();
+    const player = previewRef.current;
+    if (!player) return;
+    if (player.paused) {
+      if (player.currentTime >= (Number(clip.end_seconds) || 0) - 0.05) {
+        seekToCutStart();
+      }
+      player.playbackRate = Math.max(0.5, Math.min(2, Number(clip.speed || 1)));
+      player.volume = Math.max(0, Math.min(1, Number(clip.volume ?? 1)));
+      await player.play().catch(() => {});
+      return;
+    }
+    player.pause();
+  };
+
+  const handleTimeUpdate = (event) => {
+    const end = Number(clip.end_seconds) || 0;
+    if (end > 0 && event.currentTarget.currentTime >= end) {
+      event.currentTarget.pause();
+      setPlaying(false);
+    }
+  };
+
+  return (
+    <article
+      className={`forge-max-timeline-clip ${selected ? 'selected' : ''}`}
+      onClick={() => onSelect(clip)}
+    >
+      <div className="forge-max-timeline-clip-preview">
+        <video
+          ref={previewRef}
+          src={resolveAssetUrl(asset.url)}
+          preload="metadata"
+          playsInline
+          className="forge-max-timeline-clip-video"
+          style={{ transform: buildClipTransform(clip) }}
+          onLoadedMetadata={seekToCutStart}
+          onTimeUpdate={handleTimeUpdate}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+        />
+        <button
+          type="button"
+          className="forge-max-timeline-clip-play"
+          onClick={togglePreview}
+          disabled={Boolean(busy)}
+          aria-label={playing ? `Pausar clipe ${index + 1}` : `Reproduzir clipe ${index + 1}`}
+          title={playing ? 'Pausar este corte' : 'Reproduzir este corte'}
+        >
+          {playing ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+        <span className="forge-max-timeline-clip-order">{index + 1}</span>
+      </div>
+      <div className="forge-max-timeline-clip-title">
+        <span>V{index + 1}</span>
+        <strong title={asset.filename}>{asset.filename}</strong>
+      </div>
+      <div className="forge-max-timeline-clip-meta">
+        <span>{formatDuration(clip.start_seconds)} - {formatDuration(clip.end_seconds)}</span>
+        <span>{formatDuration(clipDuration)}</span>
+      </div>
+      <div className="forge-max-timeline-clip-bar">
+        <div className="forge-max-timeline-clip-fill" />
+      </div>
+      <div className="forge-max-timeline-controls" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className={`forge-max-timeline-select ${selected ? 'selected' : ''}`} onClick={() => onSelect(clip)} disabled={Boolean(busy)}>
+          <Eye size={14} /> {selected ? 'Selecionado' : 'Selecionar'}
+        </button>
+        <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
+        <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
+        <button type="button" className="forge-max-timeline-remove" onClick={() => onRemove(clip.id)} disabled={Boolean(busy)} aria-label="Excluir corte" title="Excluir corte"><X size={14} /></button>
+      </div>
+    </article>
+  );
 }
 
 function ForgeMaxTimeline({
@@ -118,19 +218,6 @@ function ForgeMaxTimeline({
     player.addEventListener('loadedmetadata', syncPreview, { once: true });
     return () => player.removeEventListener('loadedmetadata', syncPreview);
   }, [previewClip?.id, previewClip?.start_seconds, previewClip?.speed, previewClip?.volume, previewClip?.frame_zoom, previewClip?.frame_x, previewClip?.frame_y, previewAsset?.url]);
-
-  const timelineRuler = useMemo(() => {
-    if (!clips.length || totalDuration <= 0) return [];
-    const steps = Math.min(Math.max(Math.ceil(totalDuration), 2), 12);
-    return Array.from({ length: steps + 1 }, (_, index) => {
-      const seconds = (totalDuration / steps) * index;
-      return {
-        key: `mark-${index}`,
-        seconds,
-        left: `${(index / steps) * 100}%`,
-      };
-    });
-  }, [clips.length, totalDuration]);
 
   const applyDraftTrim = () => {
     if (!selectedClip || !selectedAsset) return;
@@ -325,43 +412,31 @@ function ForgeMaxTimeline({
             </div>
           )}
 
-          <div className="forge-max-timeline-ruler">
-            {timelineRuler.map((mark) => (
-              <span key={mark.key} className="forge-max-timeline-ruler-mark" style={{ left: mark.left }}>
-                {formatDuration(mark.seconds)}
-              </span>
-            ))}
+          <div className="forge-max-timeline-cuts-header">
+            <div>
+              <strong>Prévia dos cortes na timeline</strong>
+              <span>Clique em um corte para ajustar início, fim, enquadramento ou volume. O play reproduz somente aquele trecho.</span>
+            </div>
+            <span>{formatDuration(totalDuration)} no total</span>
           </div>
           <div className="forge-max-timeline-track">
             {clips.map((clip, index) => {
               const asset = assets.find((item) => item.id === clip.asset_id);
               if (!asset) return null;
-              const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1) / Math.max(Number(clip.speed || 1), 0.5);
-              const widthPercent = totalDuration > 0 ? `${(clipDuration / totalDuration) * 100}%` : '100%';
               return (
-                <article
+                <TimelineClipCard
                   key={clip.id}
-                  className={`forge-max-timeline-clip ${clip.id === selectedClipId ? 'selected' : ''}`}
-                  style={{ width: widthPercent, flexGrow: Math.max(clipDuration, 1) }}
-                  onClick={() => onSelect(clip)}
-                >
-                  <div className="forge-max-timeline-clip-title">
-                    <span>V{index + 1}</span>
-                    <strong title={asset.filename}>{asset.filename}</strong>
-                  </div>
-                  <div className="forge-max-timeline-clip-meta">
-                    <span>{formatDuration(clip.start_seconds)} - {formatDuration(clip.end_seconds)}</span>
-                    <span>{formatDuration(clipDuration)}</span>
-                  </div>
-                  <div className="forge-max-timeline-clip-bar">
-                    <div className="forge-max-timeline-clip-fill" />
-                  </div>
-                  <div className="forge-max-timeline-controls" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover clipe para cima" title="Mover para cima"><ArrowUp size={14} /></button>
-                    <button type="button" onClick={() => onMove(clip.id, 1)} disabled={index === clips.length - 1 || Boolean(busy)} aria-label="Mover clipe para baixo" title="Mover para baixo"><ArrowDown size={14} /></button>
-                    <button type="button" className="forge-max-timeline-remove" onClick={() => onRemove(clip.id)} disabled={Boolean(busy)} aria-label="Remover da timeline" title="Remover da timeline"><X size={14} /></button>
-                  </div>
-                </article>
+                  asset={asset}
+                  clip={clip}
+                  index={index}
+                  canMoveNext={index < clips.length - 1}
+                  selected={clip.id === selectedClipId}
+                  busy={busy}
+                  resolveAssetUrl={resolveAssetUrl}
+                  onSelect={onSelect}
+                  onMove={onMove}
+                  onRemove={onRemove}
+                />
               );
             })}
           </div>
