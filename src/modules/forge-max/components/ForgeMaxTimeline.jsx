@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, SkipBack, SkipForward, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, Upload, X } from 'lucide-react';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -53,6 +53,10 @@ function TimelineClipCard({
   resolveAssetUrl,
   onSelect,
   onMove,
+  draggedClipId,
+  onSceneDragStart,
+  onSceneDragEnd,
+  onSceneDrop,
   onRemove,
 }) {
   const previewRef = useRef(null);
@@ -116,8 +120,27 @@ function TimelineClipCard({
 
   return (
     <article
-      className={`forge-max-timeline-clip ${isTimer ? 'timer' : ''} ${selected ? 'selected' : ''}`}
+      className={`forge-max-timeline-clip ${isTimer ? 'timer' : ''} ${selected ? 'selected' : ''} ${draggedClipId === clip.id ? 'dragging' : ''} ${!isTimer && draggedClipId && draggedClipId !== clip.id ? 'drop-target' : ''}`}
+      draggable={!isTimer && !busy}
       onClick={() => onSelect(clip)}
+      onDragStart={(event) => {
+        if (isTimer) return;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', clip.id);
+        onSceneDragStart?.(clip.id);
+      }}
+      onDragOver={(event) => {
+        if (isTimer || !draggedClipId || draggedClipId === clip.id) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      }}
+      onDrop={(event) => {
+        if (isTimer) return;
+        event.preventDefault();
+        const sourceClipId = event.dataTransfer.getData('text/plain') || draggedClipId;
+        if (sourceClipId) onSceneDrop?.(sourceClipId, clip.id);
+      }}
+      onDragEnd={() => onSceneDragEnd?.()}
     >
       <div className="forge-max-timeline-clip-preview">
         {!playing && previewImageUrl && (
@@ -150,19 +173,21 @@ function TimelineClipCard({
           {playing ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <span className="forge-max-timeline-clip-order">{index + 1}</span>
-        <button
-          type="button"
-          className="forge-max-timeline-clip-delete"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRemove(clip.id);
-          }}
-          disabled={Boolean(busy)}
-          aria-label={`Excluir corte ${index + 1}`}
-          title="Excluir este corte"
-        >
-          <X size={14} />
-        </button>
+        {!isTimer && (
+          <button
+            type="button"
+            className="forge-max-timeline-clip-delete"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRemove(clip.id);
+            }}
+            disabled={Boolean(busy)}
+            aria-label={`Excluir corte ${index + 1}`}
+            title="Excluir este corte"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
       <div className="forge-max-timeline-clip-title">
         <span>{clip.segment_label || `V${index + 1}`}</span>
@@ -202,7 +227,9 @@ function ForgeMaxTimeline({
   resolveAssetUrl,
   onSelect,
   onMove,
+  onReorderScenes,
   onRemove,
+  onReplaceSceneUpload,
   onTrim,
   onSplitScenes,
   sceneThreshold = 0.25,
@@ -231,6 +258,7 @@ function ForgeMaxTimeline({
   const [draftFrameY, setDraftFrameY] = useState(0);
   const [previewClipIndex, setPreviewClipIndex] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
+  const [draggedClipId, setDraggedClipId] = useState('');
   const timelinePreviewRef = useRef(null);
 
   const previewClip = clips[previewClipIndex] || null;
@@ -477,6 +505,13 @@ function ForgeMaxTimeline({
                   resolveAssetUrl={resolveAssetUrl}
                   onSelect={onSelect}
                   onMove={onMove}
+                  draggedClipId={draggedClipId}
+                  onSceneDragStart={setDraggedClipId}
+                  onSceneDragEnd={() => setDraggedClipId('')}
+                  onSceneDrop={(sourceClipId, targetClipId) => {
+                    setDraggedClipId('');
+                    onReorderScenes?.(sourceClipId, targetClipId);
+                  }}
                   onRemove={onRemove}
                 />
               );
@@ -633,6 +668,21 @@ function ForgeMaxTimeline({
                 <button type="button" onClick={applyDraftTrim} disabled={Boolean(busy)}>
                   <Scissors size={14} /> Aplicar corte
                 </button>
+                {selectedClip.segment_type !== 'timer' && (
+                  <label className="forge-max-timeline-replace-upload">
+                    <Upload size={14} /> Trocar esta cena por upload
+                    <input
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                      disabled={Boolean(busy)}
+                      onChange={(event) => {
+                        const [file] = Array.from(event.target.files || []);
+                        if (file) onReplaceSceneUpload?.(selectedClip.id, file);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
               </div>
             </div>
           )}

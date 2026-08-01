@@ -1184,6 +1184,21 @@
 
 .forge-max-timeline-clip.timer {
   border-color: rgba(247, 188, 72, 0.6);
+  cursor: default;
+}
+
+.forge-max-timeline-clip[draggable="true"] {
+  cursor: grab;
+}
+
+.forge-max-timeline-clip.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.forge-max-timeline-clip.drop-target {
+  border-color: var(--max-green);
+  box-shadow: 0 0 0 2px rgba(119, 231, 180, 0.28);
 }
 
 .forge-max-timeline-clip.timer .forge-max-timeline-clip-title span {
@@ -1829,6 +1844,31 @@
   background: #0a0f17;
   font-weight: 800;
   cursor: pointer;
+}
+
+.forge-max-timeline-replace-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(120, 186, 255, 0.55);
+  border-radius: 5px;
+  color: #cae5ff;
+  background: rgba(34, 72, 116, 0.28);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.forge-max-timeline-replace-upload:has(input:disabled) {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.forge-max-timeline-replace-upload input {
+  display: none;
 }
 
 .forge-max-timeline-controls button,

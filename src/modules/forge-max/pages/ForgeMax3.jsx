@@ -69,6 +69,24 @@ function formatDuration(seconds) {
   return `${minutes}:${String(remainder).padStart(2, '0')}`;
 }
 
+function serializeTimelineClip(clip) {
+  return {
+    id: clip.id,
+    asset_id: clip.asset_id,
+    start_seconds: Number(clip.start_seconds) || 0,
+    end_seconds: Number(clip.end_seconds) || 0,
+    volume: clamp(clip.volume ?? 1, 0, 2),
+    speed: clamp(clip.speed ?? 1, 0.5, 2),
+    flip_horizontal: Boolean(clip.flip_horizontal),
+    flip_vertical: Boolean(clip.flip_vertical),
+    frame_zoom: clamp(clip.frame_zoom ?? 1, 1, 2.5),
+    frame_x: clamp(clip.frame_x ?? 0, -1, 1),
+    frame_y: clamp(clip.frame_y ?? 0, -1, 1),
+    segment_type: clip.segment_type || 'scene',
+    segment_label: clip.segment_label || '',
+  };
+}
+
 function ForgeMax3() {
   const [projects, setProjects] = useState([]);
   const [project, setProject] = useState(null);
@@ -422,19 +440,7 @@ function ForgeMax3() {
     return runAction('save-timeline', async () => {
       const updated = await updateForgeMaxTimeline(
         project.project.id,
-        nextClips.map((clip) => ({
-          id: clip.id,
-          asset_id: clip.asset_id,
-          start_seconds: Number(clip.start_seconds) || 0,
-          end_seconds: Number(clip.end_seconds) || 0,
-          volume: clamp(clip.volume ?? 1, 0, 2),
-          speed: clamp(clip.speed ?? 1, 0.5, 2),
-          flip_horizontal: Boolean(clip.flip_horizontal),
-          flip_vertical: Boolean(clip.flip_vertical),
-          frame_zoom: clamp(clip.frame_zoom ?? 1, 1, 2.5),
-          frame_x: clamp(clip.frame_x ?? 0, -1, 1),
-          frame_y: clamp(clip.frame_y ?? 0, -1, 1),
-        })),
+        nextClips.map(serializeTimelineClip),
       );
       setProject(updated);
       setSelectedTimelineClipId((current) => updated.timeline?.clips?.some((clip) => clip.id === current)
@@ -464,19 +470,7 @@ function ForgeMax3() {
       const pushedEnd = Number(draft.end_seconds) || 0;
       const updated = await updateForgeMaxTimeline(
         project.project.id,
-        nextClips.map((clip) => ({
-          id: clip.id,
-          asset_id: clip.asset_id,
-          start_seconds: Number(clip.start_seconds) || 0,
-          end_seconds: Number(clip.end_seconds) || 0,
-          volume: clamp(clip.volume ?? 1, 0, 2),
-          speed: clamp(clip.speed ?? 1, 0.5, 2),
-          flip_horizontal: Boolean(clip.flip_horizontal),
-          flip_vertical: Boolean(clip.flip_vertical),
-          frame_zoom: clamp(clip.frame_zoom ?? 1, 1, 2.5),
-          frame_x: clamp(clip.frame_x ?? 0, -1, 1),
-          frame_y: clamp(clip.frame_y ?? 0, -1, 1),
-        })),
+        nextClips.map(serializeTimelineClip),
       );
       setProject(updated);
       setSelectedAssetId(selectedAsset.id);
@@ -759,12 +753,71 @@ function ForgeMax3() {
   };
 
   const moveTimelineClip = async (clipId, direction) => {
-    const index = timelineClips.findIndex((clip) => clip.id === clipId);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= timelineClips.length) return;
-    const next = [...timelineClips];
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-    await saveTimeline(next, 'Ordem da timeline atualizada.');
+    const scenes = timelineClips.filter((clip) => clip.segment_type !== 'timer');
+    const currentIndex = scenes.findIndex((clip) => clip.id === clipId);
+    const target = scenes[currentIndex + direction];
+    if (currentIndex < 0 || !target) return;
+    await reorderTimelineScenes(clipId, target.id);
+  };
+
+  const reorderTimelineScenes = async (sourceClipId, targetClipId) => {
+    if (sourceClipId === targetClipId) return;
+    const sourceClip = timelineClips.find((clip) => clip.id === sourceClipId);
+    const targetClip = timelineClips.find((clip) => clip.id === targetClipId);
+    if (!sourceClip || !targetClip || sourceClip.segment_type === 'timer' || targetClip.segment_type === 'timer') return;
+
+    const sceneIndexes = timelineClips.reduce((indexes, clip, index) => {
+      if (clip.segment_type !== 'timer') indexes.push(index);
+      return indexes;
+    }, []);
+    const orderedScenes = sceneIndexes.map((index) => timelineClips[index]);
+    const sourceIndex = orderedScenes.findIndex((clip) => clip.id === sourceClipId);
+    const targetIndex = orderedScenes.findIndex((clip) => clip.id === targetClipId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const nextScenes = [...orderedScenes];
+    const [movingScene] = nextScenes.splice(sourceIndex, 1);
+    nextScenes.splice(targetIndex, 0, movingScene);
+    const nextClips = [...timelineClips];
+    sceneIndexes.forEach((timelineIndex, sceneIndex) => {
+      nextClips[timelineIndex] = nextScenes[sceneIndex];
+    });
+    await saveTimeline(nextClips, 'Cenas reordenadas. Os blocos TIME permaneceram no mesmo ponto.');
+  };
+
+  const replaceTimelineSceneUpload = async (clipId, file) => {
+    if (!file || !project?.project?.id) return;
+    const selectedClip = timelineClips.find((clip) => clip.id === clipId);
+    if (!selectedClip || selectedClip.segment_type === 'timer') {
+      setError('Blocos TIME são fixos e não podem ser substituídos.');
+      return;
+    }
+
+    await runAction('replace-timeline-scene', async () => {
+      const uploaded = await uploadForgeMaxVideo(project.project.id, file);
+      const newAsset = uploaded.assets?.[uploaded.assets.length - 1];
+      if (!newAsset?.id) throw new Error('O upload da nova cena não retornou um vídeo válido.');
+
+      const originalDuration = Math.max(0.1, Number(selectedClip.end_seconds) - Number(selectedClip.start_seconds));
+      const replacementDuration = Math.max(0.1, Math.min(Number(newAsset.duration) || originalDuration, originalDuration));
+      const nextClips = (uploaded.timeline?.clips || timelineClips).map((clip) => (
+        clip.id === clipId
+          ? {
+            ...clip,
+            asset_id: newAsset.id,
+            start_seconds: 0,
+            end_seconds: replacementDuration,
+            segment_type: 'scene',
+          }
+          : clip
+      ));
+      const updated = await updateForgeMaxTimeline(project.project.id, nextClips.map(serializeTimelineClip));
+      setProject(updated);
+      setSelectedAssetId(newAsset.id);
+      setSelectedTimelineClipId(clipId);
+      await refreshProjects();
+      setMessage('Cena substituída por upload. O vídeo original foi preservado e os blocos TIME não foram movidos.');
+    });
   };
 
   const removeTimelineClip = async (clipId) => {
@@ -1087,7 +1140,9 @@ function ForgeMax3() {
         resolveAssetUrl={forgeMaxFileUrl}
         onSelect={selectTimelineClip}
         onMove={moveTimelineClip}
+        onReorderScenes={reorderTimelineScenes}
         onRemove={removeTimelineClip}
+        onReplaceSceneUpload={replaceTimelineSceneUpload}
         onTrim={updateTimelineClip}
         onSplitScenes={handleSplitScenes}
         sceneThreshold={sceneThreshold}
