@@ -59,6 +59,7 @@ function TimelineClipCard({
   const [playing, setPlaying] = useState(false);
   const clipDuration = Math.max(clip.end_seconds - clip.start_seconds, 0.1) / Math.max(Number(clip.speed || 1), 0.5);
   const previewImageUrl = buildClipPreviewUrl(asset, clip, resolveAssetUrl);
+  const isTimer = clip.segment_type === 'timer';
 
   const seekToCutStart = async () => {
     const player = previewRef.current;
@@ -115,14 +116,14 @@ function TimelineClipCard({
 
   return (
     <article
-      className={`forge-max-timeline-clip ${selected ? 'selected' : ''}`}
+      className={`forge-max-timeline-clip ${isTimer ? 'timer' : ''} ${selected ? 'selected' : ''}`}
       onClick={() => onSelect(clip)}
     >
       <div className="forge-max-timeline-clip-preview">
         {!playing && previewImageUrl && (
           <img
             src={previewImageUrl}
-            alt={`Prévia do corte ${index + 1}`}
+            alt={clip.segment_label || `Prévia do corte ${index + 1}`}
             className="forge-max-timeline-clip-image"
             loading="lazy"
           />
@@ -164,7 +165,7 @@ function TimelineClipCard({
         </button>
       </div>
       <div className="forge-max-timeline-clip-title">
-        <span>V{index + 1}</span>
+        <span>{clip.segment_label || `V${index + 1}`}</span>
         <strong title={asset.filename}>{asset.filename}</strong>
       </div>
       <div className="forge-max-timeline-clip-meta">
@@ -178,8 +179,14 @@ function TimelineClipCard({
         <button type="button" className={`forge-max-timeline-select ${selected ? 'selected' : ''}`} onClick={() => onSelect(clip)} disabled={Boolean(busy)}>
           <Eye size={14} /> {selected ? 'Selecionado' : 'Selecionar'}
         </button>
-        <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
-        <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
+        {isTimer ? (
+          <span className="forge-max-timeline-timer-lock"><Clock3 size={13} /> Fixo</span>
+        ) : (
+          <>
+            <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
+            <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
+          </>
+        )}
       </div>
     </article>
   );
@@ -388,8 +395,8 @@ function ForgeMaxTimeline({
           <div className="forge-max-scene-bank-header">
             <div>
               <span className="forge-max-section-icon"><Scissors size={16} /></span>
-              <h3>Cenas detectadas</h3>
-              <p>Clique em uma cena para vê-la no preview. Marque na ordem desejada; essa ordem será usada na timeline.</p>
+              <h3>Cenas e TIME detectados</h3>
+              <p>Os blocos TIME ficam preservados. Selecione somente as cenas de conteúdo que entrarão na timeline.</p>
             </div>
             <div className="forge-max-scene-bank-actions">
               <span>{selectedSceneIds.length}/{sceneChoices.length} selecionada(s)</span>
@@ -406,10 +413,11 @@ function ForgeMaxTimeline({
               const selectionOrder = selectedSceneIds.indexOf(scene.id);
               const isSelected = selectionOrder >= 0;
               const isPreviewing = scene.id === previewSceneId;
+              const isTimer = scene.segment_type === 'timer';
               const sceneAsset = assets.find((item) => item.id === sceneSelection?.asset_id);
               const previewImageUrl = buildScenePreviewUrl(sceneAsset, sceneSelection?.clip_id, scene, resolveAssetUrl);
               return (
-                <article key={scene.id} className={`forge-max-scene-card ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''}`}>
+                <article key={scene.id} className={`forge-max-scene-card ${isTimer ? 'timer' : ''} ${isPreviewing ? 'previewing' : ''} ${isSelected ? 'chosen' : ''}`}>
                   <button type="button" className="forge-max-scene-preview" onClick={() => onPreviewScene?.(scene)} disabled={Boolean(busy)}>
                     {previewImageUrl && (
                       <img
@@ -419,14 +427,18 @@ function ForgeMaxTimeline({
                         loading="lazy"
                       />
                     )}
-                    <span>Cena {String(scene.index).padStart(2, '0')}</span>
+                    <span>{scene.segment_label || (isTimer ? 'TIME' : `Cena ${String(scene.index).padStart(2, '0')}`)}</span>
                     <strong>{formatDuration(scene.start_seconds)} - {formatDuration(scene.end_seconds)}</strong>
                     <small>{formatDuration(scene.end_seconds - scene.start_seconds)}</small>
                     <Eye size={15} />
                   </button>
-                  <button type="button" className={`forge-max-scene-select ${isSelected ? 'selected' : ''}`} onClick={() => onToggleScene?.(scene)} disabled={Boolean(busy)}>
-                    {isSelected ? <><Check size={14} /> Ordem {selectionOrder + 1}</> : 'Selecionar'}
-                  </button>
+                  {isTimer ? (
+                    <span className="forge-max-scene-timer-fixed"><Clock3 size={14} /> Mantido entre cenas</span>
+                  ) : (
+                    <button type="button" className={`forge-max-scene-select ${isSelected ? 'selected' : ''}`} onClick={() => onToggleScene?.(scene)} disabled={Boolean(busy)}>
+                      {isSelected ? <><Check size={14} /> Incluída</> : 'Incluir cena'}
+                    </button>
+                  )}
                 </article>
               );
             })}

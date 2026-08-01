@@ -521,14 +521,18 @@ function ForgeMax3() {
         source_clip: sourceClip,
         scenes,
       });
-      setSelectedSceneIds([]);
+      setSelectedSceneIds(scenes.filter((scene) => scene.segment_type !== 'timer').map((scene) => scene.id));
       setPreviewSceneId(scenes[0]?.id || '');
       setSelectedTimelineClipId('');
       setSelectedAssetId(result.asset_id);
+      const contentCount = scenes.filter((scene) => scene.segment_type !== 'timer').length;
+      const timerCount = scenes.filter((scene) => scene.segment_type === 'timer').length;
       setMessage(
-        scenes.length > 1
-          ? `${scenes.length} cenas detectadas. Clique em cada uma para revisar e selecione somente as que entrarão na timeline.`
-          : 'O vídeo formou uma cena contínua. Você pode revisá-la e decidir se deseja usá-la na timeline.',
+        timerCount
+          ? `${contentCount} cenas e ${timerCount} blocos TIME identificados. Os TIME ficam preservados; desmarque apenas as cenas que não quiser usar.`
+          : contentCount > 1
+            ? `${contentCount} cenas detectadas. Revise e desmarque somente as que não entrarão na timeline.`
+            : 'O vídeo formou uma cena contínua. Você pode revisá-la e decidir se deseja usá-la na timeline.',
       );
     });
   };
@@ -543,7 +547,7 @@ function ForgeMax3() {
   };
 
   const toggleDetectedScene = (scene) => {
-    if (!scene) return;
+    if (!scene || scene.segment_type === 'timer') return;
     previewDetectedScene(scene);
     setSelectedSceneIds((current) => (
       current.includes(scene.id)
@@ -554,9 +558,10 @@ function ForgeMax3() {
 
   const commitDetectedScenes = async () => {
     if (!project?.project?.id || !sceneSelection) return;
-    const chosenScenes = selectedSceneIds
-      .map((sceneId) => sceneSelection.scenes.find((scene) => scene.id === sceneId))
-      .filter(Boolean);
+    const selectedIds = new Set(selectedSceneIds);
+    const chosenScenes = sceneSelection.scenes.filter((scene) => (
+      scene.segment_type !== 'timer' && selectedIds.has(scene.id)
+    ));
     if (!chosenScenes.length) {
       setError('Selecione ao menos uma cena antes de enviar os cortes para a timeline.');
       return;
@@ -564,18 +569,30 @@ function ForgeMax3() {
 
     const sourceIndex = timelineClips.findIndex((clip) => clip.id === sceneSelection.clip_id);
     const sourceClip = timelineClips[sourceIndex] || sceneSelection.source_clip;
-    const replacements = chosenScenes.map((scene) => ({
-      asset_id: sceneSelection.asset_id,
-      start_seconds: scene.start_seconds,
-      end_seconds: scene.end_seconds,
-      volume: sourceClip.volume,
-      speed: sourceClip.speed,
-      flip_horizontal: sourceClip.flip_horizontal,
-      flip_vertical: sourceClip.flip_vertical,
-      frame_zoom: sourceClip.frame_zoom,
-      frame_x: sourceClip.frame_x,
-      frame_y: sourceClip.frame_y,
-    }));
+    const replacements = [];
+    let keepFollowingTimer = false;
+    for (const segment of sceneSelection.scenes) {
+      if (segment.segment_type === 'timer') {
+        if (!keepFollowingTimer) continue;
+      } else {
+        keepFollowingTimer = selectedIds.has(segment.id);
+        if (!keepFollowingTimer) continue;
+      }
+      replacements.push({
+        asset_id: sceneSelection.asset_id,
+        start_seconds: segment.start_seconds,
+        end_seconds: segment.end_seconds,
+        volume: sourceClip.volume,
+        speed: sourceClip.speed,
+        flip_horizontal: sourceClip.flip_horizontal,
+        flip_vertical: sourceClip.flip_vertical,
+        frame_zoom: sourceClip.frame_zoom,
+        frame_x: sourceClip.frame_x,
+        frame_y: sourceClip.frame_y,
+        segment_type: segment.segment_type || 'scene',
+        segment_label: segment.segment_label || '',
+      });
+    }
     const nextClips = sourceIndex >= 0
       ? [...timelineClips.slice(0, sourceIndex), ...replacements, ...timelineClips.slice(sourceIndex + 1)]
       : [...timelineClips, ...replacements];
@@ -585,7 +602,8 @@ function ForgeMax3() {
       return;
     }
 
-    const updated = await saveTimeline(nextClips, `${chosenScenes.length} cena(s) foram inseridas na ordem escolhida.`);
+    const timerCount = replacements.filter((segment) => segment.segment_type === 'timer').length;
+    const updated = await saveTimeline(nextClips, `${chosenScenes.length} cena(s)${timerCount ? ` e ${timerCount} bloco(s) TIME` : ''} foram inseridos na ordem original.`);
     if (!updated) return;
     const insertedIndex = sourceIndex >= 0 ? sourceIndex : Math.max(updated.timeline.clips.length - chosenScenes.length, 0);
     const firstInserted = updated.timeline.clips[insertedIndex];
@@ -975,7 +993,7 @@ function ForgeMax3() {
             <div className="forge-max-preview-caption">
               <span>
                 {previewScene
-                  ? `Cena detectada ${previewScene.index}: ${formatDuration(previewScene.start_seconds)} - ${formatDuration(previewScene.end_seconds)}`
+                  ? `${previewScene.segment_label || `Cena detectada ${previewScene.index}`}: ${formatDuration(previewScene.start_seconds)} - ${formatDuration(previewScene.end_seconds)}`
                   : selectedTimelineClip
                   ? `Trecho da timeline ${formatDuration(selectedTimelineClip.start_seconds)} - ${formatDuration(selectedTimelineClip.end_seconds)}`
                   : selectedAssetDraft
