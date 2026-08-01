@@ -260,7 +260,6 @@ function ForgeMaxTimeline({
   onReplaceDetectedSceneUpload,
   onCommitScenes,
   onDiscardScenes,
-  embedded = false,
 }) {
   const totalDuration = clips.reduce((total, clip) => total + (
     Math.max(0, clip.end_seconds - clip.start_seconds) / Math.max(Number(clip.speed || 1), 0.5)
@@ -415,7 +414,7 @@ function ForgeMaxTimeline({
   };
 
   return (
-    <section className={`forge-max-timeline-panel ${embedded ? 'embedded' : ''} ${collapsed ? 'collapsed' : ''}`}>
+    <section className={`forge-max-timeline-panel ${collapsed ? 'collapsed' : ''}`}>
       <div className="forge-max-timeline-header">
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>

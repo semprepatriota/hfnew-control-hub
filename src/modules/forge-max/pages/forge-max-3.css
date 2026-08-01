@@ -1034,15 +1034,6 @@
   gap: 12px;
 }
 
-.forge-max-preview-panel .forge-max-timeline-panel.embedded {
-  margin-top: 24px;
-  padding: 20px 0 0;
-  border: 0;
-  border-top: 1px solid var(--max-line);
-  border-radius: 0;
-  background: transparent;
-}
-
 .forge-max-timeline-cuts-header {
   display: flex;
   align-items: flex-end;

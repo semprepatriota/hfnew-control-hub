@@ -1205,40 +1205,40 @@ function ForgeMax3() {
               </span>
               <strong>{previewAsset?.filename || 'Nenhum clipe selecionado'}</strong>
             </div>
-            <ForgeMaxTimeline
-              embedded
-              assets={assets}
-              clips={timelineClips}
-              selectedClipId={selectedTimelineClipId}
-              busy={busy}
-              collapsed={timelineCollapsed}
-              onToggleCollapse={() => setTimelineCollapsed((current) => !current)}
-              resolveAssetUrl={forgeMaxFileUrl}
-              onSelect={selectTimelineClip}
-              onMove={moveTimelineClip}
-              onReorderScenes={reorderTimelineScenes}
-              onRemove={removeTimelineClip}
-              onReplaceSceneUpload={replaceTimelineSceneUpload}
-              onTrim={updateTimelineClip}
-              onSplitScenes={handleSplitScenes}
-              sceneThreshold={sceneThreshold}
-              onSceneThresholdChange={setSceneThreshold}
-              sceneSelection={sceneSelection}
-              selectedSceneIds={selectedSceneIds}
-              previewSceneId={previewSceneId}
-              onPreviewScene={previewDetectedScene}
-              onToggleScene={toggleDetectedScene}
-              onReorderDetectedScenes={reorderDetectedScenes}
-              onReplaceDetectedSceneUpload={replaceDetectedSceneUpload}
-              onCommitScenes={commitDetectedScenes}
-              onDiscardScenes={() => {
-                clearSceneSelection();
-                setMessage('Seleção de cenas descartada. A timeline não foi alterada.');
-              }}
-            />
           </>
         )}
       </section>
+
+      <ForgeMaxTimeline
+        assets={assets}
+        clips={timelineClips}
+        selectedClipId={selectedTimelineClipId}
+        busy={busy}
+        collapsed={timelineCollapsed}
+        onToggleCollapse={() => setTimelineCollapsed((current) => !current)}
+        resolveAssetUrl={forgeMaxFileUrl}
+        onSelect={selectTimelineClip}
+        onMove={moveTimelineClip}
+        onReorderScenes={reorderTimelineScenes}
+        onRemove={removeTimelineClip}
+        onReplaceSceneUpload={replaceTimelineSceneUpload}
+        onTrim={updateTimelineClip}
+        onSplitScenes={handleSplitScenes}
+        sceneThreshold={sceneThreshold}
+        onSceneThresholdChange={setSceneThreshold}
+        sceneSelection={sceneSelection}
+        selectedSceneIds={selectedSceneIds}
+        previewSceneId={previewSceneId}
+        onPreviewScene={previewDetectedScene}
+        onToggleScene={toggleDetectedScene}
+        onReorderDetectedScenes={reorderDetectedScenes}
+        onReplaceDetectedSceneUpload={replaceDetectedSceneUpload}
+        onCommitScenes={commitDetectedScenes}
+        onDiscardScenes={() => {
+          clearSceneSelection();
+          setMessage('Seleção de cenas descartada. A timeline não foi alterada.');
+        }}
+      />
 
       <section className={`forge-max-render-panel ${renderCollapsed ? 'collapsed' : ''}`}>
         <div className="forge-max-render-header">
