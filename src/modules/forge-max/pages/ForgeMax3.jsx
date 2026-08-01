@@ -507,6 +507,10 @@ function ForgeMax3() {
       setError('Selecione um clipe da timeline antes de separar as cenas.');
       return;
     }
+    if (selectedTimelineClip.segment_type === 'timer') {
+      setError('Blocos TIME são mantidos entre cenas e não podem ser divididos.');
+      return;
+    }
     await runAction('detect-scenes', async () => {
       const sourceClip = { ...selectedTimelineClip };
       const result = await detectForgeMaxTimelineScenes(project.project.id, sourceClip.id, sceneThreshold);
@@ -708,6 +712,10 @@ function ForgeMax3() {
     const clip = timelineClips.find((item) => item.id === clipId);
     const asset = assets.find((item) => item.id === clip?.asset_id);
     if (!clip || !asset) return;
+    if (clip.segment_type === 'timer') {
+      setError('Blocos TIME são fixos e não podem receber ajustes.');
+      return;
+    }
 
     const nextStartRaw = values.start_seconds !== undefined ? Number(values.start_seconds) : clip.start_seconds;
     const nextEndRaw = values.end_seconds !== undefined ? Number(values.end_seconds) : clip.end_seconds;
@@ -821,10 +829,16 @@ function ForgeMax3() {
   };
 
   const removeTimelineClip = async (clipId) => {
+    const clip = timelineClips.find((item) => item.id === clipId);
+    if (clip?.segment_type === 'timer') {
+      setError('Blocos TIME são mantidos entre cenas e não podem ser excluídos.');
+      return;
+    }
     await saveTimeline(timelineClips.filter((clip) => clip.id !== clipId), 'Clipe removido da timeline.');
   };
 
   const selectTimelineClip = (clip) => {
+    if (clip?.segment_type === 'timer') return;
     prepareAssetDraftFromRange(clip.asset_id, clip.start_seconds, clip.end_seconds);
     setPreviewSceneId('');
     setSelectedTimelineClipId(clip.id);

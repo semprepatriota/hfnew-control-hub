@@ -122,7 +122,7 @@ function TimelineClipCard({
     <article
       className={`forge-max-timeline-clip ${isTimer ? 'timer' : ''} ${selected ? 'selected' : ''} ${draggedClipId === clip.id ? 'dragging' : ''} ${!isTimer && draggedClipId && draggedClipId !== clip.id ? 'drop-target' : ''}`}
       draggable={!isTimer && !busy}
-      onClick={() => onSelect(clip)}
+      onClick={!isTimer ? () => onSelect(clip) : undefined}
       onDragStart={(event) => {
         if (isTimer) return;
         event.dataTransfer.effectAllowed = 'move';
@@ -201,13 +201,13 @@ function TimelineClipCard({
         <div className="forge-max-timeline-clip-fill" />
       </div>
       <div className="forge-max-timeline-controls" onClick={(event) => event.stopPropagation()}>
-        <button type="button" className={`forge-max-timeline-select ${selected ? 'selected' : ''}`} onClick={() => onSelect(clip)} disabled={Boolean(busy)}>
-          <Eye size={14} /> {selected ? 'Selecionado' : 'Selecionar'}
-        </button>
         {isTimer ? (
           <span className="forge-max-timeline-timer-lock"><Clock3 size={13} /> Fixo</span>
         ) : (
           <>
+            <button type="button" className={`forge-max-timeline-select ${selected ? 'selected' : ''}`} onClick={() => onSelect(clip)} disabled={Boolean(busy)}>
+              <Eye size={14} /> {selected ? 'Selecionado' : 'Selecionar'}
+            </button>
             <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
             <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
           </>
@@ -518,7 +518,7 @@ function ForgeMaxTimeline({
             })}
           </div>
 
-          {selectedClip && selectedAsset && (
+          {selectedClip && selectedClip.segment_type !== 'timer' && selectedAsset && (
             <div className="forge-max-timeline-editor">
               <div className="forge-max-timeline-editor-header">
                 <div>
