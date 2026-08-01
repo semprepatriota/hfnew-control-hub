@@ -33,14 +33,18 @@ import {
   renderForgeMaxTimeline,
   detectForgeMaxTimelineScenes,
   updateForgeMaxMusic,
+  uploadForgeMaxLogo,
   uploadForgeMaxMusic,
   uploadForgeMaxVideo,
+  updateForgeMaxLogo,
+  deleteForgeMaxLogo,
   updateForgeMaxTimeline,
 } from '../services/forgeMaxApi';
 import ForgeMaxTimeline from '../components/ForgeMaxTimeline';
 import './forge-max-3.css';
 
 const MAX_LIBRARY_ITEMS = 20;
+const DEFAULT_LOGO_CONFIG = { enabled: false, x: 0.5, y: 0.15, scale: 0.18, opacity: 1 };
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, Number(value)));
@@ -90,12 +94,14 @@ function ForgeMax3() {
   const [previewSceneId, setPreviewSceneId] = useState('');
   const [assetTrimDrafts, setAssetTrimDrafts] = useState({});
   const inputRef = useRef(null);
+  const logoInputRef = useRef(null);
   const musicInputRef = useRef(null);
   const previewVideoRef = useRef(null);
 
   const assets = project?.assets || [];
   const musicTracks = project?.music_tracks || [];
   const musicConfig = project?.music || { active_music_id: '', volume: 0.35 };
+  const logoConfig = { ...DEFAULT_LOGO_CONFIG, ...(project?.logo_config || {}) };
   const selectedAsset = assets.find((item) => item.id === selectedAssetId) || null;
   const timelineClips = project?.timeline?.clips || [];
   const lastRender = project?.last_render || null;
@@ -661,6 +667,49 @@ function ForgeMax3() {
     });
   };
 
+  const setLogoConfigDraft = (patch) => {
+    setProject((current) => current ? ({
+      ...current,
+      logo_config: {
+        ...DEFAULT_LOGO_CONFIG,
+        ...(current.logo_config || {}),
+        ...patch,
+      },
+    }) : current);
+  };
+
+  const persistLogoConfig = async (patch) => {
+    if (!project?.project?.id) return;
+    const nextConfig = {
+      ...DEFAULT_LOGO_CONFIG,
+      ...(project.logo_config || {}),
+      ...patch,
+    };
+    await runAction('save-logo', async () => {
+      const updated = await updateForgeMaxLogo(project.project.id, nextConfig);
+      setProject(updated);
+      setMessage('Ajustes da logo salvos neste projeto.');
+    });
+  };
+
+  const handleLogoUpload = async (file) => {
+    if (!file || !project?.project?.id) return;
+    await runAction('upload-logo', async () => {
+      const updated = await uploadForgeMaxLogo(project.project.id, file);
+      setProject(updated);
+      setMessage('Logo adicionada ao projeto e pronta para o render.');
+    });
+  };
+
+  const handleDeleteLogo = async () => {
+    if (!project?.project?.id || !project.logo || !window.confirm('Excluir a logo deste projeto?')) return;
+    await runAction('delete-logo', async () => {
+      const updated = await deleteForgeMaxLogo(project.project.id);
+      setProject(updated);
+      setMessage('Logo removida do projeto.');
+    });
+  };
+
   const updateTimelineClip = async (clipId, values) => {
     const clip = timelineClips.find((item) => item.id === clipId);
     const asset = assets.find((item) => item.id === clip?.asset_id);
@@ -806,24 +855,38 @@ function ForgeMax3() {
           </button>
         </div>
         {!projectCollapsed && (
-          <div className="forge-max-project-bar">
-            <label>
-              <span>Projeto ativo</span>
-              <select value={project?.project?.id || ''} onChange={(event) => runAction('load-project', () => loadProject(event.target.value))} disabled={Boolean(busy)}>
-                <option value="">Selecione um projeto</option>
-                {projects.map((item) => <option key={item.project.id} value={item.project.id}>{item.project.title}</option>)}
-              </select>
-            </label>
-            <label className="forge-max-new-project">
-              <span>Novo projeto</span>
-              <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} maxLength={140} />
-            </label>
-            <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busy)}><Plus size={16} /> Criar projeto</button>
-            <button type="button" className="forge-max-delete-project" onClick={handleDeleteProject} disabled={!project?.project?.id || Boolean(busy)} aria-label="Excluir projeto ativo">
-              <Trash size={16} />
-            </button>
-            <button type="button" className="forge-max-refresh" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busy)} aria-label="Atualizar projetos"><RefreshCw size={16} /></button>
-          </div>
+          <>
+            <div className="forge-max-project-bar">
+              <label>
+                <span>Projeto ativo</span>
+                <select value={project?.project?.id || ''} onChange={(event) => runAction('load-project', () => loadProject(event.target.value))} disabled={Boolean(busy)}>
+                  <option value="">Selecione um projeto</option>
+                  {projects.map((item) => <option key={item.project.id} value={item.project.id}>{item.project.title}</option>)}
+                </select>
+              </label>
+              <label className="forge-max-new-project">
+                <span>Novo projeto</span>
+                <input value={newProjectTitle} onChange={(event) => setNewProjectTitle(event.target.value)} maxLength={140} />
+              </label>
+              <button type="button" onClick={handleCreateProject} disabled={!newProjectTitle.trim() || Boolean(busy)}><Plus size={16} /> Criar projeto</button>
+              <button type="button" className="forge-max-delete-project" onClick={handleDeleteProject} disabled={!project?.project?.id || Boolean(busy)} aria-label="Excluir projeto ativo">
+                <Trash size={16} />
+              </button>
+              <button type="button" className="forge-max-refresh" onClick={() => runAction('refresh-projects', refreshProjects)} disabled={Boolean(busy)} aria-label="Atualizar projetos"><RefreshCw size={16} /></button>
+            </div>
+            {project && (
+              <ForgeMaxLogoControls
+                project={project}
+                config={logoConfig}
+                busy={Boolean(busy)}
+                inputRef={logoInputRef}
+                onUpload={handleLogoUpload}
+                onRemove={handleDeleteLogo}
+                onChange={setLogoConfigDraft}
+                onSave={persistLogoConfig}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -901,12 +964,12 @@ function ForgeMax3() {
         <div className="forge-max-panel-header">
           <div>
             <span className="forge-max-section-icon"><Clapperboard size={17} /></span>
-            <h2>Preview de Edição</h2>
-            <p>Palco fixo 9:16 com corte fino em tempo real antes e depois da timeline.</p>
+            <h2>Timeline de Edição</h2>
+            <p>Palco único 9:16 para revisar, cortar e ajustar cada trecho da timeline.</p>
           </div>
           <div className="forge-max-panel-actions">
             <span className="forge-max-vertical-badge">9:16 vertical</span>
-            <button type="button" className="forge-max-collapse" onClick={() => setPreviewCollapsed((current) => !current)} aria-label={previewCollapsed ? 'Abrir preview de edição' : 'Recolher preview de edição'}>
+            <button type="button" className="forge-max-collapse" onClick={() => setPreviewCollapsed((current) => !current)} aria-label={previewCollapsed ? 'Abrir timeline de edição' : 'Recolher timeline de edição'}>
               {previewCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
             </button>
           </div>
@@ -931,6 +994,14 @@ function ForgeMax3() {
                     onPlay={() => setPreviewPlaying(true)}
                     onPause={() => setPreviewPlaying(false)}
                   />
+                  {project?.logo && logoConfig.enabled && (
+                    <ForgeMaxLogoOverlay
+                      logo={project.logo}
+                      config={logoConfig}
+                      onChange={setLogoConfigDraft}
+                      onSave={persistLogoConfig}
+                    />
+                  )}
                   <div className="forge-max-preview-scrubber">
                     <div className="forge-max-preview-scrubber-meta">
                         <strong>{previewScene ? `Revisando cena ${previewScene.index}` : (selectedTimelineClip ? 'Editando clipe da timeline' : 'Preparando corte do vídeo selecionado')}</strong>
@@ -1239,6 +1310,133 @@ function ForgeMax3() {
         </div>
       )}
     </div>
+  );
+}
+
+function ForgeMaxLogoControls({ project, config, busy, inputRef, onUpload, onRemove, onChange, onSave }) {
+  const hasLogo = Boolean(project.logo);
+  const saveRange = (key, event) => onSave({ [key]: Number(event.currentTarget.value) });
+  return (
+    <section className="forge-max-logo-controls" aria-label="Logo do projeto">
+      <div className="forge-max-logo-heading">
+        <div>
+          <strong>Logo do projeto</strong>
+          <span>{hasLogo ? project.logo.original_name : 'Nenhuma logo enviada'}</span>
+        </div>
+        <label className="forge-max-logo-toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(config.enabled)}
+            disabled={!hasLogo || busy}
+            onChange={(event) => {
+              const patch = { enabled: event.target.checked };
+              onChange(patch);
+              onSave(patch);
+            }}
+          />
+          Usar logo
+        </label>
+      </div>
+      <div className="forge-max-logo-actions">
+        <label className="forge-max-upload forge-max-logo-upload">
+          <Upload size={15} /> {hasLogo ? 'Trocar logo' : 'Adicionar logo'}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={busy}
+            onChange={(event) => {
+              onUpload(event.target.files?.[0]);
+              event.currentTarget.value = '';
+            }}
+          />
+        </label>
+        {hasLogo && (
+          <button type="button" className="forge-max-logo-delete" onClick={onRemove} disabled={busy}>
+            <Trash2 size={14} /> Excluir
+          </button>
+        )}
+      </div>
+      {hasLogo && (
+        <div className="forge-max-logo-settings">
+          <img src={forgeMaxFileUrl(project.logo.url)} alt="Prévia da logo" className="forge-max-logo-thumb" />
+          <p>Arraste a logo sobre a Timeline de Edição para posicionar. Os ajustes valem também para o MP4.</p>
+          <label>
+            <span>Tamanho {Math.round(Number(config.scale || 0.18) * 100)}%</span>
+            <input
+              type="range"
+              min="0.04"
+              max="0.60"
+              step="0.01"
+              value={config.scale}
+              disabled={busy}
+              onChange={(event) => onChange({ scale: Number(event.target.value) })}
+              onMouseUp={(event) => saveRange('scale', event)}
+              onTouchEnd={(event) => saveRange('scale', event)}
+            />
+          </label>
+          <label>
+            <span>Opacidade {Math.round(Number(config.opacity ?? 1) * 100)}%</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={config.opacity}
+              disabled={busy}
+              onChange={(event) => onChange({ opacity: Number(event.target.value) })}
+              onMouseUp={(event) => saveRange('opacity', event)}
+              onTouchEnd={(event) => saveRange('opacity', event)}
+            />
+          </label>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ForgeMaxLogoOverlay({ logo, config, onChange, onSave }) {
+  const dragRef = useRef(null);
+  const x = clamp(config.x ?? 0.5, 0, 1);
+  const y = clamp(config.y ?? 0.15, 0, 1);
+  const scale = clamp(config.scale ?? 0.18, 0.04, 0.60);
+  const opacity = clamp(config.opacity ?? 1, 0, 1);
+
+  const move = (event) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const nextX = clamp(drag.x + (event.clientX - drag.startX) / drag.rect.width, 0, 1);
+    const nextY = clamp(drag.y + (event.clientY - drag.startY) / drag.rect.height, 0, 1);
+    drag.x = Number(nextX.toFixed(4));
+    drag.y = Number(nextY.toFixed(4));
+    onChange({ x: drag.x, y: drag.y });
+  };
+
+  const stop = () => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (drag) onSave({ x: drag.x, y: drag.y });
+  };
+
+  return (
+    <img
+      className="forge-max-logo-overlay"
+      src={forgeMaxFileUrl(logo.url)}
+      alt="Logo sobre o vídeo"
+      draggable="false"
+      style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${scale * 100}%`, opacity }}
+      onDragStart={(event) => event.preventDefault()}
+      onPointerDown={(event) => {
+        const stage = event.currentTarget.closest('.forge-max-preview-stage');
+        if (!stage) return;
+        event.preventDefault();
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        dragRef.current = { startX: event.clientX, startY: event.clientY, x, y, rect: stage.getBoundingClientRect() };
+      }}
+      onPointerMove={move}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+    />
   );
 }
 

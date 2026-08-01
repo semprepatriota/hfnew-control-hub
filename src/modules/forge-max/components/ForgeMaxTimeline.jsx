@@ -370,8 +370,8 @@ function ForgeMaxTimeline({
       <div className="forge-max-timeline-header">
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>
-          <h2>Timeline de Edição</h2>
-          <p>Organize a ordem e os cortes. A timeline aceita até 60 trechos e cada alteração é salva no projeto atual.</p>
+          <h2>Cortes da Timeline</h2>
+          <p>Organize os cortes e a ordem. A área de vídeo única fica acima, em Timeline de Edição.</p>
         </div>
         <div className="forge-max-timeline-header-actions">
           <div className="forge-max-timeline-summary">
@@ -383,7 +383,7 @@ function ForgeMaxTimeline({
             type="button"
             className="forge-max-collapse"
             onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Abrir timeline de edição' : 'Recolher timeline de edição'}
+            aria-label={collapsed ? 'Abrir cortes da timeline' : 'Recolher cortes da timeline'}
           >
             {collapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
           </button>
@@ -454,47 +454,6 @@ function ForgeMaxTimeline({
         </div>
       ) : (
         <>
-          {previewClip && previewAsset && (
-            <div className="forge-max-timeline-preview-panel">
-              <div className="forge-max-timeline-preview-header">
-                <div>
-                  <strong>Preview da união dos cortes</strong>
-                  <span>
-                    Clipe {previewClipIndex + 1}/{clips.length} · {previewAsset.filename}
-                    {' '}· {formatDuration(previewClip.start_seconds)} - {formatDuration(previewClip.end_seconds)}
-                  </span>
-                </div>
-                <div className="forge-max-timeline-preview-actions">
-                  <button type="button" onClick={() => stepPreviewClip(-1)} disabled={previewClipIndex === 0 || Boolean(busy)} title="Clipe anterior">
-                    <SkipBack size={14} />
-                  </button>
-                  <button type="button" onClick={toggleTimelinePreviewPlayback} disabled={Boolean(busy)} title={previewPlaying ? 'Pausar preview' : 'Reproduzir preview'}>
-                    {previewPlaying ? <Pause size={14} /> : <Play size={14} />}
-                  </button>
-                  <button type="button" onClick={() => stepPreviewClip(1)} disabled={previewClipIndex === clips.length - 1 || Boolean(busy)} title="Próximo clipe">
-                    <SkipForward size={14} />
-                  </button>
-                </div>
-              </div>
-              <div className="forge-max-timeline-preview-stage">
-                <video
-                  ref={timelinePreviewRef}
-                  src={resolveAssetUrl(previewAsset.url)}
-                  controls
-                  playsInline
-                  className="forge-max-timeline-preview-video"
-                  style={{
-                    transform: buildClipTransform(previewClip),
-                  }}
-                  onLoadedMetadata={handleTimelinePreviewLoaded}
-                  onTimeUpdate={handleTimelinePreviewTimeUpdate}
-                  onPlay={() => setPreviewPlaying(true)}
-                  onPause={() => setPreviewPlaying(false)}
-                />
-              </div>
-            </div>
-          )}
-
           <div className="forge-max-timeline-cuts-header">
             <div>
               <strong>Prévia dos cortes na timeline</strong>

@@ -97,6 +97,29 @@ export async function updateForgeMaxMusic(projectId, payload) {
   }));
 }
 
+export async function uploadForgeMaxLogo(projectId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/logo`), {
+    method: 'POST',
+    body: formData,
+  }));
+}
+
+export async function updateForgeMaxLogo(projectId, payload) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/logo`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }));
+}
+
+export async function deleteForgeMaxLogo(projectId) {
+  return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/logo`), {
+    method: 'DELETE',
+  }));
+}
+
 export async function renderForgeMaxTimeline(projectId) {
   return parseResponse(await fetch(apiUrl(`/api/forge-max/projects/${encodeURIComponent(projectId)}/render`), {
     method: 'POST',
