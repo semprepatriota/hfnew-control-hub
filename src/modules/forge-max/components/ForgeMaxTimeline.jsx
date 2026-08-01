@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Clock3, Eye, GripVertical, ListPlus, ListVideo, Pause, Play, RotateCcw, Scissors, Upload, X } from 'lucide-react';
 
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
@@ -58,6 +58,7 @@ function TimelineClipCard({
   onSceneDragEnd,
   onSceneDrop,
   onRemove,
+  onReplaceSceneUpload,
 }) {
   const previewRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -205,9 +206,25 @@ function TimelineClipCard({
           <span className="forge-max-timeline-timer-lock"><Clock3 size={13} /> Fixo</span>
         ) : (
           <>
+            <span className="forge-max-timeline-drag" title="Segure e arraste esta cena sobre outra para trocar a ordem. Os blocos TIME ficam no lugar.">
+              <GripVertical size={14} /> Arraste
+            </span>
             <button type="button" className={`forge-max-timeline-select ${selected ? 'selected' : ''}`} onClick={() => onSelect(clip)} disabled={Boolean(busy)}>
               <Eye size={14} /> {selected ? 'Selecionado' : 'Selecionar'}
             </button>
+            <label className="forge-max-timeline-quick-replace" title="Substitui somente esta cena e preserva o vídeo original na biblioteca">
+              <Upload size={13} /> Trocar cena
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*"
+                disabled={Boolean(busy)}
+                onChange={(event) => {
+                  const [file] = Array.from(event.target.files || []);
+                  if (file) onReplaceSceneUpload?.(clip.id, file);
+                  event.target.value = '';
+                }}
+              />
+            </label>
             <button type="button" onClick={() => onMove(clip.id, -1)} disabled={index === 0 || Boolean(busy)} aria-label="Mover corte para trás" title="Mover para trás"><ArrowUp size={14} /></button>
             <button type="button" onClick={() => onMove(clip.id, 1)} disabled={!canMoveNext || Boolean(busy)} aria-label="Mover corte para frente" title="Mover para frente"><ArrowDown size={14} /></button>
           </>
@@ -399,7 +416,7 @@ function ForgeMaxTimeline({
         <div>
           <span className="forge-max-section-icon"><ListVideo size={17} /></span>
           <h2>Cortes da Timeline</h2>
-          <p>Organize os cortes e a ordem. A área de vídeo única fica acima, em Timeline de Edição.</p>
+          <p>Arraste uma cena sobre outra para trocar a ordem. Os blocos TIME ficam fixos entre as cenas.</p>
         </div>
         <div className="forge-max-timeline-header-actions">
           <div className="forge-max-timeline-summary">
@@ -513,6 +530,7 @@ function ForgeMaxTimeline({
                     onReorderScenes?.(sourceClipId, targetClipId);
                   }}
                   onRemove={onRemove}
+                  onReplaceSceneUpload={onReplaceSceneUpload}
                 />
               );
             })}
