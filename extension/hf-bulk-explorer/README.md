@@ -12,4 +12,4 @@ Extensao local do modulo Baixar em Massa do HF New Control Hub.
 
 A extensao nao le senhas nem exporta cookies. Ela envia ao app apenas links e miniaturas que ja estejam visiveis na pagina aberta.
 
-Redes suportadas: Instagram, TikTok, Facebook, Pinterest e Kwai. O YouTube nao faz parte da extensao.
+Redes suportadas: Instagram, TikTok, Facebook, Pinterest e Kwai.

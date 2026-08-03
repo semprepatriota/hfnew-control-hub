@@ -27,7 +27,6 @@ import { bulkDownloadApi, saveBulkDownloadFile } from '../services/bulkDownloadA
 import './bulk-download.css';
 
 const PLATFORM_LABELS = {
-  youtube: 'YouTube',
   instagram: 'Instagram',
   tiktok: 'TikTok',
   facebook: 'Facebook',
@@ -60,7 +59,7 @@ function readableCount(value) {
 }
 
 function isPlayablePreview(value) {
-  return /googlevideo|cdninstagram|fbcdn|tiktokcdn|muscdn|kwai|\.mp4(?:\?|$)/i.test(value || '');
+  return /cdninstagram|fbcdn|tiktokcdn|muscdn|kwai|\.mp4(?:\?|$)/i.test(value || '');
 }
 
 function extractUrls(raw) {
@@ -396,7 +395,7 @@ function BulkDownload() {
         <textarea
           value={links}
           onChange={(event) => setLinks(event.target.value)}
-          placeholder={'https://www.instagram.com/reel/...\nhttps://www.youtube.com/shorts/...\nhttps://www.tiktok.com/@perfil/video/...'}
+          placeholder={'https://www.instagram.com/reel/...\nhttps://www.tiktok.com/@perfil/video/...\nhttps://www.facebook.com/reel/...'}
           rows={5}
         />
 
