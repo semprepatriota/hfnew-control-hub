@@ -5,6 +5,7 @@ import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
 import Intel from './components/Pages/Intel';
+import BulkDownload from './modules/bulk-download/pages/BulkDownload';
 import Forge from './components/Pages/Forge';
 import TheForge5050 from './modules/the-forge-50-50/pages/TheForge5050';
 import ForgeEasyEditor from './modules/forge-easy-editor/pages/ForgeEasyEditor';
@@ -382,6 +383,7 @@ function AppShell() {
           <Route path="/painel" element={<Dashboard />} />
           <Route path="/conexoes" element={<Conexoes currentUser={authStatus} />} />
           <Route path="/intel" element={<Intel />} />
+          <Route path="/baixar-em-massa" element={<BulkDownload />} />
           <Route path="/forge" element={<Forge />} />
           <Route path="/the-forge" element={<TheForge5050 />} />
           <Route path="/the-forge-50-50" element={<TheForge5050 />} />

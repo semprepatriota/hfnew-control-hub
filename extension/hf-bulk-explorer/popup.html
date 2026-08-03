@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HF Bulk Explorer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="logo">HF</div>
+        <div><h1>Bulk Explorer</h1><p>Extensão do HF New Control Hub</p></div>
+      </header>
+
+      <label for="pairingKey">Chave de conexão</label>
+      <div class="key-row">
+        <input id="pairingKey" type="password" autocomplete="off" placeholder="hfbe_..." />
+        <button id="saveKey" class="icon" title="Salvar chave" aria-label="Salvar chave">✓</button>
+      </div>
+
+      <div id="connection" class="status">Chave ainda não configurada</div>
+
+      <section>
+        <div class="result-line"><span>Conteúdos encontrados</span><strong id="resultCount">0</strong></div>
+        <div id="pageName" class="page-name">Abra um perfil ou página suportada.</div>
+      </section>
+
+      <div class="actions">
+        <button id="scanPage" class="secondary">Escanear página</button>
+        <button id="sendItems" class="primary" disabled>Enviar ao HF</button>
+      </div>
+      <div id="message" class="message" aria-live="polite"></div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -10,6 +10,7 @@ import {
   Lock,
   CalendarClock,
   Activity,
+  DownloadCloud,
   Bot,
   Users,
   MessageCircle,
@@ -59,6 +60,13 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
       path: '/intel',
       icon: Activity,
       color: 'neon-gold'
+    },
+    {
+      id: 'bulk-download',
+      label: 'Baixar em Massa',
+      path: '/baixar-em-massa',
+      icon: DownloadCloud,
+      color: 'neon-blue'
     },
     {
       id: 4,
