@@ -13,13 +13,7 @@
         <div><h1>Bulk Explorer</h1><p>Extensão do HF New Control Hub</p></div>
       </header>
 
-      <label for="pairingKey">Chave de conexão</label>
-      <div class="key-row">
-        <input id="pairingKey" type="password" autocomplete="off" placeholder="hfbe_..." />
-        <button id="saveKey" class="icon" title="Salvar chave" aria-label="Salvar chave">✓</button>
-      </div>
-
-      <div id="connection" class="status">Chave ainda não configurada</div>
+      <div class="status ok">Conexão local protegida pelo Chrome</div>
 
       <label for="scanLimit">Quantidade de vídeos</label>
       <select id="scanLimit">
@@ -37,7 +31,7 @@
 
       <div class="actions">
         <button id="scanPage" class="secondary">Escanear página</button>
-        <button id="sendItems" class="primary" disabled>Enviar ao HF</button>
+        <button id="sendItems" class="primary" disabled>Enviar ao painel</button>
       </div>
       <div id="message" class="message" aria-live="polite"></div>
     </main>

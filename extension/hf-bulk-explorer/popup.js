@@ -1,12 +1,7 @@
-const API_URL = 'https://api.hfnew.com.br/api/bulk-download/extension/import';
-
-const keyInput = document.getElementById('pairingKey');
-const saveKeyButton = document.getElementById('saveKey');
 const scanButton = document.getElementById('scanPage');
 const sendButton = document.getElementById('sendItems');
 const resultCount = document.getElementById('resultCount');
 const pageName = document.getElementById('pageName');
-const connection = document.getElementById('connection');
 const message = document.getElementById('message');
 
 let currentItems = [];
@@ -16,30 +11,6 @@ function setMessage(text, type = '') {
   message.textContent = text;
   message.className = `message ${type}`.trim();
 }
-
-function updateConnection(value) {
-  const connected = Boolean(value && value.startsWith('hfbe_'));
-  connection.textContent = connected ? 'Chave configurada neste navegador' : 'Chave ainda não configurada';
-  connection.className = `status ${connected ? 'ok' : ''}`.trim();
-  return connected;
-}
-
-chrome.storage.local.get(['hfExplorerKey'], (stored) => {
-  keyInput.value = stored.hfExplorerKey || '';
-  updateConnection(keyInput.value);
-});
-
-saveKeyButton.addEventListener('click', () => {
-  const value = keyInput.value.trim();
-  if (!value.startsWith('hfbe_')) {
-    setMessage('Cole a chave gerada dentro do módulo Baixar em Massa.', 'error');
-    return;
-  }
-  chrome.storage.local.set({ hfExplorerKey: value }, () => {
-    updateConnection(value);
-    setMessage('Chave salva.', 'success');
-  });
-});
 
 async function collectVisibleMedia(limit = 25) {
   const target = Math.max(1, Math.min(100, Number(limit) || 25));
@@ -94,23 +65,28 @@ async function collectVisibleMedia(limit = 25) {
     url.hash = '';
     const image = anchor.querySelector('img');
     const video = anchor.querySelector('video');
+    const rawVideoUrl = video?.currentSrc || video?.src || '';
+    const safeVideoUrl = /^https?:\/\//i.test(rawVideoUrl) ? rawVideoUrl : '';
     const container = anchor.closest('article, ytd-rich-item-renderer, ytd-grid-video-renderer') || anchor.parentElement;
     const countNode = container?.querySelector('[aria-label*="visualiza" i], [aria-label*="view" i], [title*="visualiza" i], [title*="view" i]');
+    const likeNode = container?.querySelector('[aria-label*="curtida" i], [aria-label*="like" i], [title*="curtida" i], [title*="like" i]');
+    const timeNode = container?.querySelector('time[datetime]');
     const title = image?.alt || anchor.getAttribute('aria-label') || document.title || 'Conteúdo encontrado';
     const thumbnail = image?.currentSrc || image?.src || video?.poster || '';
-    const mediaUrl = video?.currentSrc || video?.src || (platform === 'instagram' && image?.currentSrc ? image.currentSrc : '');
+    const mediaUrl = safeVideoUrl || (platform === 'instagram' && image?.currentSrc ? image.currentSrc : '');
     const mediaType = url.pathname.includes('/p/') && !video ? 'image' : 'video';
     collected.set(url.href, {
       url: url.href,
       media_url: mediaUrl,
       title: title.slice(0, 500),
       thumbnail,
-      preview_url: video?.currentSrc || video?.src || '',
+      preview_url: safeVideoUrl,
       platform,
       media_type: mediaType,
       duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
       view_count: parseCount(countNode?.getAttribute('aria-label') || countNode?.getAttribute('title') || countNode?.textContent || ''),
-      like_count: 0
+      like_count: parseCount(likeNode?.getAttribute('aria-label') || likeNode?.getAttribute('title') || likeNode?.textContent || ''),
+      published_at: timeNode?.dateTime || timeNode?.getAttribute('datetime') || ''
     });
   }
 
@@ -129,7 +105,8 @@ async function collectVisibleMedia(limit = 25) {
         media_type: current.pathname.includes('/p/') ? 'image' : 'video',
         duration: 0,
         view_count: 0,
-        like_count: 0
+        like_count: 0,
+        published_at: document.querySelector('time[datetime]')?.getAttribute('datetime') || ''
       });
     }
   }
@@ -160,23 +137,23 @@ scanButton.addEventListener('click', async () => {
 });
 
 sendButton.addEventListener('click', async () => {
-  const stored = await chrome.storage.local.get(['hfExplorerKey']);
-  const extensionKey = stored.hfExplorerKey || keyInput.value.trim();
-  if (!updateConnection(extensionKey)) {
-    setMessage('Salve primeiro a chave de conexão.', 'error');
-    return;
-  }
   sendButton.disabled = true;
-  setMessage('Enviando os links ao HF New Control Hub...');
+  setMessage('Enviando os links ao painel aberto...');
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-HF-Explorer-Key': extensionKey },
-      body: JSON.stringify({ page_url: currentPageUrl, items: currentItems })
+    await chrome.storage.local.set({
+      hfBulkLastScan: {
+        status: 'success',
+        requestId: `manual-${Date.now()}`,
+        manual: true,
+        total: currentItems.length,
+        items: currentItems,
+        scanned: currentItems.length,
+        datesUnavailable: currentItems.filter((item) => !item.published_at).length,
+        pageUrl: currentPageUrl,
+        checkedAt: new Date().toISOString()
+      }
     });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || 'O app recusou os links.');
-    setMessage(`${payload.total} conteúdo(s) enviado(s).`, 'success');
+    setMessage(`${currentItems.length} conteúdo(s) enviados ao painel.`, 'success');
   } catch (error) {
     setMessage(error.message || 'Falha ao enviar os links.', 'error');
   } finally {

@@ -1,21 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
-  Check,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clipboard,
   Download,
   ExternalLink,
   FileArchive,
   Image as ImageIcon,
+  Instagram,
   Link2,
   Loader2,
+  Eye,
+  Heart,
   Music2,
   PackageCheck,
   Puzzle,
   RotateCcw,
+  RefreshCw,
   Search,
   Square,
   CheckSquare2,
@@ -58,6 +61,13 @@ function readableCount(value) {
   return String(count);
 }
 
+function readableDate(value) {
+  if (!value) return 'Data não disponível';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Data não disponível';
+  return parsed.toLocaleDateString('pt-BR');
+}
+
 function isPlayablePreview(value) {
   return /cdninstagram|fbcdn|tiktokcdn|muscdn|kwai|\.mp4(?:\?|$)/i.test(value || '');
 }
@@ -73,10 +83,17 @@ function mergeItems(current, incoming) {
 }
 
 function BulkDownload() {
+  const profileAbortRef = useRef(null);
+  const profileExtensionScanRef = useRef('');
+  const lastExtensionDeliveryRef = useRef('');
   const [links, setLinks] = useState('');
   const [profilePlatform, setProfilePlatform] = useState('instagram');
   const [profileName, setProfileName] = useState('');
   const [profileLimit, setProfileLimit] = useState(25);
+  const [profileSort, setProfileSort] = useState('recent');
+  const [profilePeriod, setProfilePeriod] = useState('all');
+  const [profileDateFrom, setProfileDateFrom] = useState('');
+  const [profileDateTo, setProfileDateTo] = useState('');
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [jobs, setJobs] = useState([]);
@@ -85,14 +102,21 @@ function BulkDownload() {
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [pairingKey, setPairingKey] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [extensionOpen, setExtensionOpen] = useState(false);
+  const [extensionOpen, setExtensionOpen] = useState(true);
+  const [extensionStatus, setExtensionStatus] = useState(null);
   const [queueOpen, setQueueOpen] = useState(true);
   const [health, setHealth] = useState(null);
 
   const activeCount = useMemo(() => jobs.filter((job) => ACTIVE_STATUSES.has(job.status)).length, [jobs]);
   const completedCount = useMemo(() => jobs.filter((job) => job.status === 'completed').length, [jobs]);
+  const extensionDetected = Boolean(extensionStatus?.installed);
+  const instagramFresh = useMemo(() => {
+    const checkedAt = extensionStatus?.instagram?.checkedAt;
+    return Boolean(checkedAt && Date.now() - new Date(checkedAt).getTime() < 45000);
+  }, [extensionStatus]);
+  const instagramOpen = instagramFresh && Boolean(extensionStatus?.instagram?.open);
+  const instagramConnected = instagramOpen && Boolean(extensionStatus?.instagram?.loggedIn);
+  const extensionReady = extensionDetected && instagramConnected;
 
   const loadJobs = useCallback(async (silent = false) => {
     try {
@@ -110,8 +134,10 @@ function BulkDownload() {
       if (incoming.length) {
         setItems((current) => mergeItems(current, incoming));
       }
+      return incoming;
     } catch (loadError) {
       if (!silent) setError(loadError.message);
+      return [];
     }
   }, []);
 
@@ -126,6 +152,33 @@ function BulkDownload() {
   }, []);
 
   useEffect(() => {
+    const lastScan = extensionStatus?.lastScan;
+    const requestedScan = profileExtensionScanRef.current;
+    const deliveryKey = `${lastScan?.requestId || ''}:${lastScan?.checkedAt || ''}`;
+    if (!lastScan?.checkedAt || deliveryKey === lastExtensionDeliveryRef.current) return;
+    const isRequestedScan = Boolean(requestedScan && lastScan.requestId === requestedScan);
+    if (!isRequestedScan && !lastScan.manual) return;
+    lastExtensionDeliveryRef.current = deliveryKey;
+    profileExtensionScanRef.current = '';
+    setBusy('');
+    if (lastScan.status === 'error') {
+      setError(lastScan.message || 'A extensão não conseguiu analisar esse perfil.');
+      return;
+    }
+    const incoming = lastScan.items || [];
+    setItems((current) => mergeItems(current, incoming));
+    setSelected((current) => {
+      const next = new Set(current);
+      incoming.forEach((item) => next.add(item.url));
+      return next;
+    });
+    const unavailable = lastScan.datesUnavailable
+      ? ` · ${lastScan.datesUnavailable} publicação(ões) sem data visível`
+      : '';
+    setNotice(`${lastScan.total || incoming.length} conteúdo(s) recebido(s) da extensão${unavailable}.`);
+  }, [extensionStatus?.lastScan]);
+
+  useEffect(() => {
     if (!activeCount) return undefined;
     const interval = window.setInterval(() => loadJobs(true), 2200);
     return () => window.clearInterval(interval);
@@ -135,6 +188,26 @@ function BulkDownload() {
     const interval = window.setInterval(() => loadInbox(true), 10000);
     return () => window.clearInterval(interval);
   }, [loadInbox]);
+
+  useEffect(() => {
+    const receiveStatus = (event) => {
+      if (event.source !== window || event.data?.source !== 'HF_BULK_EXPLORER') return;
+      if (event.data?.type === 'HF_BULK_EXTENSION_STATUS') setExtensionStatus(event.data.payload || null);
+    };
+    const requestStatus = () => window.postMessage({
+      source: 'HF_NEW_CONTROL_HUB',
+      type: 'HF_BULK_EXTENSION_CHECK'
+    }, window.location.origin);
+    window.addEventListener('message', receiveStatus);
+    requestStatus();
+    const initialRetry = window.setTimeout(requestStatus, 800);
+    const interval = window.setInterval(requestStatus, 15000);
+    return () => {
+      window.removeEventListener('message', receiveStatus);
+      window.clearTimeout(initialRetry);
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const analyzeLinks = async () => {
     const urls = extractUrls(links);
@@ -168,11 +241,63 @@ function BulkDownload() {
       setError('Digite o @ ou nome do perfil.');
       return;
     }
+    if (profilePeriod === 'custom' && (!profileDateFrom || !profileDateTo)) {
+      setError('Informe a data inicial e a data final do período personalizado.');
+      return;
+    }
+    if (profilePeriod === 'custom' && profileDateFrom > profileDateTo) {
+      setError('A data inicial deve ser anterior à data final.');
+      return;
+    }
     setBusy('profile');
     setError('');
     setNotice('');
+
+    if (profilePlatform === 'instagram' && extensionDetected) {
+      if (!instagramConnected) {
+        setBusy('');
+        setError('Abra o Instagram no Chrome, faça login e clique em Verificar novamente.');
+        return;
+      }
+      const username = profileName.trim().replace(/^@/, '').replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, '').split('/')[0];
+      if (!/^[A-Za-z0-9._]{1,100}$/.test(username)) {
+        setBusy('');
+        setError('Digite um @ do Instagram válido.');
+        return;
+      }
+      const requestId = globalThis.crypto?.randomUUID?.() || `scan-${Date.now()}`;
+      profileExtensionScanRef.current = requestId;
+      window.postMessage({
+        source: 'HF_NEW_CONTROL_HUB',
+        type: 'HF_BULK_PROFILE_SCAN',
+        payload: {
+          requestId,
+          platform: 'instagram',
+          username,
+          limit: Number(profileLimit),
+          sortBy: profileSort,
+          period: profilePeriod,
+          dateFrom: profileDateFrom,
+          dateTo: profileDateTo
+        }
+      }, window.location.origin);
+      window.open(`https://www.instagram.com/${username}/reels/`, '_blank', 'noopener,noreferrer');
+      setNotice('Perfil aberto no Instagram. Aguarde a extensão analisar os vídeos visíveis e retornar os resultados.');
+      return;
+    }
+    const controller = new AbortController();
+    profileAbortRef.current = controller;
     try {
-      const payload = await bulkDownloadApi.inspectProfile(profilePlatform, profileName.trim(), Number(profileLimit));
+      const payload = await bulkDownloadApi.inspectProfile(
+        profilePlatform,
+        profileName.trim(),
+        Number(profileLimit),
+        profileSort,
+        profilePeriod,
+        profileDateFrom,
+        profileDateTo,
+        controller.signal
+      );
       const incoming = payload.items || [];
       setItems((current) => mergeItems(current, incoming));
       setSelected((current) => {
@@ -180,12 +305,22 @@ function BulkDownload() {
         incoming.forEach((item) => next.add(item.url));
         return next;
       });
-      setNotice(`${incoming.length} vídeo(s) carregado(s) do perfil.`);
+      const missingDates = payload.undated ? ` · ${payload.undated} sem data ignorado(s)` : '';
+      setNotice(`${incoming.length} vídeo(s) carregado(s) de ${payload.scanned || incoming.length} analisado(s)${missingDates}.`);
     } catch (profileError) {
-      setError(profileError.message);
+      if (profileError?.name === 'AbortError') setNotice('Busca cancelada. Nenhum download foi iniciado.');
+      else setError(profileError.message);
     } finally {
+      profileAbortRef.current = null;
       setBusy('');
     }
+  };
+
+  const cancelProfileSearch = () => {
+    profileAbortRef.current?.abort();
+    profileExtensionScanRef.current = '';
+    setBusy('');
+    setNotice('Busca cancelada.');
   };
 
   const toggleItem = (url) => {
@@ -247,23 +382,14 @@ function BulkDownload() {
     });
   };
 
-  const generatePairing = async () => {
-    setBusy('pair');
-    setError('');
-    try {
-      const payload = await bulkDownloadApi.pairExtension();
-      setPairingKey(payload.extension_key || '');
-    } catch (pairError) {
-      setError(pairError.message);
-    } finally {
-      setBusy('');
-    }
+  const checkExtension = () => {
+    setBusy('extensionCheck');
+    window.postMessage({ source: 'HF_NEW_CONTROL_HUB', type: 'HF_BULK_EXTENSION_CHECK' }, window.location.origin);
+    window.setTimeout(() => setBusy((current) => current === 'extensionCheck' ? '' : current), 1200);
   };
 
-  const copyPairing = async () => {
-    await navigator.clipboard.writeText(pairingKey);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+  const openInstagram = () => {
+    window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
   };
 
   const retryJob = async (jobId) => {
@@ -333,28 +459,29 @@ function BulkDownload() {
         </button>
         {extensionOpen && (
           <div className="bulk-extension-body">
-            <div>
-              <strong>Conexão da extensão</strong>
-              <p>Use para perfis que exigem login. Ela lê os vídeos visíveis sem compartilhar sua senha.</p>
+            <div className={`bulk-extension-diagnostic ${extensionReady ? 'ready' : 'attention'}`}>
+              {extensionReady ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+              <div>
+                <strong>{extensionReady ? 'Extensão e Instagram prontos' : 'Conclua a conexão pelo Chrome'}</strong>
+                <p>{extensionReady
+                  ? 'A extensão pode ler os vídeos visíveis no perfil aberto.'
+                  : 'A extensão precisa estar instalada e o Instagram deve permanecer aberto com login feito.'}</p>
+              </div>
             </div>
-            <div className="bulk-pairing-row">
-              <a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip" download>
-                <Download size={16} />
-                Baixar extensão
-              </a>
-              <button type="button" className="bulk-button secondary" onClick={generatePairing} disabled={busy === 'pair'}>
-                {busy === 'pair' ? <Loader2 className="spin" size={16} /> : <Puzzle size={16} />}
-                Gerar chave
+            <div className="bulk-extension-status-row">
+              <span className={extensionDetected ? 'ok' : 'error'}><Puzzle size={14} />{extensionDetected ? `HF Explorer ${extensionStatus.version}` : 'Extensão não detectada'}</span>
+              <span className={instagramConnected ? 'ok' : 'error'}><Instagram size={14} />{instagramConnected ? 'Instagram conectado' : instagramOpen ? 'Instagram sem login' : 'Instagram não detectado'}</span>
+              <button type="button" onClick={checkExtension} disabled={busy === 'extensionCheck'}>
+                <RefreshCw className={busy === 'extensionCheck' ? 'spin' : ''} size={14} /> Verificar novamente
               </button>
-              {pairingKey && (
-                <>
-                  <code>{pairingKey}</code>
-                  <button type="button" className="bulk-icon-button" onClick={copyPairing} title="Copiar chave" aria-label="Copiar chave">
-                    {copied ? <Check size={17} /> : <Clipboard size={17} />}
-                  </button>
-                </>
-              )}
             </div>
+            {!extensionReady && (
+              <div className="bulk-extension-steps">
+                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip" download><Download size={15} /> Baixar extensão</a></div>
+                <div><b>2</b><span><strong>Faça login no Instagram</strong><small>Abra o Instagram no Chrome e mantenha essa aba aberta.</small></span><button type="button" className="bulk-button ghost" onClick={openInstagram}><ExternalLink size={15} /> Abrir Instagram</button></div>
+                <div><b>3</b><span><strong>Volte ao HF</strong><small>Depois do login, clique em verificar novamente.</small></span><button type="button" className="bulk-button secondary" onClick={checkExtension}><RefreshCw size={15} /> Verificar conexão</button></div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -374,10 +501,35 @@ function BulkDownload() {
           <select value={profileLimit} onChange={(event) => setProfileLimit(Number(event.target.value))} aria-label="Quantidade de vídeos">
             {[10, 25, 50, 75, 100].map((value) => <option key={value} value={value}>{value} vídeos</option>)}
           </select>
-          <button type="button" className="bulk-button primary" onClick={analyzeProfile} disabled={busy === 'profile'}>
-            {busy === 'profile' ? <Loader2 className="spin" size={17} /> : <Search size={17} />}
-            Puxar vídeos
+          <button type="button" className={`bulk-button ${busy === 'profile' ? 'danger' : 'primary'}`} onClick={busy === 'profile' ? cancelProfileSearch : analyzeProfile}>
+            {busy === 'profile' ? <X size={17} /> : <Search size={17} />}
+            {busy === 'profile' ? 'Cancelar busca' : 'Puxar vídeos'}
           </button>
+        </div>
+        <div className="bulk-profile-filters">
+          <div className="bulk-filter-group">
+            <label>Ordenar por</label>
+            <div className="bulk-filter-buttons">
+              <button type="button" className={profileSort === 'recent' ? 'active' : ''} onClick={() => setProfileSort('recent')}><CalendarDays size={15} /> Mais recentes</button>
+              <button type="button" className={profileSort === 'likes' ? 'active' : ''} onClick={() => setProfileSort('likes')}><Heart size={15} /> Mais curtidos</button>
+              <button type="button" className={profileSort === 'views' ? 'active' : ''} onClick={() => setProfileSort('views')}><Eye size={15} /> Mais visualizados</button>
+            </div>
+          </div>
+          <div className="bulk-period-group">
+            <label htmlFor="bulk-profile-period">Período</label>
+            <select id="bulk-profile-period" value={profilePeriod} onChange={(event) => setProfilePeriod(event.target.value)}>
+              <option value="all">Todo o período</option>
+              <option value="7d">Últimos 7 dias</option>
+              <option value="30d">Últimos 30 dias</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          {profilePeriod === 'custom' && (
+            <div className="bulk-custom-dates">
+              <label>Data inicial<input type="date" value={profileDateFrom} onChange={(event) => setProfileDateFrom(event.target.value)} /></label>
+              <label>Data final<input type="date" value={profileDateTo} onChange={(event) => setProfileDateTo(event.target.value)} /></label>
+            </div>
+          )}
         </div>
       </section>
 
@@ -444,7 +596,11 @@ function BulkDownload() {
                       <span>{item.media_type === 'image' ? <ImageIcon size={13} /> : <Video size={13} />}{item.media_type}</span>
                     </div>
                     <h3>{item.title}</h3>
-                    <div className="bulk-card-stats"><strong>{readableCount(item.view_count)} visualizações</strong><span>{readableCount(item.like_count)} curtidas</span></div>
+                    <div className="bulk-card-stats">
+                      <strong><Eye size={12} /> {readableCount(item.view_count)} visualizações</strong>
+                      <span><Heart size={12} /> {readableCount(item.like_count)} curtidas</span>
+                      <span><CalendarDays size={12} /> {readableDate(item.published_at)}</span>
+                    </div>
                     <div className="bulk-card-footer">
                       <a href={item.url} target="_blank" rel="noreferrer">Abrir origem <ExternalLink size={12} /></a>
                       <button type="button" onClick={() => queueSingle(item)} disabled={busy === `save:${item.url}`}>

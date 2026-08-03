@@ -33,9 +33,18 @@ export const bulkDownloadApi = {
     method: 'POST',
     body: JSON.stringify({ urls })
   }),
-  inspectProfile: (platform, username, limit) => request('/api/bulk-download/profile', {
+  inspectProfile: (platform, username, limit, sortBy, period, dateFrom, dateTo, signal) => request('/api/bulk-download/profile', {
     method: 'POST',
-    body: JSON.stringify({ platform, username, limit })
+    signal,
+    body: JSON.stringify({
+      platform,
+      username,
+      limit,
+      sort_by: sortBy,
+      period,
+      date_from: dateFrom,
+      date_to: dateTo
+    })
   }),
   createJobs: (items, outputFormat, quality) => request('/api/bulk-download/jobs', {
     method: 'POST',
@@ -44,7 +53,6 @@ export const bulkDownloadApi = {
   jobs: () => request('/api/bulk-download/jobs'),
   retry: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' }),
   remove: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
-  pairExtension: () => request('/api/bulk-download/extension/pair', { method: 'POST' }),
   extensionInbox: () => request('/api/bulk-download/extension/inbox'),
   clearExtensionInbox: () => request('/api/bulk-download/extension/inbox', { method: 'DELETE' })
 };

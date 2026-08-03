@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "HF Bulk Explorer",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Envia links publicos visiveis para o modulo Baixar em Massa do HF New Control Hub.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "https://api.hfnew.com.br/*",
     "https://www.instagram.com/*",
     "https://www.tiktok.com/*",
     "https://www.facebook.com/*",
@@ -15,5 +14,12 @@
   "action": {
     "default_title": "HF Bulk Explorer",
     "default_popup": "popup.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://app.hfnew.com.br/*", "https://www.instagram.com/*"],
+      "js": ["content-status.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }
