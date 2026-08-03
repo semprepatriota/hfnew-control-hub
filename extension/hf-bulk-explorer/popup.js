@@ -45,7 +45,7 @@ async function collectVisibleMedia(limit = 25) {
   const target = Math.max(1, Math.min(100, Number(limit) || 25));
   let previousHeight = 0;
   for (let round = 0; round < 14; round += 1) {
-    const visibleLinks = document.querySelectorAll('a[href*="/reel/"], a[href*="/video/"], a[href*="/shorts/"], a[href*="watch?v="], a[href*="/pin/"]').length;
+    const visibleLinks = document.querySelectorAll('a[href*="/reel/"], a[href*="/video/"], a[href*="/pin/"], a[href*="/photo/"]').length;
     if (visibleLinks >= target) break;
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
     await new Promise((resolve) => setTimeout(resolve, 650));
@@ -71,8 +71,7 @@ async function collectVisibleMedia(limit = 25) {
   };
 
   const platform = host.includes('instagram') ? 'instagram'
-    : host.includes('youtube') ? 'youtube'
-      : host.includes('tiktok') ? 'tiktok'
+    : host.includes('tiktok') ? 'tiktok'
         : host.includes('facebook') ? 'facebook'
           : host.includes('pinterest') ? 'pinterest'
             : host.includes('kwai') ? 'kwai' : '';
@@ -80,7 +79,6 @@ async function collectVisibleMedia(limit = 25) {
   const supported = (url) => {
     const path = url.pathname;
     if (platform === 'instagram') return /^\/(p|reel|tv)\//.test(path);
-    if (platform === 'youtube') return path === '/watch' || path.startsWith('/shorts/');
     if (platform === 'tiktok') return path.includes('/video/');
     if (platform === 'facebook') return path.includes('/reel/') || path.includes('/videos/');
     if (platform === 'pinterest') return path.includes('/pin/');
