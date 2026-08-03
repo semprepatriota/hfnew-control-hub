@@ -1,0 +1,43 @@
+.intel-monitor-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.intel-monitor-page__header {
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 16px;
+}
+
+.intel-monitor-page__header h1 {
+  margin: 5px 0 4px;
+}
+
+.intel-monitor-page__header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+}
+
+.intel-monitor-page__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #55d98b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@media (max-width: 767px) {
+  .intel-monitor-page {
+    gap: 14px;
+  }
+
+  .intel-monitor-page__header {
+    align-items: flex-start;
+    padding-bottom: 12px;
+  }
+}

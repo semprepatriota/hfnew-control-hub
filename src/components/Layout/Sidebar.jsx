@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   GraduationCap,
   Zap,
-  Brain,
   Hammer,
   Clapperboard,
   LayoutPanelLeft,
@@ -58,7 +57,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
       id: 3,
       label: 'Alliance Intel',
       path: '/intel',
-      icon: Brain,
+      icon: Activity,
       color: 'neon-gold'
     },
     {

@@ -1,226 +1,317 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCcw, TrendingUp, Eye, Clock, Users, Loader, AlertCircle, Radio } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  AlertCircle,
+  BarChart3,
+  CalendarClock,
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  Loader2,
+  MessageCircle,
+  RefreshCcw,
+  ThumbsUp,
+  TrendingUp,
+  Users,
+  Video,
+  WifiOff,
+} from 'lucide-react';
+import SourceBadge from '../../Branding/SourceBadge';
 import { apiUrl } from '../../../config/api';
 import './YouTubeAnalyticsTab.css';
 
+const formatNumber = (value) => {
+  const number = Number(value || 0);
+  return new Intl.NumberFormat('pt-BR', {
+    notation: number >= 10000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(number);
+};
+
+const formatPercent = (value) => `${Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+
+const formatDate = (value, includeTime = false) => {
+  if (!value) return 'Sem registro';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sem registro';
+  return date.toLocaleString('pt-BR', includeTime
+    ? { dateStyle: 'short', timeStyle: 'short' }
+    : { dateStyle: 'short' });
+};
+
+const formatDuration = (seconds) => {
+  const total = Math.max(0, Number(seconds || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remaining = Math.floor(total % 60);
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`
+    : `${minutes}:${String(remaining).padStart(2, '0')}`;
+};
+
+const formatDelta = (value) => {
+  if (value === null || value === undefined) return 'Aguardando histórico';
+  const number = Number(value || 0);
+  return `${number > 0 ? '+' : ''}${formatNumber(number)}`;
+};
+
 function YouTubeAnalyticsTab() {
-  const [analytics, setAnalytics] = useState(null);
+  const navigate = useNavigate();
+  const [monitor, setMonitor] = useState(null);
+  const [selectedChannelId, setSelectedChannelId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [lastUpdated, setLastUpdated] = useState('');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
-    setLoading(true);
+  const loadMonitor = useCallback(async (channelId = '', force = false) => {
+    if (force) setRefreshing(true);
+    else setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(apiUrl('/api/intel/youtube-analytics'), {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const params = new URLSearchParams();
+      if (channelId) params.set('channel_id', channelId);
+      if (force) params.set('refresh', 'true');
+      const suffix = params.toString() ? `?${params.toString()}` : '';
+      const response = await fetch(apiUrl(`/api/intel/youtube-monitor${suffix}`));
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao carregar analytics');
+        throw new Error(payload.detail || 'Não foi possível carregar o monitoramento do YouTube.');
       }
-
-      const data = await response.json();
-      setAnalytics(data);
-      setLastUpdated(new Date().toISOString());
-    } catch (err) {
-      setError(err.message);
-      console.error('Analytics error:', err);
+      setMonitor(payload);
+      setSelectedChannelId(payload.selected_channel_id || channelId || '');
+    } catch (requestError) {
+      setError(requestError.message || 'Falha ao carregar o monitoramento.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadMonitor();
+  }, [loadMonitor]);
+
+  const selectChannel = (channelId) => {
+    if (!channelId || channelId === selectedChannelId) return;
+    setSelectedChannelId(channelId);
+    loadMonitor(channelId);
   };
 
-  const leadChannel = useMemo(() => (analytics?.channels || []).find((channel) => channel.is_active) || (analytics?.channels || [])[0] || null, [analytics]);
-  const channelShareBase = analytics?.summary?.total_views || 0;
-
-  const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
-
-  if (loading) {
+  if (loading && !monitor) {
     return (
-      <div className="youtube-analytics-tab loading-state">
-        <Loader size={40} className="spinner" />
-        <p>Carregando dados do canal...</p>
+      <div className="intel-monitor-state">
+        <Loader2 size={38} className="intel-spin" />
+        <span>Consultando o canal conectado...</span>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !monitor) {
     return (
-      <div className="youtube-analytics-tab error-state">
-        <AlertCircle size={40} />
-        <p>Erro ao carregar analytics</p>
+      <div className="intel-monitor-state error">
+        <AlertCircle size={38} />
+        <strong>Falha ao carregar o Alliance Intel</strong>
         <span>{error}</span>
-        <button onClick={fetchAnalytics} className="retry-button">
-          Tentar Novamente
+        <button type="button" className="intel-primary-button" onClick={() => loadMonitor(selectedChannelId, true)}>
+          <RefreshCcw size={16} />
+          Tentar novamente
         </button>
       </div>
     );
   }
+
+  if (!monitor?.channels?.length) {
+    return (
+      <div className="intel-monitor-state disconnected">
+        <WifiOff size={40} />
+        <strong>Nenhum canal conectado</strong>
+        <span>Conecte um canal do YouTube para iniciar o monitoramento.</span>
+        <button type="button" className="intel-primary-button" onClick={() => navigate('/conexoes')}>
+          Abrir conexões
+        </button>
+      </div>
+    );
+  }
+
+  const channel = monitor.selected_channel || {};
+  const videos = channel.recent_videos || [];
+  const deltas = monitor.deltas;
 
   return (
-    <div className="youtube-analytics-tab">
-      <div className="analytics-topbar">
-        <div>
-          <h3>Leitura operacional do canal</h3>
-          <p>Visão rápida de desempenho, retenção e ativos com melhor resposta.</p>
+    <div className="youtube-monitor">
+      <section className="intel-toolbar">
+        <div className="intel-toolbar__source">
+          <SourceBadge label="Dados do canal" tone="youtube" officialAsset compact />
+          <span>
+            {monitor.stale ? 'Última leitura disponível' : `Atualizado em ${formatDate(monitor.generated_at, true)}`}
+          </span>
+          {monitor.cached && <em>cache de 5 min</em>}
         </div>
-        <button onClick={fetchAnalytics} className="retry-button analytics-refresh-button">
-          <RefreshCcw size={16} />
-          Atualizar
+        <button
+          type="button"
+          className="intel-primary-button"
+          onClick={() => loadMonitor(selectedChannelId, true)}
+          disabled={refreshing}
+        >
+          <RefreshCcw size={16} className={refreshing ? 'intel-spin' : ''} />
+          {refreshing ? 'Atualizando' : 'Atualizar dados'}
         </button>
-      </div>
+      </section>
 
-      {/* Metrics Overview */}
-      <div className="metrics-grid">
-        <div className="metric-card views">
-          <div className="metric-icon">
-            <Eye size={24} />
-          </div>
-          <div className="metric-content">
-            <span className="metric-label">Visualizações Total</span>
-            <span className="metric-value">{formatNumber(analytics.summary.total_views)}</span>
-          </div>
-          <div className="metric-accent"></div>
-        </div>
+      <section className="intel-channel-selector" aria-label="Canais conectados">
+        {monitor.channels.map((item) => (
+          <button
+            type="button"
+            key={item.channel_id}
+            className={`intel-channel-option ${item.channel_id === selectedChannelId ? 'active' : ''}`}
+            onClick={() => selectChannel(item.channel_id)}
+          >
+            {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Video size={22} />}
+            <span>
+              <strong>{item.channel_name || 'Canal sem nome'}</strong>
+              <small>{formatNumber(item.subscriber_count)} inscritos</small>
+            </span>
+            {item.is_active && <em>Em uso</em>}
+          </button>
+        ))}
+      </section>
 
-        <div className="metric-card watch-hours">
-          <div className="metric-icon">
-            <Clock size={24} />
-          </div>
-          <div className="metric-content">
-            <span className="metric-label">Horas Assistidas</span>
-            <span className="metric-value">{formatNumber(analytics.summary.total_watch_hours)}</span>
-          </div>
-          <div className="metric-accent"></div>
-        </div>
-
-        <div className="metric-card retention">
-          <div className="metric-icon">
-            <TrendingUp size={24} />
-          </div>
-          <div className="metric-content">
-            <span className="metric-label">Taxa Retenção Média</span>
-            <span className="metric-value">{analytics.summary.average_retention.toFixed(2)}%</span>
-          </div>
-          <div className="metric-accent"></div>
-        </div>
-
-        <div className="metric-card subscribers">
-          <div className="metric-icon">
-            <Users size={24} />
-          </div>
-          <div className="metric-content">
-            <span className="metric-label">Inscritos</span>
-            <span className="metric-value">{formatNumber(analytics.summary.subscriber_count)}</span>
-          </div>
-          <div className="metric-accent"></div>
-        </div>
-      </div>
-
-      {leadChannel && (
-        <div className="analytics-highlight">
-          <div className="analytics-highlight__meta">
-            <strong>Canal em destaque</strong>
-            <h4>{leadChannel.channel_name}</h4>
-            <p>
-              {formatNumber(leadChannel.view_count)} visualizações · {leadChannel.estimated_retention.toFixed(1)}% de retenção estimada · {formatNumber(leadChannel.video_count)} vídeos publicados
-            </p>
-          </div>
-          <div className="analytics-highlight__side">
-            <span>{lastUpdated ? `Atualizado em ${new Date(lastUpdated).toLocaleString('pt-BR')}` : 'Sem atualização registrada'}</span>
+      <section className="intel-channel-heading">
+        <div className="intel-channel-heading__identity">
+          {channel.thumbnail ? <img src={channel.thumbnail} alt="" /> : <Video size={28} />}
+          <div>
+            <span>Canal monitorado</span>
+            <h2>{channel.channel_name || 'Canal do YouTube'}</h2>
           </div>
         </div>
-      )}
-
-      <div className="top-videos-section compact-channel-section">
-        <div className="section-header">
-          <h3>
-            <Radio size={20} />
-            Análise separada por canal
-          </h3>
-          <span className="video-count">{analytics.channels.length} canais</span>
+        <div className="intel-channel-heading__status">
+          <CheckCircle2 size={16} />
+          Conectado
         </div>
+      </section>
 
-        <div className="videos-list">
-          {analytics.channels.map((channel, index) => (
-            <div key={channel.channel_id || index} className="video-card compact-channel-card">
-              <div className="video-info">
-                <div className="channel-title-row">
-                  <h4 title={channel.channel_name}>{channel.channel_name}</h4>
-                  {channel.is_active && <span className="active-channel-badge">Ativo</span>}
-                </div>
-                <p className="video-date">Canal {channel.is_active ? 'principal em uso' : 'conectado para leitura separada'}</p>
+      <section className="intel-kpi-grid">
+        <article className="intel-kpi">
+          <Users size={21} />
+          <span>Inscritos</span>
+          <strong>{formatNumber(channel.subscriber_count)}</strong>
+          <small>{formatDelta(deltas?.subscriber_count)} desde a referência</small>
+        </article>
+        <article className="intel-kpi">
+          <Eye size={21} />
+          <span>Visualizações totais</span>
+          <strong>{formatNumber(channel.view_count)}</strong>
+          <small>{formatDelta(deltas?.view_count)} desde a referência</small>
+        </article>
+        <article className="intel-kpi">
+          <Video size={21} />
+          <span>Vídeos publicados</span>
+          <strong>{formatNumber(channel.video_count)}</strong>
+          <small>{formatDelta(deltas?.video_count)} desde a referência</small>
+        </article>
+        <article className="intel-kpi">
+          <BarChart3 size={21} />
+          <span>Média dos recentes</span>
+          <strong>{formatNumber(channel.average_views)}</strong>
+          <small>últimos {channel.recent_video_count || 0} vídeos</small>
+        </article>
+      </section>
 
-                <div
-                  className="channel-donut"
-                  style={{
-                    '--channel-share': `${Math.max(4, Math.min(100, channelShareBase ? (channel.view_count / channelShareBase) * 100 : 0))}%`,
-                  }}
-                >
-                  <div className="channel-donut__center">
-                    <strong>{channelShareBase ? ((channel.view_count / channelShareBase) * 100).toFixed(1) : '0.0'}%</strong>
-                    <span>share</span>
-                  </div>
-                </div>
-
-                <div className="video-stats">
-                  <div className="stat">
-                    <Eye size={14} />
-                    <span>{formatNumber(channel.view_count)}</span>
-                  </div>
-                  <div className="stat">
-                    <Users size={14} />
-                    <span>{formatNumber(channel.subscriber_count)}</span>
-                  </div>
-                  <div className="stat">
-                    <Clock size={14} />
-                    <span>{formatNumber(channel.estimated_watch_hours)}h</span>
-                  </div>
-                  <div className="stat">
-                    <TrendingUp size={14} />
-                    <span>{channel.estimated_retention.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="video-action">
-                <div className="channel-mini-kpis">
-                  <div className="channel-kpi-stack">
-                    <strong>{formatNumber(channel.video_count)}</strong>
-                    <span>vídeos</span>
-                  </div>
-                  <div className="channel-kpi-stack retention">
-                    <strong>{channel.estimated_retention.toFixed(1)}%</strong>
-                    <span>retenção</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+      <section className="intel-performance-band">
+        <div>
+          <Eye size={17} />
+          <span>Views recentes</span>
+          <strong>{formatNumber(channel.recent_views)}</strong>
         </div>
+        <div>
+          <ThumbsUp size={17} />
+          <span>Curtidas</span>
+          <strong>{formatNumber(channel.recent_likes)}</strong>
+        </div>
+        <div>
+          <MessageCircle size={17} />
+          <span>Comentários</span>
+          <strong>{formatNumber(channel.recent_comments)}</strong>
+        </div>
+        <div>
+          <TrendingUp size={17} />
+          <span>Engajamento</span>
+          <strong>{formatPercent(channel.recent_engagement_rate)}</strong>
+        </div>
+        <div>
+          <CalendarClock size={17} />
+          <span>Intervalo médio</span>
+          <strong>{channel.posting_cadence_days ? `${channel.posting_cadence_days} dias` : 'Sem base'}</strong>
+        </div>
+      </section>
 
-        {analytics.channels.length === 0 && (
-          <div className="no-videos">
-            <Radio size={40} />
-            <p>Nenhum canal conectado encontrado</p>
+      <section className="intel-alerts" aria-label="Diagnóstico do canal">
+        {(monitor.alerts || []).map((alert, index) => (
+          <div key={`${alert.level}-${index}`} className={`intel-alert level-${alert.level}`}>
+            {alert.level === 'ok' ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+            <span>{alert.message}</span>
           </div>
+        ))}
+      </section>
+
+      <section className="intel-videos-section">
+        <div className="intel-section-heading">
+          <div>
+            <h3>Vídeos recentes</h3>
+            <p>Desempenho individual das últimas publicações encontradas.</p>
+          </div>
+          <span>{videos.length} vídeos</span>
+        </div>
+
+        {videos.length ? (
+          <div className="intel-video-table-wrap">
+            <table className="intel-video-table">
+              <thead>
+                <tr>
+                  <th>Vídeo</th>
+                  <th>Publicado</th>
+                  <th>Views</th>
+                  <th>Curtidas</th>
+                  <th>Comentários</th>
+                  <th>Engajamento</th>
+                  <th aria-label="Abrir vídeo" />
+                </tr>
+              </thead>
+              <tbody>
+                {videos.map((video) => (
+                  <tr key={video.video_id}>
+                    <td data-label="Vídeo">
+                      <div className="intel-video-title">
+                        <div className="intel-video-thumb">
+                          {video.thumbnail ? <img src={video.thumbnail} alt="" loading="lazy" /> : <Video size={20} />}
+                          <span>{formatDuration(video.duration_seconds)}</span>
+                        </div>
+                        <div>
+                          <strong title={video.title}>{video.title}</strong>
+                          <small>{video.is_short ? 'Short' : 'Vídeo'}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="Publicado">{formatDate(video.published_at)}</td>
+                    <td data-label="Views">{formatNumber(video.views)}</td>
+                    <td data-label="Curtidas">{formatNumber(video.likes)}</td>
+                    <td data-label="Comentários">{formatNumber(video.comments)}</td>
+                    <td data-label="Engajamento">{formatPercent(video.engagement_rate)}</td>
+                    <td>
+                      <a href={video.url} target="_blank" rel="noreferrer" title="Abrir no YouTube">
+                        <ExternalLink size={16} />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="intel-empty-videos">Nenhum vídeo recente encontrado.</div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
