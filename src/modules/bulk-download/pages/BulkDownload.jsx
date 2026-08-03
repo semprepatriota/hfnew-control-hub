@@ -52,6 +52,17 @@ function readableDuration(seconds) {
   return `${minutes}:${String(rest).padStart(2, '0')}`;
 }
 
+function readableCount(value) {
+  const count = Number(value || 0);
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(count >= 10_000_000 ? 0 : 1)} mi`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(count >= 100_000 ? 0 : 1)} mil`;
+  return String(count);
+}
+
+function isPlayablePreview(value) {
+  return /googlevideo|cdninstagram|fbcdn|tiktokcdn|muscdn|kwai|\.mp4(?:\?|$)/i.test(value || '');
+}
+
 function extractUrls(raw) {
   return Array.from(new Set((raw.match(/https?:\/\/[^\s]+/gi) || []).map((url) => url.replace(/[),.;]+$/, ''))));
 }
@@ -64,6 +75,9 @@ function mergeItems(current, incoming) {
 
 function BulkDownload() {
   const [links, setLinks] = useState('');
+  const [profilePlatform, setProfilePlatform] = useState('instagram');
+  const [profileName, setProfileName] = useState('');
+  const [profileLimit, setProfileLimit] = useState(25);
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [jobs, setJobs] = useState([]);
@@ -150,6 +164,31 @@ function BulkDownload() {
     }
   };
 
+  const analyzeProfile = async () => {
+    if (!profileName.trim()) {
+      setError('Digite o @ ou nome do perfil.');
+      return;
+    }
+    setBusy('profile');
+    setError('');
+    setNotice('');
+    try {
+      const payload = await bulkDownloadApi.inspectProfile(profilePlatform, profileName.trim(), Number(profileLimit));
+      const incoming = payload.items || [];
+      setItems((current) => mergeItems(current, incoming));
+      setSelected((current) => {
+        const next = new Set(current);
+        incoming.forEach((item) => next.add(item.url));
+        return next;
+      });
+      setNotice(`${incoming.length} vídeo(s) carregado(s) do perfil.`);
+    } catch (profileError) {
+      setError(profileError.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const toggleItem = (url) => {
     setSelected((current) => {
       const next = new Set(current);
@@ -183,6 +222,30 @@ function BulkDownload() {
     } finally {
       setBusy('');
     }
+  };
+
+  const queueSingle = async (item) => {
+    setBusy(`save:${item.url}`);
+    setError('');
+    try {
+      const payload = await bulkDownloadApi.createJobs([item], outputFormat, quality);
+      setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
+      setNotice('Vídeo colocado na fila para salvar.');
+      setQueueOpen(true);
+    } catch (queueError) {
+      setError(queueError.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const removeResult = (url) => {
+    setItems((current) => current.filter((item) => item.url !== url));
+    setSelected((current) => {
+      const next = new Set(current);
+      next.delete(url);
+      return next;
+    });
   };
 
   const generatePairing = async () => {
@@ -264,6 +327,61 @@ function BulkDownload() {
         </div>
       )}
 
+      <section className="bulk-extension-panel bulk-extension-first">
+        <button type="button" className="bulk-collapse-button" onClick={() => setExtensionOpen((value) => !value)}>
+          <span><Puzzle size={18} /> HF Bulk Explorer <b>EXTENSÃO</b></span>
+          {extensionOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+        </button>
+        {extensionOpen && (
+          <div className="bulk-extension-body">
+            <div>
+              <strong>Conexão da extensão</strong>
+              <p>Use para perfis que exigem login. Ela lê os vídeos visíveis sem compartilhar sua senha.</p>
+            </div>
+            <div className="bulk-pairing-row">
+              <a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip" download>
+                <Download size={16} />
+                Baixar extensão
+              </a>
+              <button type="button" className="bulk-button secondary" onClick={generatePairing} disabled={busy === 'pair'}>
+                {busy === 'pair' ? <Loader2 className="spin" size={16} /> : <Puzzle size={16} />}
+                Gerar chave
+              </button>
+              {pairingKey && (
+                <>
+                  <code>{pairingKey}</code>
+                  <button type="button" className="bulk-icon-button" onClick={copyPairing} title="Copiar chave" aria-label="Copiar chave">
+                    {copied ? <Check size={17} /> : <Clipboard size={17} />}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="bulk-source-panel bulk-profile-panel">
+        <div className="bulk-section-heading">
+          <div>
+            <h2><Search size={18} /> Buscar vídeos de um perfil</h2>
+            <p>Digite apenas @perfil ou o nome do perfil.</p>
+          </div>
+        </div>
+        <div className="bulk-profile-form">
+          <select value={profilePlatform} onChange={(event) => setProfilePlatform(event.target.value)} aria-label="Rede social">
+            {Object.entries(PLATFORM_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          <input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="@nome_do_perfil" onKeyDown={(event) => { if (event.key === 'Enter') analyzeProfile(); }} />
+          <select value={profileLimit} onChange={(event) => setProfileLimit(Number(event.target.value))} aria-label="Quantidade de vídeos">
+            {[10, 25, 50, 75, 100].map((value) => <option key={value} value={value}>{value} vídeos</option>)}
+          </select>
+          <button type="button" className="bulk-button primary" onClick={analyzeProfile} disabled={busy === 'profile'}>
+            {busy === 'profile' ? <Loader2 className="spin" size={17} /> : <Search size={17} />}
+            Puxar vídeos
+          </button>
+        </div>
+      </section>
+
       <section className="bulk-source-panel">
         <div className="bulk-section-heading">
           <div>
@@ -291,39 +409,6 @@ function BulkDownload() {
         </div>
       </section>
 
-      <section className="bulk-extension-panel">
-        <button type="button" className="bulk-collapse-button" onClick={() => setExtensionOpen((value) => !value)}>
-          <span><Puzzle size={18} /> HF Bulk Explorer</span>
-          {extensionOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-        </button>
-        {extensionOpen && (
-          <div className="bulk-extension-body">
-            <div>
-              <strong>Conexão da extensão</strong>
-              <p>A chave liga este usuário à extensão sem compartilhar senha ou cookies.</p>
-            </div>
-            <div className="bulk-pairing-row">
-              <a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip" download>
-                <Download size={16} />
-                Baixar extensão
-              </a>
-              <button type="button" className="bulk-button secondary" onClick={generatePairing} disabled={busy === 'pair'}>
-                {busy === 'pair' ? <Loader2 className="spin" size={16} /> : <Puzzle size={16} />}
-                Gerar chave
-              </button>
-              {pairingKey && (
-                <>
-                  <code>{pairingKey}</code>
-                  <button type="button" className="bulk-icon-button" onClick={copyPairing} title="Copiar chave" aria-label="Copiar chave">
-                    {copied ? <Check size={17} /> : <Clipboard size={17} />}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-
       <section className="bulk-results-section">
         <div className="bulk-section-heading results-heading">
           <div>
@@ -347,8 +432,11 @@ function BulkDownload() {
                   <button type="button" className="bulk-card-select" onClick={() => toggleItem(item.url)} aria-label={checked ? 'Desmarcar' : 'Selecionar'}>
                     {checked ? <CheckSquare2 size={19} /> : <Square size={19} />}
                   </button>
+                  <button type="button" className="bulk-card-remove" onClick={() => removeResult(item.url)} title="Remover da lista" aria-label="Remover da lista"><X size={15} /></button>
                   <div className="bulk-thumbnail">
-                    {item.thumbnail ? <img src={item.thumbnail} alt="" referrerPolicy="no-referrer" /> : <Video size={30} />}
+                    {isPlayablePreview(item.preview_url) ? (
+                      <video src={item.preview_url} poster={item.thumbnail || undefined} controls preload="metadata" />
+                    ) : item.thumbnail ? <img src={item.thumbnail} alt="" referrerPolicy="no-referrer" /> : <Video size={30} />}
                     <span>{readableDuration(item.duration)}</span>
                   </div>
                   <div className="bulk-card-body">
@@ -357,7 +445,13 @@ function BulkDownload() {
                       <span>{item.media_type === 'image' ? <ImageIcon size={13} /> : <Video size={13} />}{item.media_type}</span>
                     </div>
                     <h3>{item.title}</h3>
-                    <a href={item.url} target="_blank" rel="noreferrer">Abrir origem <ExternalLink size={12} /></a>
+                    <div className="bulk-card-stats"><strong>{readableCount(item.view_count)} visualizações</strong><span>{readableCount(item.like_count)} curtidas</span></div>
+                    <div className="bulk-card-footer">
+                      <a href={item.url} target="_blank" rel="noreferrer">Abrir origem <ExternalLink size={12} /></a>
+                      <button type="button" onClick={() => queueSingle(item)} disabled={busy === `save:${item.url}`}>
+                        {busy === `save:${item.url}` ? <Loader2 className="spin" size={13} /> : <Download size={13} />} Salvar
+                      </button>
+                    </div>
                   </div>
                 </article>
               );

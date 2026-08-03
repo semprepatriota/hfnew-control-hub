@@ -33,6 +33,10 @@ export const bulkDownloadApi = {
     method: 'POST',
     body: JSON.stringify({ urls })
   }),
+  inspectProfile: (platform, username, limit) => request('/api/bulk-download/profile', {
+    method: 'POST',
+    body: JSON.stringify({ platform, username, limit })
+  }),
   createJobs: (items, outputFormat, quality) => request('/api/bulk-download/jobs', {
     method: 'POST',
     body: JSON.stringify({ items, output_format: outputFormat, quality })

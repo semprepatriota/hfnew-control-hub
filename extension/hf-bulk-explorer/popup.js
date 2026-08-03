@@ -41,11 +41,34 @@ saveKeyButton.addEventListener('click', () => {
   });
 });
 
-function collectVisibleMedia() {
+async function collectVisibleMedia(limit = 25) {
+  const target = Math.max(1, Math.min(100, Number(limit) || 25));
+  let previousHeight = 0;
+  for (let round = 0; round < 14; round += 1) {
+    const visibleLinks = document.querySelectorAll('a[href*="/reel/"], a[href*="/video/"], a[href*="/shorts/"], a[href*="watch?v="], a[href*="/pin/"]').length;
+    if (visibleLinks >= target) break;
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    const height = document.documentElement.scrollHeight;
+    if (height === previousHeight) break;
+    previousHeight = height;
+  }
+
   const host = window.location.hostname.toLowerCase();
   const pageUrl = window.location.href;
   const links = Array.from(document.querySelectorAll('a[href]'));
   const collected = new Map();
+
+  const parseCount = (text) => {
+    const normalized = String(text || '').toLowerCase().replace(/\s/g, '').replace(',', '.');
+    const match = normalized.match(/(\d+(?:\.\d+)?)(mi|mil|m|k)?/);
+    if (!match) return 0;
+    const value = Number(match[1]);
+    const suffix = match[2] || '';
+    if (suffix === 'mi' || suffix === 'm') return Math.round(value * 1_000_000);
+    if (suffix === 'mil' || suffix === 'k') return Math.round(value * 1_000);
+    return Math.round(value);
+  };
 
   const platform = host.includes('instagram') ? 'instagram'
     : host.includes('youtube') ? 'youtube'
@@ -73,17 +96,23 @@ function collectVisibleMedia() {
     url.hash = '';
     const image = anchor.querySelector('img');
     const video = anchor.querySelector('video');
+    const container = anchor.closest('article, ytd-rich-item-renderer, ytd-grid-video-renderer') || anchor.parentElement;
+    const countNode = container?.querySelector('[aria-label*="visualiza" i], [aria-label*="view" i], [title*="visualiza" i], [title*="view" i]');
     const title = image?.alt || anchor.getAttribute('aria-label') || document.title || 'Conteúdo encontrado';
     const thumbnail = image?.currentSrc || image?.src || video?.poster || '';
-    const mediaUrl = platform === 'instagram' && image?.currentSrc ? image.currentSrc : '';
+    const mediaUrl = video?.currentSrc || video?.src || (platform === 'instagram' && image?.currentSrc ? image.currentSrc : '');
     const mediaType = url.pathname.includes('/p/') && !video ? 'image' : 'video';
     collected.set(url.href, {
       url: url.href,
       media_url: mediaUrl,
       title: title.slice(0, 500),
       thumbnail,
+      preview_url: video?.currentSrc || video?.src || '',
       platform,
-      media_type: mediaType
+      media_type: mediaType,
+      duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
+      view_count: parseCount(countNode?.getAttribute('aria-label') || countNode?.getAttribute('title') || countNode?.textContent || ''),
+      like_count: 0
     });
   }
 
@@ -97,13 +126,17 @@ function collectVisibleMedia() {
         media_url: platform === 'instagram' ? (image?.currentSrc || '') : '',
         title: document.title || 'Conteúdo encontrado',
         thumbnail: image?.currentSrc || '',
+        preview_url: '',
         platform,
-        media_type: current.pathname.includes('/p/') ? 'image' : 'video'
+        media_type: current.pathname.includes('/p/') ? 'image' : 'video',
+        duration: 0,
+        view_count: 0,
+        like_count: 0
       });
     }
   }
 
-  return { pageUrl, title: document.title, items: Array.from(collected.values()).slice(0, 200) };
+  return { pageUrl, title: document.title, items: Array.from(collected.values()).slice(0, target) };
 }
 
 scanButton.addEventListener('click', async () => {
@@ -111,7 +144,8 @@ scanButton.addEventListener('click', async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('Nenhuma página ativa encontrada.');
-    const execution = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectVisibleMedia });
+    const limit = Number(document.getElementById('scanLimit').value || 25);
+    const execution = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectVisibleMedia, args: [limit] });
     const result = execution?.[0]?.result || { items: [] };
     currentItems = result.items || [];
     currentPageUrl = result.pageUrl || tab.url || '';
