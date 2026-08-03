@@ -1,6 +1,7 @@
 # HF Bulk Explorer
 
-Extensao local do modulo Baixar em Massa do HF New Control Hub.
+Extensao local que coleta e organiza links, miniaturas e metricas publicas
+visiveis para o modulo Baixar em Massa do HF New Control Hub.
 
 ## Instalar no Chrome ou Edge
 
@@ -10,6 +11,8 @@ Extensao local do modulo Baixar em Massa do HF New Control Hub.
 4. Clique em `Carregar sem compactacao`.
 5. Selecione a pasta `hf-bulk-explorer` extraida.
 
-A extensao nao le senhas nem exporta cookies. Ela envia ao app apenas links e miniaturas que ja estejam visiveis na pagina aberta.
+A extensao nao le senhas, nao exporta cookies e nao acessa tokens do app. Ela
+compartilha localmente com o painel apenas links, miniaturas e metricas que ja
+estejam visiveis na pagina aberta.
 
 Redes suportadas: Instagram, TikTok, Facebook, Pinterest e Kwai.

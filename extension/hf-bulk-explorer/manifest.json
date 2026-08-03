@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "HF Bulk Explorer",
-  "version": "1.2.0",
-  "description": "Envia links publicos visiveis para o modulo Baixar em Massa do HF New Control Hub.",
+  "version": "1.2.1",
+  "description": "Coleta e organiza links, miniaturas e metricas publicas visiveis de redes suportadas para o modulo Baixar em Massa do HF.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://www.instagram.com/*",
