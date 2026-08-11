@@ -19,9 +19,21 @@ import {
 import '../styles/the-forge-50-50.css';
 
 const headlineStyles = [
-  ['stepOrange', 'Gradiente laranja'], ['stepBlue', 'Gradiente azul'], ['stepCoral', 'Gradiente coral'], ['stepSpectrum', 'Gradiente espectro'],
+  { id: 'purpleGold', label: 'Azul / Branco', sampleText: 'A VERDADE VOLTOU AO CENTRO' },
+  { id: 'breakingFlash', label: 'Breaking', sampleText: 'AGORA A CASA CAIU' },
+  { id: 'liveHf', label: 'Live HF', sampleText: 'AO VIVO NO CENTRO DO CAOS' },
+  { id: 'doubleTicker', label: 'Ticker Duplo', sampleText: 'NINGUÉM CONSEGUE ESCONDER ISSO' },
 ];
-const headlineStyleIds = new Set(headlineStyles.map(([id]) => id));
+const headlineStyleIds = new Set(headlineStyles.map(({ id }) => id));
+const legacyHeadlineStyles = {
+  stepOrange: 'purpleGold',
+  stepBlue: 'purpleGold',
+  stepCoral: 'breakingFlash',
+  stepSpectrum: 'doubleTicker',
+  blackGold: 'purpleGold',
+  redBlack: 'breakingFlash',
+  whiteBlack: 'doubleTicker',
+};
 const socialPlatforms = [
   { id: 'youtube', label: 'YouTube', metadataPlatform: 'youtube_shorts' },
   { id: 'instagram', label: 'Instagram', metadataPlatform: 'instagram' },
@@ -33,7 +45,7 @@ const defaultConfig = {
   top_crop_x: 0.5, top_crop_y: 0.5, bottom_crop_x: 0.5, bottom_crop_y: 0.5,
   top_volume: 1, bottom_volume: 0, audio_mode: 'top', top_ratio: 0.5,
   render_mode: 'split', top_flip: 'none', bottom_flip: 'none', bottom_image_format: 'vertical',
-  headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'stepOrange',
+  headline_text: '', headline_enabled: false, headline_y: 0.5, headline_position: 'none', headline_ratio: 0.1, headline_font_scale: 1, headline_palette: 'purpleGold',
   logo_enabled: false, logo_filename: '', logo_x: 0.5, logo_y: 0.15, logo_scale: 0.18, logo_opacity: 1,
 };
 
@@ -41,6 +53,7 @@ const isImageMedia = (media) => media?.media_type === 'image';
 
 const normalizeForge5050Config = (source = {}) => {
   const next = { ...defaultConfig, ...source };
+  next.headline_palette = legacyHeadlineStyles[next.headline_palette] || next.headline_palette;
   if (!headlineStyleIds.has(next.headline_palette)) next.headline_palette = defaultConfig.headline_palette;
   if (typeof source.headline_enabled !== 'boolean') {
     next.headline_enabled = Boolean(source.headline_text?.trim()) && source.headline_position !== 'none';
@@ -51,6 +64,36 @@ const normalizeForge5050Config = (source = {}) => {
   next.headline_y = Math.min(1, Math.max(0, Number(next.headline_y) || 0));
   return next;
 };
+
+function Forge5050HeadlineBand({ styleId, text, fontSize, compact = false }) {
+  const safeText = (text || 'Headline').trim() || 'Headline';
+
+  if (styleId === 'breakingFlash') {
+    return <div className={`forge5050-headline-style style-breaking-flash ${compact ? 'compact' : ''}`}>
+      <span className="forge5050-headline-accent accent-left" />
+      <strong style={{ fontSize }}>{safeText}</strong>
+      <span className="forge5050-headline-accent accent-right" />
+    </div>;
+  }
+
+  if (styleId === 'liveHf') {
+    return <div className={`forge5050-headline-style style-live-hf ${compact ? 'compact' : ''}`}>
+      <div className="forge5050-live-badge"><span>LIVE</span></div>
+      <strong style={{ fontSize }}>{safeText}</strong>
+    </div>;
+  }
+
+  if (styleId === 'doubleTicker') {
+    return <div className={`forge5050-headline-style style-double-ticker ${compact ? 'compact' : ''}`}>
+      <strong style={{ fontSize }}>{safeText}</strong>
+    </div>;
+  }
+
+  return <div className={`forge5050-headline-style style-blue-live ${compact ? 'compact' : ''}`}>
+    <div className="forge5050-live-badge"><span>LIVE</span></div>
+    <strong style={{ fontSize }}>{safeText}</strong>
+  </div>;
+}
 
 function TheForge5050() {
   const [projects, setProjects] = useState([]);
@@ -398,14 +441,14 @@ function TheForge5050() {
               {!renderTopOnly && <PreviewVideo video={bottomVideo} className={`bottom ${bottomIsImage ? `image-${config.bottom_image_format}` : ''}`} cropX={config.bottom_crop_x} cropY={config.bottom_crop_y} trimStart={config.bottom_start} trimEnd={config.bottom_end} flip={config.bottom_flip} />}
               {project.logo && config.logo_enabled && config.logo_filename && <LogoOverlay logo={project.logo} config={config} update={update} />}
               {config.headline_enabled && config.headline_text.trim() && <div
-                className={`forge5050-headline palette-${config.headline_palette}`}
+                className="forge5050-headline"
                 style={{
                   '--headline-top': `${((1 - config.headline_ratio) * config.headline_y * 100).toFixed(3)}%`,
                   '--headline-band-height': `${Math.round(config.headline_ratio * 100)}%`,
                   '--headline-font-size-width': `${(10 * config.headline_font_scale).toFixed(3)}cqw`,
                   '--headline-font-size-height': `${(110.222 * config.headline_ratio * config.headline_font_scale).toFixed(3)}cqw`,
                 }}
-              >{config.headline_text}</div>}
+              ><Forge5050HeadlineBand styleId={config.headline_palette} text={config.headline_text} /></div>}
             </div> : <PreviewVideo video={cropEditingSlot === 'top' ? topVideo : bottomVideo} className={`solo ${cropEditingSlot} ${cropEditingSlot === 'bottom' && bottomIsImage ? `image-${config.bottom_image_format}` : ''}`} cropActive={cropMode} whole={!cropMode} cropX={config[`${cropEditingSlot}_crop_x`]} cropY={config[`${cropEditingSlot}_crop_y`]} trimStart={config[`${cropEditingSlot}_start`]} trimEnd={config[`${cropEditingSlot}_end`]} flip={config[`${cropEditingSlot}_flip`]} />}
           </div>
           <p className="forge5050-note">Selecione cada mídia para ajustar separadamente. O olho mostra o resultado final antes da renderização.</p>
@@ -436,7 +479,7 @@ function TheForge5050() {
             </button>
             <label className="forge5050-headline-toggle"><input type="checkbox" checked={Boolean(config.headline_enabled)} onChange={(e) => update('headline_enabled', e.target.checked)} /> Usar headline</label>
             <div className="forge5050-control-grid"><Range label={`Altura da faixa ${Math.round(config.headline_ratio * 100)}%`} value={config.headline_ratio} min="0.06" max="0.20" step="0.01" onChange={(value) => update('headline_ratio', value)} /><Range label={`Posição vertical ${Math.round(config.headline_y * 100)}%`} value={config.headline_y} min="0" max="1" step="0.01" onChange={(value) => update('headline_y', value)} /><Range label={`Tamanho ${config.headline_font_scale.toFixed(2)}x`} value={config.headline_font_scale} min="0.7" max="1.8" step="0.05" onChange={(value) => update('headline_font_scale', value)} /></div>
-            <div className="forge5050-style-grid">{headlineStyles.map(([id, label]) => <button key={id} className={config.headline_palette === id ? 'selected' : ''} onClick={() => update('headline_palette', id)}><span className={`forge5050-swatch palette-${id}`} />{label}</button>)}</div>
+            <div className="forge5050-style-grid">{headlineStyles.map(({ id, label, sampleText }) => <button key={id} className={config.headline_palette === id ? 'selected' : ''} onClick={() => update('headline_palette', id)}><span className="forge5050-swatch"><Forge5050HeadlineBand styleId={id} text={sampleText} compact /></span>{label}</button>)}</div>
           </Panel>
         </div>
       </div>
