@@ -9,7 +9,7 @@ import BulkDownload from './modules/bulk-download/pages/BulkDownload';
 import Forge from './components/Pages/Forge';
 import TheForge5050 from './modules/the-forge-50-50/pages/TheForge5050';
 import ForgeEasyEditor from './modules/forge-easy-editor/pages/ForgeEasyEditor';
-import ForgeMax3 from './modules/forge-max/pages/ForgeMax3';
+import ForgeMaxExtractor from './modules/forge-max/pages/ForgeMaxExtractor';
 import Vault from './components/Pages/Vault';
 import Schedule from './components/Pages/Schedule';
 import QuotaMonitor from './components/Pages/QuotaMonitor';
@@ -388,7 +388,7 @@ function AppShell() {
           <Route path="/the-forge" element={<TheForge5050 />} />
           <Route path="/the-forge-50-50" element={<TheForge5050 />} />
           <Route path="/the-forge/editor" element={<ForgeEasyEditor />} />
-          <Route path="/forge-max" element={<ForgeMax3 />} />
+          <Route path="/forge-max" element={<ForgeMaxExtractor />} />
           <Route path="/agenda" element={<Schedule />} />
           <Route path="/monitoramento-cota" element={<QuotaMonitor />} />
           <Route path="/agentes" element={<Agents />} />
