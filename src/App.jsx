@@ -10,6 +10,7 @@ import Forge from './components/Pages/Forge';
 import TheForge5050 from './modules/the-forge-50-50/pages/TheForge5050';
 import ForgeEasyEditor from './modules/forge-easy-editor/pages/ForgeEasyEditor';
 import ForgeMaxExtractor from './modules/forge-max/pages/ForgeMaxExtractor';
+import ResearchStudio from './modules/research-studio/pages/ResearchStudio';
 import Vault from './components/Pages/Vault';
 import Schedule from './components/Pages/Schedule';
 import QuotaMonitor from './components/Pages/QuotaMonitor';
@@ -389,6 +390,7 @@ function AppShell() {
           <Route path="/the-forge-50-50" element={<TheForge5050 />} />
           <Route path="/the-forge/editor" element={<ForgeEasyEditor />} />
           <Route path="/forge-max" element={<ForgeMaxExtractor />} />
+          <Route path="/research-studio" element={<ResearchStudio />} />
           <Route path="/agenda" element={<Schedule />} />
           <Route path="/monitoramento-cota" element={<QuotaMonitor />} />
           <Route path="/agentes" element={<Agents />} />

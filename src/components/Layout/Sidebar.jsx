@@ -11,6 +11,7 @@ import {
   CalendarClock,
   Activity,
   DownloadCloud,
+  Search,
   Bot,
   Users,
   MessageCircle,
@@ -88,6 +89,13 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
       path: '/forge-max',
       icon: LayoutPanelLeft,
       color: 'neon-green'
+    },
+    {
+      id: 'research-studio',
+      label: 'HF Research Studio',
+      path: '/research-studio',
+      icon: Search,
+      color: 'neon-blue'
     },
     {
       id: 7,
