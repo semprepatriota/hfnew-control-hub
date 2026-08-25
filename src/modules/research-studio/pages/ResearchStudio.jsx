@@ -39,6 +39,7 @@ const SOURCE_LABELS = {
   openverse: 'Openverse',
   wikimedia: 'Wikimedia Commons',
   pexels: 'Pexels',
+  pixabay: 'Pixabay',
   official_data: 'ONS + ANEEL',
   manual: 'Manual',
   aneel: 'ANEEL',
@@ -412,7 +413,7 @@ function ResearchStudio() {
               <form className="research-studio-search-form" onSubmit={handleSearch}>
                 <label className="query"><span>Busca</span><input required minLength={3} maxLength={180} value={searchForm.query} onChange={(event) => setSearchForm({ ...searchForm, query: event.target.value })} /></label>
                 <label><span>Tipo</span><select value={searchForm.media_type} onChange={(event) => setSearchForm({ ...searchForm, media_type: event.target.value, source: event.target.value === 'document' ? 'official_data' : 'all' })}><option value="image">Imagem</option><option value="video">Vídeo</option><option value="document">Documento/dados</option></select></label>
-                <label><span>Fonte</span><select value={searchForm.source} onChange={(event) => setSearchForm({ ...searchForm, source: event.target.value })}><option value="all">Todas compatíveis</option>{searchForm.media_type === 'image' && <option value="openverse">Openverse</option>} {searchForm.media_type !== 'document' && <option value="wikimedia">Wikimedia</option>} {searchForm.media_type !== 'document' && <option value="pexels">Pexels</option>} {searchForm.media_type === 'document' && <option value="official_data">ONS + ANEEL</option>}</select></label>
+                <label><span>Fonte</span><select value={searchForm.source} onChange={(event) => setSearchForm({ ...searchForm, source: event.target.value })}><option value="all">Todas compatíveis</option>{searchForm.media_type === 'image' && <option value="openverse">Openverse</option>} {searchForm.media_type !== 'document' && <option value="wikimedia">Wikimedia</option>} {searchForm.media_type !== 'document' && <option value="pixabay">Pixabay</option>} {searchForm.media_type !== 'document' && <option value="pexels">Pexels (requer chave própria)</option>} {searchForm.media_type === 'document' && <option value="official_data">ONS + ANEEL</option>}</select></label>
                 <label><span>Limite</span><input type="number" min="1" max="30" value={searchForm.limit} onChange={(event) => setSearchForm({ ...searchForm, limit: event.target.value })} /></label>
                 <button type="submit" className="research-studio-primary" disabled={busy === 'search' || !activeSceneId}>{busy === 'search' ? <Loader2 className="spin" size={18} /> : <Search size={18} />} Pesquisar</button>
               </form>
