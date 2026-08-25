@@ -13,6 +13,7 @@ import {
   Image,
   LibraryBig,
   Loader2,
+  MonitorUp,
   PackageCheck,
   Plus,
   RefreshCw,
@@ -278,15 +279,38 @@ function ResearchStudio() {
     if (!activeProject) return;
     setBusy(`job-${job.id}`);
     try {
-      const blob = await researchStudioApi.downloadRemotionJob(activeProject.id, job.id);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = job.filename || `${job.id}.zip`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      await downloadJobFile(job);
+      setNotice({ type: 'success', text: 'Pacote Remotion baixado.' });
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function downloadJobFile(job) {
+    const blob = await researchStudioApi.downloadRemotionJob(activeProject.id, job.id);
+    const filename = job.filename || `${job.id}.zip`;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return filename;
+  }
+
+  async function handleOpenLocalBridge(job) {
+    if (!activeProject) return;
+    setBusy(`bridge-${job.id}`);
+    try {
+      const filename = await downloadJobFile(job);
+      setNotice({ type: 'success', text: 'Pacote baixado. Confirme a abertura da ponte local no navegador.' });
+      window.setTimeout(() => {
+        window.location.href = `hfnew-remotion://import?file=${encodeURIComponent(filename)}`;
+      }, 900);
     } catch (error) {
       setNotice({ type: 'error', text: error.message });
     } finally {
@@ -482,7 +506,12 @@ function ResearchStudio() {
               {(activeProject.remotion_jobs || []).slice().reverse().map((job) => (
                 <article key={job.id}>
                   <span><strong>{job.id}</strong><small>{STATUS_LABELS[job.status] || job.status} · {formatDate(job.created_at)}</small></span>
-                  <button type="button" onClick={() => handleDownloadJob(job)} disabled={busy === `job-${job.id}`}><Download size={16} /> Baixar pacote</button>
+                  <div className="research-studio-job-actions">
+                    <button type="button" onClick={() => handleDownloadJob(job)} disabled={busy === `job-${job.id}`}><Download size={16} /> Baixar pacote</button>
+                    <button type="button" className="open-bridge" onClick={() => handleOpenLocalBridge(job)} disabled={busy === `bridge-${job.id}`}>
+                      {busy === `bridge-${job.id}` ? <Loader2 className="spin" size={16} /> : <MonitorUp size={16} />} Abrir no Remotion
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
