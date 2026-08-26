@@ -107,6 +107,20 @@ function ResearchStudio() {
     () => (activeProject?.scenes || []).filter((scene) => scene.status === 'covered').length,
     [activeProject],
   );
+  const selectedVideoCount = useMemo(() => {
+    const editorScenes = activeProject?.editor?.scenes || [];
+    const selectedIds = new Set(editorScenes
+      .filter((scene) => scene.enabled !== false && scene.asset_id)
+      .map((scene) => scene.asset_id));
+    if (!editorScenes.length) {
+      for (const scene of activeProject?.scenes || []) {
+        for (const assetId of scene.asset_ids || []) selectedIds.add(assetId);
+      }
+    }
+    return (activeProject?.assets || []).filter(
+      (asset) => selectedIds.has(asset.id) && asset.status === 'approved' && asset.media_type === 'video',
+    ).length;
+  }, [activeProject]);
 
   function activateProject(project) {
     const firstScene = project?.scenes?.[0] || null;
@@ -306,6 +320,28 @@ function ResearchStudio() {
       const job = await researchStudioApi.createRemotionJob(activeProject.id);
       await refreshProject(activeProject.id);
       setNotice({ type: 'success', text: `Pacote ${job.id} preparado para a ponte local.` });
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleBatchDownload() {
+    if (!activeProject) return;
+    setBusy('batch-download');
+    setNotice(null);
+    try {
+      const job = await researchStudioApi.createRemotionJob(activeProject.id);
+      const filename = await downloadJobFile(job);
+      await refreshProject(activeProject.id);
+      setNotice({
+        type: 'success',
+        text: 'Pacote do lote preparado. Confirme a ponte local e escolha a pasta dos vídeos.',
+      });
+      window.setTimeout(() => {
+        window.location.href = `hfnew-remotion://batch?file=${encodeURIComponent(filename)}`;
+      }, 900);
     } catch (error) {
       setNotice({ type: 'error', text: error.message });
     } finally {
@@ -595,7 +631,18 @@ function ResearchStudio() {
                 <PackageCheck size={30} />
                 <span><strong>Contrato Remotion</strong><small>{activeProject.metrics?.approved || 0} materiais aprovados · {activeProject.scenes?.length || 0} cenas</small></span>
               </div>
-              <button type="button" className="research-studio-remotion-send" onClick={handlePrepareRemotion} disabled={busy === 'remotion'}>{busy === 'remotion' ? <Loader2 className="spin" size={18} /> : <Send size={18} />} Preparar para Remotion</button>
+              <div className="research-studio-remotion-actions">
+                <button type="button" className="research-studio-remotion-send" onClick={handlePrepareRemotion} disabled={Boolean(busy)}>{busy === 'remotion' ? <Loader2 className="spin" size={18} /> : <Send size={18} />} Preparar para Remotion</button>
+                <button
+                  type="button"
+                  className="research-studio-batch-download"
+                  onClick={handleBatchDownload}
+                  disabled={Boolean(busy) || selectedVideoCount === 0}
+                  title={selectedVideoCount ? `${selectedVideoCount} vídeo(s) selecionado(s)` : 'Selecione vídeos nas cenas e salve a edição'}
+                >
+                  {busy === 'batch-download' ? <Loader2 className="spin" size={18} /> : <Download size={18} />} Baixar Lote
+                </button>
+              </div>
             </div>
             <div className="research-studio-job-list">
               {(activeProject.remotion_jobs || []).slice().reverse().map((job) => (
