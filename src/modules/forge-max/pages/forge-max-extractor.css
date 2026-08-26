@@ -488,6 +488,11 @@ button.forge-max-extractor-panel-heading {
   line-height: 1.4;
 }
 
+.forge-max-extractor-cut-panel .forge-max-extractor-extract {
+  margin-top: 12px;
+  margin-bottom: 14px;
+}
+
 .forge-max-extractor-timeline-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -546,9 +551,9 @@ button.forge-max-extractor-panel-heading {
 
 .forge-max-extractor-timeline-selected-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(118px, 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 7px;
-  min-width: 420px;
+  min-width: 320px;
 }
 
 .forge-max-extractor-timeline-selected-actions .forge-max-extractor-preview-selection,

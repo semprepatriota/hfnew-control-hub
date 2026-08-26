@@ -473,6 +473,10 @@ function ForgeMaxExtractor() {
               </div>
               <div className="forge-max-extractor-duration"><Clock3 size={17} /><span>Duração selecionada</span><strong>{formatTime(selectedDuration)}</strong></div>
               <small className="forge-max-extractor-precision">Corte preciso: início e fim respeitados, áudio preservado e MP4 compatível.</small>
+              <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
+                {busyAction === 'extract' ? <Loader2 className="spin" size={16} /> : <Scissors size={16} />}
+                Extrair MP4
+              </button>
             </aside>
           </section>
 
@@ -482,10 +486,6 @@ function ForgeMaxExtractor() {
               <div className="forge-max-extractor-timeline-selected-actions">
                 <button type="button" className="forge-max-extractor-preview-selection" onClick={previewSelection} disabled={selectedDuration <= 0}>
                   <Play size={16} /> Assistir trecho
-                </button>
-                <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
-                  {busyAction === 'extract' ? <Loader2 className="spin" size={16} /> : <Scissors size={16} />}
-                  Extrair MP4
                 </button>
                 <button type="button" className="forge-max-extractor-download-all" onClick={handleDownloadAllClips} disabled={!clips.length} title="Baixar todos os trechos extraídos em um ZIP">
                   <Download size={16} /> Baixar Todas Cenas
