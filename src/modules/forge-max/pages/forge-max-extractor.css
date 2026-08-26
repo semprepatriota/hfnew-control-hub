@@ -490,6 +490,7 @@ button.forge-max-extractor-panel-heading {
 
 .forge-max-extractor-timeline-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -499,6 +500,7 @@ button.forge-max-extractor-panel-heading {
 }
 
 .forge-max-extractor-timeline-toolbar > div:first-child {
+  flex: 1 1 190px;
   display: grid;
   gap: 2px;
 }
@@ -507,6 +509,22 @@ button.forge-max-extractor-panel-heading {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.forge-max-extractor-timeline-selected-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  gap: 7px;
+  min-width: 255px;
+}
+
+.forge-max-extractor-timeline-selected-actions .forge-max-extractor-preview-selection,
+.forge-max-extractor-timeline-selected-actions .forge-max-extractor-extract {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 10px;
+  white-space: nowrap;
 }
 
 .forge-max-extractor-timeline-toolbar svg {
@@ -958,6 +976,11 @@ button.forge-max-extractor-panel-heading {
 
   .forge-max-extractor-timeline-actions button {
     width: 100%;
+  }
+
+  .forge-max-extractor-timeline-selected-actions {
+    width: 100%;
+    min-width: 0;
   }
 
   .forge-max-extractor-timeline-track {

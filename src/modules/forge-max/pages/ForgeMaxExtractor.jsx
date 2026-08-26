@@ -441,13 +441,6 @@ function ForgeMaxExtractor() {
                 <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(currentTime, selectionStart + 0.05)); }}>Marcar fim</button>
               </div>
               <div className="forge-max-extractor-duration"><Clock3 size={17} /><span>Duração selecionada</span><strong>{formatTime(selectedDuration)}</strong></div>
-              <button type="button" className="forge-max-extractor-preview-selection" onClick={previewSelection} disabled={selectedDuration <= 0}>
-                <Play size={17} /> Assistir trecho selecionado
-              </button>
-              <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
-                {busyAction === 'extract' ? <Loader2 className="spin" size={18} /> : <Scissors size={18} />}
-                Extrair trecho em MP4
-              </button>
               <small className="forge-max-extractor-precision">Corte preciso: início e fim respeitados, áudio preservado e MP4 compatível.</small>
             </aside>
           </section>
@@ -455,8 +448,17 @@ function ForgeMaxExtractor() {
           <section className="forge-max-extractor-panel forge-max-extractor-timeline-panel">
             <div className="forge-max-extractor-timeline-toolbar">
               <div><span><ScanLine size={18} /><strong>Timeline de cenas</strong></span><small>{scenes.length ? `${scenes.length} cenas detectadas` : 'Analise o vídeo para separar as mudanças de cena'}</small></div>
+              <div className="forge-max-extractor-timeline-selected-actions">
+                <button type="button" className="forge-max-extractor-preview-selection" onClick={previewSelection} disabled={selectedDuration <= 0}>
+                  <Play size={16} /> Assistir trecho
+                </button>
+                <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
+                  {busyAction === 'extract' ? <Loader2 className="spin" size={16} /> : <Scissors size={16} />}
+                  Extrair MP4
+                </button>
+              </div>
               <div className="forge-max-extractor-timeline-actions">
-                <label>Sensibilidade <input type="range" min="0.12" max="0.75" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><strong>{threshold.toFixed(2)}</strong></label>
+                <label title="Menor valor encontra mais cortes; maior valor encontra apenas mudanças fortes.">Sensibilidade da detecção <input type="range" min="0.12" max="0.75" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><strong>{threshold.toFixed(2)}</strong></label>
                 <button type="button" onClick={handleAnalyze} disabled={busyAction === 'analyze' || activeVideo.analysis_status === 'running' || activeVideo.status === 'preparing'}>
                   {activeVideo.analysis_status === 'running' ? <Loader2 className="spin" size={17} /> : <ScanLine size={17} />}
                   {scenes.length ? 'Analisar novamente' : 'Detectar cenas'}
