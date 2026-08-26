@@ -513,18 +513,41 @@ button.forge-max-extractor-panel-heading {
 
 .forge-max-extractor-timeline-selected-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  grid-template-columns: repeat(3, minmax(118px, 1fr));
   gap: 7px;
-  min-width: 255px;
+  min-width: 420px;
 }
 
 .forge-max-extractor-timeline-selected-actions .forge-max-extractor-preview-selection,
-.forge-max-extractor-timeline-selected-actions .forge-max-extractor-extract {
+.forge-max-extractor-timeline-selected-actions .forge-max-extractor-extract,
+.forge-max-extractor-timeline-selected-actions .forge-max-extractor-download-all {
   width: 100%;
   min-height: 36px;
   margin: 0;
   padding: 7px 10px;
   white-space: nowrap;
+}
+
+.forge-max-extractor-download-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #ff5151;
+  border-radius: 5px;
+  background: #b51f2a;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.forge-max-extractor-download-all:hover:not(:disabled) {
+  background: #d72a37;
+}
+
+.forge-max-extractor-download-all:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .forge-max-extractor-timeline-toolbar svg {
@@ -981,6 +1004,7 @@ button.forge-max-extractor-panel-heading {
   .forge-max-extractor-timeline-selected-actions {
     width: 100%;
     min-width: 0;
+    grid-template-columns: 1fr;
   }
 
   .forge-max-extractor-timeline-track {

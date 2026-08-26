@@ -22,6 +22,7 @@ import {
   deleteForgeMaxClip,
   deleteForgeMaxVideo,
   extractForgeMaxClip,
+  forgeMaxClipsArchiveUrl,
   forgeMaxMediaUrl,
   forgeMaxThumbnailUrl,
   getForgeMaxHealth,
@@ -336,6 +337,36 @@ function ForgeMaxExtractor() {
     }
   }
 
+  function handleDownloadAllClips() {
+    clearNotice();
+    if (!clips.length) {
+      setError('Extraia pelo menos uma cena antes de baixar todas.');
+      return;
+    }
+    const processing = clips.filter((clip) => clip.status === 'extracting').length;
+    const failed = clips.filter((clip) => clip.status === 'error').length;
+    if (processing) {
+      setError(`Aguarde ${processing} cena(s) terminar(em) a extração.`);
+      return;
+    }
+    if (failed) {
+      setError(`Existem ${failed} cena(s) com falha. Exclua ou extraia novamente antes do ZIP.`);
+      return;
+    }
+    const archiveUrl = forgeMaxClipsArchiveUrl(activeVideo);
+    if (!archiveUrl) {
+      setError('Não foi possível preparar o endereço do ZIP.');
+      return;
+    }
+    const anchor = document.createElement('a');
+    anchor.href = archiveUrl;
+    anchor.download = `forge_max_cenas_${activeVideo.id.slice(-8)}.zip`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setMessage(`${clips.length} cena(s) pronta(s) para download em um único ZIP.`);
+  }
+
   const tickMarks = useMemo(() => {
     if (!duration) return [];
     const desiredTicks = Math.max(8, Math.min(60, Math.round(timelineWidth / 140)));
@@ -455,6 +486,9 @@ function ForgeMaxExtractor() {
                 <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
                   {busyAction === 'extract' ? <Loader2 className="spin" size={16} /> : <Scissors size={16} />}
                   Extrair MP4
+                </button>
+                <button type="button" className="forge-max-extractor-download-all" onClick={handleDownloadAllClips} disabled={!clips.length} title="Baixar todos os trechos extraídos em um ZIP">
+                  <Download size={16} /> Baixar Todas Cenas
                 </button>
               </div>
               <div className="forge-max-extractor-timeline-actions">

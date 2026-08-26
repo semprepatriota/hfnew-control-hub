@@ -23,6 +23,12 @@ export function forgeMaxThumbnailUrl(video, seconds) {
   return apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(video.id)}/thumbnail?${query}`);
 }
 
+export function forgeMaxClipsArchiveUrl(video) {
+  if (!video?.id || !video?.media_key) return '';
+  const query = new URLSearchParams({ key: video.media_key });
+  return apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(video.id)}/clips/download-all?${query}`);
+}
+
 export async function getForgeMaxHealth() {
   return parseResponse(await fetch(apiUrl('/api/forge-max/extractor/health'), { cache: 'no-store' }));
 }
