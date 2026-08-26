@@ -16,6 +16,7 @@ import {
   Palette,
   Save,
   Settings2,
+  Trash2,
 } from 'lucide-react';
 import './research-studio-editor.css';
 
@@ -46,7 +47,9 @@ function buildEditor(project) {
       scene_id: scene.id,
       order: Number(current.order || index + 1),
       enabled: current.enabled !== false,
-      asset_id: current.asset_id || assigned?.id || '',
+      asset_id: approved.some((asset) => asset.id === current.asset_id)
+        ? current.asset_id
+        : (assigned?.id || ''),
       title: current.title ?? scene.title ?? '',
       narration: current.narration ?? scene.narration ?? '',
       duration_seconds: Number(current.duration_seconds || scene.duration_seconds || 8),
@@ -67,10 +70,18 @@ function buildEditor(project) {
 }
 
 function mediaUrl(asset) {
-  return asset?.preview_url || asset?.original_url || '';
+  return asset?.media_type === 'video'
+    ? (asset?.original_url || '')
+    : (asset?.preview_url || asset?.original_url || '');
 }
 
-function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion }) {
+function stopVideoPreview(event) {
+  const video = event.currentTarget;
+  video.pause();
+  try { video.currentTime = 0; } catch { /* Metadata ainda nao carregada. */ }
+}
+
+function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion, onDeleteAsset }) {
   const [open, setOpen] = useState(true);
   const [editor, setEditor] = useState(() => buildEditor(project));
   const [activeSceneId, setActiveSceneId] = useState(editor.scenes[0]?.scene_id || '');
@@ -132,10 +143,19 @@ function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion }) {
     setDraggedId('');
   }
 
+  function deleteSceneAsset(scene, asset) {
+    if (!asset || !onDeleteAsset) return;
+    const mediaLabel = asset.media_type === 'video' ? 'vídeo' : 'imagem';
+    const confirmed = window.confirm(`Excluir este ${mediaLabel} do projeto e removê-lo das cenas?`);
+    if (!confirmed) return;
+    setActiveSceneId(scene.scene_id);
+    onDeleteAsset(asset.id);
+  }
+
   return (
     <section className={`research-studio-editor ${open ? '' : 'collapsed'}`}>
       <button type="button" className="research-studio-editor-heading" onClick={() => setOpen((value) => !value)}>
-        <span><Layers3 size={18} /> Painel de Edição Remotion <strong>{editor.scenes.filter((scene) => scene.enabled).length} cenas · {totalDuration.toFixed(1)}s</strong></span>
+        <span><Layers3 size={18} /> Painel de Edição <strong>{editor.scenes.filter((scene) => scene.enabled).length} cenas · {totalDuration.toFixed(1)}s</strong></span>
         {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
 
@@ -151,7 +171,7 @@ function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion }) {
               {busy === 'editor-save' ? <Loader2 className="spin" size={16} /> : <Save size={16} />} Salvar edição
             </button>
             <button type="button" className="research-studio-editor-open" onClick={() => onOpenRemotion(editor)} disabled={Boolean(busy) || !editor.scenes.some((scene) => scene.enabled && scene.asset_id)}>
-              {busy === 'editor-remotion' ? <Loader2 className="spin" size={16} /> : <MonitorUp size={16} />} Atualizar no Remotion
+              {busy === 'editor-remotion' ? <Loader2 className="spin" size={16} /> : <MonitorUp size={16} />} Abrir editor local
             </button>
           </div>
 
@@ -172,7 +192,24 @@ function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion }) {
                     >
                       <button type="button" className="drag" title="Arrastar cena" aria-label="Arrastar cena"><GripVertical size={15} /></button>
                       <button type="button" className="select" onClick={() => setActiveSceneId(scene.scene_id)}>
-                        <b>{String(index + 1).padStart(2, '0')}</b>
+                        <span className="research-studio-editor-scene-thumb">
+                          {asset?.media_type === 'video' ? (
+                            <video
+                              src={asset.original_url}
+                              poster={asset.preview_url && asset.preview_url !== asset.original_url ? asset.preview_url : undefined}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              onMouseEnter={(event) => event.currentTarget.play().catch(() => undefined)}
+                              onMouseLeave={stopVideoPreview}
+                            />
+                          ) : asset ? (
+                            <img src={mediaUrl(asset)} alt="" loading="lazy" />
+                          ) : (
+                            <Film size={18} />
+                          )}
+                          <b>{String(index + 1).padStart(2, '0')}</b>
+                        </span>
                         <span><strong>{scene.title || `Cena ${index + 1}`}</strong><small>{asset?.title || 'Sem mídia'} · {scene.duration_seconds}s</small></span>
                       </button>
                       <div className="order-actions">
@@ -182,6 +219,18 @@ function ResearchStudioEditor({ project, busy, onSave, onOpenRemotion }) {
                       <button type="button" className="visibility" onClick={() => updateSceneFor(editor, setEditor, scene.scene_id, { enabled: !scene.enabled })} title={scene.enabled ? 'Desativar cena' : 'Ativar cena'}>
                         {scene.enabled ? <Eye size={15} /> : <EyeOff size={15} />}
                       </button>
+                      {asset && (
+                        <button
+                          type="button"
+                          className="delete-media"
+                          onClick={() => deleteSceneAsset(scene, asset)}
+                          disabled={Boolean(busy)}
+                          title="Excluir mídia do projeto"
+                          aria-label={`Excluir ${asset.title || 'mídia'}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </article>
                   );
                 })}

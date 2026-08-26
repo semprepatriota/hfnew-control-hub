@@ -337,7 +337,7 @@ function ResearchStudio() {
       await refreshProject(activeProject.id);
       setNotice({
         type: 'success',
-        text: 'Pacote do lote preparado. Confirme a ponte local e escolha a pasta dos vídeos.',
+        text: 'Lote preparado. Confirme a ponte local para baixar os arquivos e gerar o ZIP completo.',
       });
       window.setTimeout(() => {
         window.location.href = `hfnew-remotion://batch?file=${encodeURIComponent(filename)}`;
@@ -622,6 +622,7 @@ function ResearchStudio() {
             busy={busy}
             onSave={handleSaveEditor}
             onOpenRemotion={handleSaveAndOpenRemotion}
+            onDeleteAsset={handleDeleteAsset}
           />
 
           <section className="research-studio-remotion">
