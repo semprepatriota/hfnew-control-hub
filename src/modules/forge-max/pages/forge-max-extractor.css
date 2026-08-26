@@ -652,6 +652,32 @@ button.forge-max-extractor-panel-heading {
   border-color: var(--fmx-orange);
 }
 
+.forge-max-extractor-scene.active {
+  z-index: 5;
+  border: 2px solid var(--fmx-green);
+  filter: brightness(1.15);
+}
+
+.forge-max-extractor-preview-selection {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #2e8b5a;
+  background: #123e28;
+  color: #d9ffea;
+  font-weight: 800;
+}
+
+.forge-max-extractor-preview-selection:hover:not(:disabled) {
+  background: #185435;
+}
+
+.forge-max-extractor-preview-selection:disabled {
+  opacity: .45;
+}
+
 .forge-max-extractor-scene img {
   width: 100%;
   height: 100%;

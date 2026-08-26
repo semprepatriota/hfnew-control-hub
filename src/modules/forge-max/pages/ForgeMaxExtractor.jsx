@@ -77,6 +77,7 @@ function ForgeMaxExtractor() {
   const timelineTrackRef = useRef(null);
   const timelineViewportRef = useRef(null);
   const dragRef = useRef(null);
+  const playbackRangeRef = useRef(null);
   const [health, setHealth] = useState(null);
   const [videos, setVideos] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
@@ -93,6 +94,7 @@ function ForgeMaxExtractor() {
   const [selectionEnd, setSelectionEnd] = useState(0);
   const [clipTitle, setClipTitle] = useState('Reportagem extraída');
   const [playing, setPlaying] = useState(false);
+  const [selectedSceneId, setSelectedSceneId] = useState('');
 
   const duration = Number(activeVideo?.duration) || 0;
   const scenes = activeVideo?.scenes || [];
@@ -162,6 +164,8 @@ function ForgeMaxExtractor() {
     setSelectionStart(0);
     setSelectionEnd(nextEnd);
     setPlaying(false);
+    setSelectedSceneId('');
+    playbackRangeRef.current = null;
   }, [activeVideo?.id, duration]);
 
   useEffect(() => {
@@ -174,6 +178,8 @@ function ForgeMaxExtractor() {
       } else {
         setSelectionEnd(Math.max(nextTime, selectionStart + 0.05));
       }
+      setSelectedSceneId('');
+      playbackRangeRef.current = null;
     }
     function onPointerUp() {
       dragRef.current = null;
@@ -237,31 +243,61 @@ function ForgeMaxExtractor() {
     }
   }
 
-  function seekTo(seconds, shouldPlay = false) {
+  function seekTo(seconds, shouldPlay = false, playbackRange = null) {
     const next = clamp(seconds, 0, duration);
+    playbackRangeRef.current = playbackRange;
     setCurrentTime(next);
-    if (playerRef.current) {
-      playerRef.current.currentTime = next;
-      if (shouldPlay) playerRef.current.play().catch(() => {});
-    }
+    const player = playerRef.current;
+    if (!player) return;
+    const applySeek = () => {
+      player.currentTime = next;
+      if (shouldPlay) player.play().catch(() => {});
+    };
+    if (player.readyState >= 1) applySeek();
+    else player.addEventListener('loadedmetadata', applySeek, { once: true });
   }
 
   function selectScene(scene) {
-    setSelectionStart(scene.start_seconds);
-    setSelectionEnd(scene.end_seconds);
-    seekTo(scene.start_seconds);
+    const start = clamp(Number(scene.start_seconds) || 0, 0, duration);
+    const end = clamp(Number(scene.end_seconds) || start + Number(scene.duration || 0), start, duration);
+    setSelectionStart(start);
+    setSelectionEnd(end);
+    setSelectedSceneId(scene.id);
+    seekTo(start, true, { start, end });
   }
 
   function handleTimelinePointer(event) {
     if (!timelineTrackRef.current || event.target.closest('.forge-max-extractor-handle')) return;
     const bounds = timelineTrackRef.current.getBoundingClientRect();
+    setSelectedSceneId('');
     seekTo(((event.clientX - bounds.left) / bounds.width) * duration);
+  }
+
+  function previewSelection() {
+    if (selectedDuration <= 0) return;
+    seekTo(selectionStart, true, { start: selectionStart, end: selectionEnd });
+  }
+
+  function handlePlayerTimeUpdate(event) {
+    const player = event.currentTarget;
+    const next = player.currentTime;
+    const range = playbackRangeRef.current;
+    if (range && next >= range.end - 0.035) {
+      player.pause();
+      player.currentTime = range.end;
+      setCurrentTime(range.end);
+      return;
+    }
+    setCurrentTime(next);
   }
 
   function togglePlayback() {
     const player = playerRef.current;
     if (!player) return;
-    if (player.paused) player.play().catch(() => {});
+    const range = playbackRangeRef.current;
+    if (player.paused && range && (player.currentTime < range.start || player.currentTime >= range.end - 0.035)) {
+      seekTo(range.start, true, range);
+    } else if (player.paused) player.play().catch(() => {});
     else player.pause();
   }
 
@@ -380,7 +416,7 @@ function ForgeMaxExtractor() {
                     src={playbackUrl}
                     preload="metadata"
                     controls
-                    onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+                    onTimeUpdate={handlePlayerTimeUpdate}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
                     onLoadedMetadata={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
@@ -397,14 +433,17 @@ function ForgeMaxExtractor() {
               <div className="forge-max-extractor-panel-title"><span><Scissors size={17} /><strong>Trecho selecionado</strong></span></div>
               <label className="forge-max-extractor-title-field">Nome do trecho<input value={clipTitle} onChange={(event) => setClipTitle(event.target.value)} maxLength={120} /></label>
               <div className="forge-max-extractor-time-grid">
-                <label>Início<input type="number" min="0" max={duration} step="0.001" value={selectionStart.toFixed(3)} onChange={(event) => setSelectionStart(Math.min(Number(event.target.value), selectionEnd - 0.05))} /></label>
-                <label>Fim<input type="number" min="0" max={duration} step="0.001" value={selectionEnd.toFixed(3)} onChange={(event) => setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05))} /></label>
+                <label>Início<input type="number" min="0" max={duration} step="0.001" value={selectionStart.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(Number(event.target.value), selectionEnd - 0.05)); }} /></label>
+                <label>Fim<input type="number" min="0" max={duration} step="0.001" value={selectionEnd.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05)); }} /></label>
               </div>
               <div className="forge-max-extractor-mark-actions">
-                <button type="button" onClick={() => setSelectionStart(Math.min(currentTime, selectionEnd - 0.05))}>Marcar início</button>
-                <button type="button" onClick={() => setSelectionEnd(Math.max(currentTime, selectionStart + 0.05))}>Marcar fim</button>
+                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(currentTime, selectionEnd - 0.05)); }}>Marcar início</button>
+                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(currentTime, selectionStart + 0.05)); }}>Marcar fim</button>
               </div>
               <div className="forge-max-extractor-duration"><Clock3 size={17} /><span>Duração selecionada</span><strong>{formatTime(selectedDuration)}</strong></div>
+              <button type="button" className="forge-max-extractor-preview-selection" onClick={previewSelection} disabled={selectedDuration <= 0}>
+                <Play size={17} /> Assistir trecho selecionado
+              </button>
               <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
                 {busyAction === 'extract' ? <Loader2 className="spin" size={18} /> : <Scissors size={18} />}
                 Extrair trecho em MP4
@@ -448,10 +487,9 @@ function ForgeMaxExtractor() {
                       <button
                         type="button"
                         key={scene.id}
-                        className="forge-max-extractor-scene"
+                        className={`forge-max-extractor-scene ${selectedSceneId === scene.id ? 'active' : ''}`}
                         style={{ left: `${left}%`, width: `${width}%` }}
                         onClick={(event) => { event.stopPropagation(); selectScene(scene); }}
-                        onDoubleClick={() => seekTo(scene.start_seconds, true)}
                         title={`${scene.label}: ${formatTime(scene.start_seconds)} até ${formatTime(scene.end_seconds)}`}
                       >
                         {activeVideo.media_key && <img loading="lazy" src={forgeMaxThumbnailUrl(activeVideo, scene.start_seconds + Math.min(0.25, scene.duration / 2))} alt="" />}
@@ -468,7 +506,7 @@ function ForgeMaxExtractor() {
                 <div className="forge-max-extractor-playhead" style={{ left: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
               </div>
             </div>
-            <p className="forge-max-extractor-timeline-help">Clique em uma cena para selecioná-la. Arraste as bordas verdes para ajustar o início e o fim. Duplo clique reproduz a partir da cena.</p>
+            <p className="forge-max-extractor-timeline-help">Clique em uma cena para assistir somente aquele trecho. Arraste as bordas verdes para ajustar o início e o fim.</p>
           </section>
 
           <section className={`forge-max-extractor-panel forge-max-extractor-clips ${clipsOpen ? '' : 'collapsed'}`}>
