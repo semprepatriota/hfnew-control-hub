@@ -495,8 +495,41 @@ button.forge-max-extractor-panel-heading {
   justify-content: space-between;
   gap: 16px;
   padding: 13px 14px;
-  border-bottom: 1px solid var(--fmx-border);
+  border-top: 1px solid var(--fmx-border);
   background: var(--fmx-panel-2);
+}
+
+.forge-max-extractor-timeline-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.forge-max-extractor-timeline-panel .forge-max-extractor-timeline-viewport {
+  order: 1;
+}
+
+.forge-max-extractor-timeline-panel .forge-max-extractor-timeline-help {
+  order: 2;
+}
+
+.forge-max-extractor-timeline-panel .forge-max-extractor-timeline-toolbar {
+  order: 3;
+}
+
+.forge-max-extractor-timeline-panel .forge-max-extractor-zoom {
+  order: 4;
+}
+
+.forge-max-extractor-timeline-toolbar > div:first-child {
+  order: 1;
+}
+
+.forge-max-extractor-timeline-toolbar .forge-max-extractor-timeline-actions {
+  order: 2;
+}
+
+.forge-max-extractor-timeline-toolbar .forge-max-extractor-timeline-selected-actions {
+  order: 3;
 }
 
 .forge-max-extractor-timeline-toolbar > div:first-child {
@@ -807,7 +840,6 @@ button.forge-max-extractor-panel-heading {
 .forge-max-extractor-timeline-help {
   margin: 0;
   padding: 9px 14px;
-  border-top: 1px solid var(--fmx-border);
   color: var(--fmx-muted);
   font-size: 11px;
 }
