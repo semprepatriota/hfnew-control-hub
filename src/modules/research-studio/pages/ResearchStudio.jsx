@@ -67,8 +67,16 @@ function formatDate(value) {
 }
 
 function sceneSearchQuery(scene) {
-  const plannedQuery = (scene?.queries || []).find((query) => typeof query === 'string' && query.trim());
-  return plannedQuery?.trim() || scene?.title?.trim() || '';
+  const rawQueries = scene?.queries;
+  const queryCandidates = Array.isArray(rawQueries)
+    ? rawQueries
+    : (typeof rawQueries === 'string' ? [rawQueries] : []);
+  const plannedQuery = queryCandidates.find((query) => typeof query === 'string' && query.trim().length >= 3);
+  return plannedQuery?.trim()
+    || scene?.title?.trim()
+    || scene?.visual_goal?.trim()
+    || scene?.narration?.trim().slice(0, 180)
+    || '';
 }
 
 function ResearchStudio() {
