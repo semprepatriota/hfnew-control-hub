@@ -66,6 +66,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function sceneSearchQuery(scene) {
+  const plannedQuery = (scene?.queries || []).find((query) => typeof query === 'string' && query.trim());
+  return plannedQuery?.trim() || scene?.title?.trim() || '';
+}
+
 function ResearchStudio() {
   const [health, setHealth] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -95,6 +100,14 @@ function ResearchStudio() {
     [activeProject],
   );
 
+  function activateProject(project) {
+    const firstScene = project?.scenes?.[0] || null;
+    setActiveProject(project || null);
+    setActiveSceneId(firstScene?.id || '');
+    setSearchForm((current) => ({ ...current, query: sceneSearchQuery(firstScene) }));
+    setSearchErrors([]);
+  }
+
   async function bootstrap() {
     setBusy('bootstrap');
     try {
@@ -105,8 +118,7 @@ function ResearchStudio() {
       setHealth(healthData);
       setProjects(projectData.projects || []);
       if (!activeProject && projectData.projects?.length) {
-        setActiveProject(projectData.projects[0]);
-        setActiveSceneId(projectData.projects[0].scenes?.[0]?.id || '');
+        activateProject(projectData.projects[0]);
       }
     } catch (error) {
       setNotice({ type: 'error', text: error.message });
@@ -137,8 +149,7 @@ function ResearchStudio() {
     try {
       const project = await researchStudioApi.createProject(form);
       setProjects((current) => [project, ...current]);
-      setActiveProject(project);
-      setActiveSceneId('');
+      activateProject(project);
       setForm(EMPTY_FORM);
       setCreateOpen(false);
       setNotice({ type: 'success', text: 'Projeto de pesquisa criado.' });
@@ -156,8 +167,7 @@ function ResearchStudio() {
       await researchStudioApi.deleteProject(projectId);
       const remaining = projects.filter((item) => item.id !== projectId);
       setProjects(remaining);
-      setActiveProject(remaining[0] || null);
-      setActiveSceneId(remaining[0]?.scenes?.[0]?.id || '');
+      activateProject(remaining[0] || null);
     } catch (error) {
       setNotice({ type: 'error', text: error.message });
     } finally {
@@ -173,7 +183,10 @@ function ResearchStudio() {
       const updated = await researchStudioApi.generatePlan(activeProject.id, useAi);
       setActiveProject(updated);
       setProjects((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      setActiveSceneId(updated.scenes?.[0]?.id || '');
+      const firstScene = updated.scenes?.[0] || null;
+      setActiveSceneId(firstScene?.id || '');
+      setSearchForm((current) => ({ ...current, query: sceneSearchQuery(firstScene) }));
+      setSearchErrors([]);
       setNotice({ type: 'success', text: `${updated.scenes?.length || 0} cenas planejadas.` });
     } catch (error) {
       setNotice({ type: 'error', text: error.message });
@@ -184,7 +197,23 @@ function ResearchStudio() {
 
   function selectScene(scene) {
     setActiveSceneId(scene.id);
-    setSearchForm((current) => ({ ...current, query: scene.queries?.[0] || scene.title || '' }));
+    setSearchForm((current) => ({ ...current, query: sceneSearchQuery(scene) }));
+    setSearchErrors([]);
+  }
+
+  async function handleSelectProject(projectId) {
+    if (!projectId || projectId === activeProject?.id) return;
+    setBusy(`select-project-${projectId}`);
+    setNotice(null);
+    try {
+      const project = await researchStudioApi.getProject(projectId);
+      setProjects((current) => current.map((item) => (item.id === project.id ? project : item)));
+      activateProject(project);
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+    } finally {
+      setBusy('');
+    }
   }
 
   async function handleSearch(event) {
@@ -430,7 +459,7 @@ function ResearchStudio() {
           <div className="research-studio-project-strip">
             {projects.map((project) => (
               <article key={project.id} className={activeProject?.id === project.id ? 'active' : ''}>
-                <button type="button" className="research-studio-project-select" onClick={() => { setActiveProject(project); setActiveSceneId(project.scenes?.[0]?.id || ''); }}>
+                <button type="button" className="research-studio-project-select" onClick={() => handleSelectProject(project.id)} disabled={busy === `select-project-${project.id}`}>
                   <strong>{project.title}</strong>
                   <span>{STATUS_LABELS[project.status] || project.status} · {project.metrics?.scenes || 0} cenas · {project.metrics?.approved || 0} aprovados</span>
                 </button>
