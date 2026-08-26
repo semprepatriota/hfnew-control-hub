@@ -659,19 +659,23 @@ button.forge-max-extractor-panel-heading {
 }
 
 .forge-max-extractor-preview-selection {
+  width: 100%;
   min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #2e8b5a;
-  background: #123e28;
-  color: #d9ffea;
+  padding: 8px 12px;
+  border: 1px solid #2789d8;
+  border-radius: 5px;
+  background: #1267aa;
+  color: #ffffff;
   font-weight: 800;
 }
 
 .forge-max-extractor-preview-selection:hover:not(:disabled) {
-  background: #185435;
+  border-color: #55b7ff;
+  background: #1782d2;
 }
 
 .forge-max-extractor-preview-selection:disabled {
