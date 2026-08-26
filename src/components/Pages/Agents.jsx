@@ -826,11 +826,20 @@ function Agents() {
       setError('Selecione um canal antes de iniciar o fluxo');
       return;
     }
-    const cleaned = cleanupQueueBeforeBatch();
-    const queueSnapshot = cleaned.queue.filter((item) => cleaned.selectedIds.includes(item.comment_id));
+    let cleaned = cleanupQueueBeforeBatch();
+    let queueSnapshot = cleaned.queue.filter((item) => cleaned.selectedIds.includes(item.comment_id));
     if (queueSnapshot.length === 0) {
-      setError('Selecione os comentarios que devem ser respondidos em lote');
-      return;
+      setSuccessMessage(`Buscando ${fetchCount} comentario(s) para iniciar o lote...`);
+      const fetchedItems = await fetchCommentsBatchInternal(fetchCount, false);
+      if (!fetchedItems.length) {
+        setError('Nenhum comentario novo encontrado para responder em lote.');
+        return;
+      }
+      cleaned = {
+        queue: fetchedItems,
+        selectedIds: fetchedItems.map((item) => item.comment_id),
+      };
+      queueSnapshot = fetchedItems;
     }
     setError('');
     setSuccessMessage('');
@@ -1445,7 +1454,7 @@ function Agents() {
               </span>
               <span className="agents-robot-toggle__label">ROBO RESPONDER</span>
             </button>
-            <button type="button" className="connect-button" onClick={runBatchReplies} disabled={runningBatch || loading || !selectedChannelId || selectedQueueIds.length === 0}>
+            <button type="button" className="connect-button" onClick={runBatchReplies} disabled={runningBatch || loading || !selectedChannelId || fetchingComment || generatingReply}>
               {runningBatch ? <Loader size={16} className="spinner" /> : <Bot size={16} />}
               Responder em lote
             </button>
