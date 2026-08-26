@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { researchStudioApi } from '../services/researchStudioApi';
+import ResearchStudioEditor from '../components/ResearchStudioEditor';
 import './research-studio.css';
 
 const EMPTY_FORM = {
@@ -275,6 +276,56 @@ function ResearchStudio() {
     }
   }
 
+  async function handleSaveEditor(editor) {
+    if (!activeProject) return null;
+    setBusy('editor-save');
+    setNotice(null);
+    try {
+      const updated = await researchStudioApi.updateEditor(activeProject.id, editor);
+      setActiveProject(updated);
+      setProjects((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setNotice({ type: 'success', text: 'Edição do projeto salva.' });
+      return updated;
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+      return null;
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function handleSaveAndOpenRemotion(editor) {
+    if (!activeProject) return;
+    const projectId = activeProject.id;
+    setBusy('editor-remotion');
+    setNotice(null);
+    try {
+      const updated = await researchStudioApi.updateEditor(projectId, editor);
+      setActiveProject(updated);
+      setProjects((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      const job = await researchStudioApi.createRemotionJob(projectId);
+      const blob = await researchStudioApi.downloadRemotionJob(projectId, job.id);
+      const filename = job.filename || `${job.id}.zip`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+      await refreshProject(projectId);
+      setNotice({ type: 'success', text: 'Edição salva e pacote preparado. Confirme a abertura da ponte local.' });
+      window.setTimeout(() => {
+        window.location.href = `hfnew-remotion://import?file=${encodeURIComponent(filename)}`;
+      }, 1100);
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function handleDownloadJob(job) {
     if (!activeProject) return;
     setBusy(`job-${job.id}`);
@@ -492,6 +543,13 @@ function ResearchStudio() {
               {!visibleAssets.length && <p className="research-studio-empty">Nenhum material nesta etapa.</p>}
             </div>
           </section>
+
+          <ResearchStudioEditor
+            project={activeProject}
+            busy={busy}
+            onSave={handleSaveEditor}
+            onOpenRemotion={handleSaveAndOpenRemotion}
+          />
 
           <section className="research-studio-remotion">
             <div className="research-studio-panel-heading"><span><Send size={17} /> Remotion Bridge</span><strong>{activeProject.remotion_jobs?.length || 0} pacote(s)</strong></div>

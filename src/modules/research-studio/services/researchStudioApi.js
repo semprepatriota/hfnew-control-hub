@@ -56,6 +56,11 @@ export const researchStudioApi = {
   deleteAsset: (projectId, assetId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetId)}`, {
     method: 'DELETE',
   }),
+  updateEditor: (projectId, payload) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/editor`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }),
   createRemotionJob: (projectId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/remotion/jobs`, {
     method: 'POST',
   }),
@@ -70,4 +75,3 @@ export const researchStudioApi = {
     return response.blob();
   },
 };
-
