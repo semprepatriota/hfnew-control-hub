@@ -728,6 +728,14 @@
   line-height: 1.5;
 }
 
+.agents-queue-item__error {
+  display: block;
+  margin-top: 2px;
+  color: #fecaca;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 @media (max-width: 900px) {
   .agents-config-grid,
   .agents-stats-grid,

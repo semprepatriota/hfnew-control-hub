@@ -776,7 +776,13 @@ function Agents() {
       return jobItems[0] || null;
     });
     if (!job.running && job.message) {
-      setSuccessMessage(job.message);
+      const hasBatchErrors = Number(job.errors || 0) > 0 && Number(job.replied || 0) === 0;
+      if (hasBatchErrors) {
+        setError(job.message);
+        setSuccessMessage('');
+      } else {
+        setSuccessMessage(job.message);
+      }
     }
   }, []);
 
@@ -1552,6 +1558,9 @@ function Agents() {
                         <span>{item.status === 'done' ? 'respondido' : item.status === 'processing' ? 'processando' : item.status === 'error' ? 'erro' : 'pendente'}</span>
                       </div>
                       <p>{item.text}</p>
+                      {item.status === 'error' && item.error_message && (
+                        <small className="agents-queue-item__error">{item.error_message}</small>
+                      )}
                     </button>
                   </div>
                 ))}
