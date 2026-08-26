@@ -56,6 +56,21 @@ export const researchStudioApi = {
   deleteAsset: (projectId, assetId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/assets/${encodeURIComponent(assetId)}`, {
     method: 'DELETE',
   }),
+  listApprovedDownloads: (projectId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/approved-downloads`),
+  createApprovedDownload: (projectId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/approved-downloads`, {
+    method: 'POST',
+  }),
+  getApprovedDownload: (projectId, jobId) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/approved-downloads/${encodeURIComponent(jobId)}`),
+  getApprovedDownloadResponse: async (projectId, jobId) => {
+    const response = await fetch(apiUrl(`/api/research-studio/projects/${encodeURIComponent(projectId)}/approved-downloads/${encodeURIComponent(jobId)}/download`), {
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.detail || 'Falha ao baixar as cenas aprovadas');
+    }
+    return response;
+  },
   updateEditor: (projectId, payload) => request(`/api/research-studio/projects/${encodeURIComponent(projectId)}/editor`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

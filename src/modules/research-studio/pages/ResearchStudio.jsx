@@ -61,6 +61,15 @@ const STATUS_LABELS = {
   failed: 'Falhou',
 };
 
+const APPROVED_DOWNLOAD_STATUS = {
+  queued: 'Na fila',
+  downloading: 'Baixando cenas',
+  packaging: 'Montando ZIP',
+  completed: 'Pronto',
+  completed_with_errors: 'Pronto com falhas',
+  failed: 'Falhou',
+};
+
 function formatDate(value) {
   if (!value) return '';
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
@@ -94,6 +103,8 @@ function ResearchStudio() {
   const [searchErrors, setSearchErrors] = useState([]);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualForm, setManualForm] = useState({ title: '', media_type: 'image', original_url: '', preview_url: '', creator: '', license: '' });
+  const [approvedDownloadJob, setApprovedDownloadJob] = useState(null);
+  const [approvedDownloadBusy, setApprovedDownloadBusy] = useState(false);
 
   const activeScene = useMemo(
     () => activeProject?.scenes?.find((scene) => scene.id === activeSceneId) || null,
@@ -121,6 +132,10 @@ function ResearchStudio() {
       (asset) => selectedIds.has(asset.id) && asset.status === 'approved' && asset.media_type === 'video',
     ).length;
   }, [activeProject]);
+  const approvedVideoCount = useMemo(
+    () => (activeProject?.assets || []).filter((asset) => asset.status === 'approved' && asset.media_type === 'video').length,
+    [activeProject],
+  );
 
   function activateProject(project) {
     const firstScene = project?.scenes?.[0] || null;
@@ -152,6 +167,19 @@ function ResearchStudio() {
   useEffect(() => {
     bootstrap();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const projectId = activeProject?.id;
+    setApprovedDownloadJob(null);
+    if (!projectId) return undefined;
+    researchStudioApi.listApprovedDownloads(projectId)
+      .then((payload) => {
+        if (!cancelled) setApprovedDownloadJob(payload.jobs?.[0] || null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeProject?.id]);
 
   async function refreshProject(projectId = activeProject?.id) {
     if (!projectId) return null;
@@ -287,6 +315,74 @@ function ResearchStudio() {
       setNotice({ type: 'error', text: error.message });
     } finally {
       setBusy('');
+    }
+  }
+
+  async function saveApprovedScenesArchive(projectId, job, fileHandle = null) {
+    const response = await researchStudioApi.getApprovedDownloadResponse(projectId, job.id);
+    const filename = job.filename || `hf_research_cenas_${projectId.slice(-8)}.zip`;
+    if (fileHandle && response.body) {
+      const writable = await fileHandle.createWritable();
+      await response.body.pipeTo(writable);
+      return filename;
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    return filename;
+  }
+
+  async function handleDownloadApprovedScenes() {
+    if (!activeProject || !approvedVideoCount || approvedDownloadBusy) return;
+    const projectId = activeProject.id;
+    let fileHandle = null;
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: `hf_research_cenas_${projectId.slice(-8)}.zip`,
+          types: [{ description: 'Arquivo ZIP', accept: { 'application/zip': ['.zip'] } }],
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        setNotice({ type: 'error', text: error.message || 'Nao foi possivel escolher a pasta de destino.' });
+        return;
+      }
+    }
+
+    setApprovedDownloadBusy(true);
+    setNotice(null);
+    try {
+      let job = approvedDownloadJob;
+      if (!job || !['queued', 'downloading', 'packaging'].includes(job.status)) {
+        job = await researchStudioApi.createApprovedDownload(projectId);
+        setApprovedDownloadJob(job);
+      }
+      let pollAttempts = 0;
+      while (['queued', 'downloading', 'packaging'].includes(job.status) && pollAttempts < 3600) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        job = await researchStudioApi.getApprovedDownload(projectId, job.id);
+        setApprovedDownloadJob(job);
+        pollAttempts += 1;
+      }
+      if (['queued', 'downloading', 'packaging'].includes(job.status)) {
+        throw new Error('O lote continua em processamento. Ele podera ser retomado nesta tela quando a API concluir.');
+      }
+      if (!['completed', 'completed_with_errors'].includes(job.status)) {
+        throw new Error(job.error || 'Nao foi possivel preparar o ZIP das cenas aprovadas.');
+      }
+      const filename = await saveApprovedScenesArchive(projectId, job, fileHandle);
+      const failureSuffix = job.failed ? ` ${job.failed} cena(s) falharam e foram registradas no relatorio.` : '';
+      setNotice({ type: job.failed ? 'error' : 'success', text: `${job.completed} cena(s) salvas em ${filename}.${failureSuffix}` });
+    } catch (error) {
+      setNotice({ type: 'error', text: error.message });
+    } finally {
+      setApprovedDownloadBusy(false);
     }
   }
 
@@ -615,6 +711,32 @@ function ResearchStudio() {
               ))}
               {!visibleAssets.length && <p className="research-studio-empty">Nenhum material nesta etapa.</p>}
             </div>
+          </section>
+
+          <section className="research-studio-approved-download">
+            <div className="research-studio-approved-download-copy">
+              <Download size={24} />
+              <span>
+                <strong>Baixar cenas aprovadas</strong>
+                <small>{approvedVideoCount} video(s) aprovado(s) serao validados e entregues como MP4 em um unico ZIP.</small>
+              </span>
+            </div>
+            {approvedDownloadJob && (
+              <div className={`research-studio-approved-download-status ${approvedDownloadJob.status}`}>
+                <strong>{APPROVED_DOWNLOAD_STATUS[approvedDownloadJob.status] || approvedDownloadJob.status}</strong>
+                <small>{approvedDownloadJob.completed || 0}/{approvedDownloadJob.total || approvedVideoCount} concluido(s){approvedDownloadJob.failed ? ` · ${approvedDownloadJob.failed} falha(s)` : ''}</small>
+              </div>
+            )}
+            <button
+              type="button"
+              className="research-studio-download-all-scenes"
+              onClick={handleDownloadApprovedScenes}
+              disabled={!approvedVideoCount || approvedDownloadBusy}
+              title={approvedVideoCount ? `Baixar ${approvedVideoCount} video(s) aprovado(s)` : 'Aprove pelo menos um video na Curadoria'}
+            >
+              {approvedDownloadBusy ? <Loader2 className="spin" size={18} /> : <Download size={18} />}
+              {approvedDownloadBusy ? 'Preparando cenas...' : 'Baixar Todas as Cenas'}
+            </button>
           </section>
 
           <ResearchStudioEditor

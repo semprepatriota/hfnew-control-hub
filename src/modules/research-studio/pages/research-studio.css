@@ -121,6 +121,19 @@
 .research-studio-asset-actions .reject, .research-studio-asset-actions .delete { border-color: #5c2b31; color: #ff8992; }
 .research-studio-asset-actions .delete { margin-left: auto; }
 
+.research-studio-approved-download { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; margin: 16px 0; padding: 13px 14px; border: 1px solid #643038; border-left: 4px solid #ff4d5b; background: #180d11; }
+.research-studio-approved-download-copy { min-width: 0; display: flex; align-items: center; gap: 11px; color: #ff929b; }
+.research-studio-approved-download-copy span { min-width: 0; display: grid; gap: 4px; }
+.research-studio-approved-download-copy strong { color: #fff1f2; }
+.research-studio-approved-download-copy small { color: #c69ca1; line-height: 1.35; }
+.research-studio-approved-download-status { min-width: 132px; display: grid; gap: 3px; padding: 7px 10px; border-left: 1px solid #643038; }
+.research-studio-approved-download-status strong { color: #ffb1b7; font-size: 12px; }
+.research-studio-approved-download-status small { color: #c69ca1; font-size: 10px; }
+.research-studio-approved-download-status.completed strong { color: var(--rs-green); }
+.research-studio-approved-download-status.completed_with_errors strong, .research-studio-approved-download-status.failed strong { color: var(--rs-yellow); }
+.research-studio-download-all-scenes { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #ff5966; background: #b51f2d; color: #fff; padding: 9px 15px; font-weight: 900; white-space: nowrap; }
+.research-studio-download-all-scenes:hover:not(:disabled) { background: #d72b3a; }
+
 .research-studio-remotion { padding-bottom: 20px; }
 .research-studio-remotion-body { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px; background: var(--rs-panel); }
 .research-studio-remotion-body > div { display: flex; align-items: center; gap: 11px; }
@@ -168,6 +181,9 @@
   .research-studio-tabs button { flex: 1; padding-inline: 4px; }
   .research-studio-asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .research-studio-asset-info { min-height: 116px; }
+  .research-studio-approved-download { grid-template-columns: 1fr; align-items: stretch; }
+  .research-studio-approved-download-status { border-top: 1px solid #643038; border-left: 0; padding-inline: 0; }
+  .research-studio-download-all-scenes { width: 100%; }
   .research-studio-remotion-send { width: 100%; }
   .research-studio-remotion-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
   .research-studio-batch-download { width: 100%; }
