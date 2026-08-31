@@ -24,6 +24,7 @@ import PublicDashboard from './components/Pages/PublicDashboard';
 import PublicPrivacy from './components/Pages/PublicPrivacy';
 import PublicTerms from './components/Pages/PublicTerms';
 import PublicRevokeAccess from './components/Pages/PublicRevokeAccess';
+import PublicSupport from './components/Pages/PublicSupport';
 import AccessDenied from './components/Pages/AccessDenied';
 import DashboardLogin from './components/Pages/DashboardLogin';
 import { apiUrl } from './config/api';
@@ -32,7 +33,7 @@ import './App.css';
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
 const RECENT_AUTH_KEY = 'alliance_dark_recent_auth_at';
-const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/acesso-negado'];
+const PUBLIC_ROUTES = ['/sobre-dashboard', '/politica-de-privacidade', '/termos-de-uso', '/revogar-acesso', '/suporte', '/acesso-negado'];
 const AUTH_BYPASS_ROUTES = ['/callback'];
 const MOBILE_BREAKPOINT = 1024;
 const RECENT_AUTH_WINDOW_MS = 30000;
@@ -404,6 +405,7 @@ function AppShell() {
           <Route path="/politica-de-privacidade" element={<PublicPrivacy />} />
           <Route path="/termos-de-uso" element={<PublicTerms />} />
           <Route path="/revogar-acesso" element={<PublicRevokeAccess />} />
+          <Route path="/suporte" element={<PublicSupport />} />
           <Route path="/acesso-negado" element={<AccessDenied />} />
         </Routes>
       </main>
