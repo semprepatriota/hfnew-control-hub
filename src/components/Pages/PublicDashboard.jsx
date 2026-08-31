@@ -30,7 +30,9 @@ function PublicDashboard() {
         }
       ]}
       footerTitle="Canal de suporte"
-      footerBody="Para duvidas de acesso, conformidade ou revisao documental, use o contato configurado no ambiente."
+      footerBody="Para duvidas de acesso, conformidade ou revisao documental, use a pagina publica de suporte."
+      contactHref="/suporte"
+      contactLabel="https://app.hfnew.com.br/suporte"
     />
   );
 }

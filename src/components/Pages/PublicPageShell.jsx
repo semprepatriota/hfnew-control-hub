@@ -2,9 +2,23 @@ import React from 'react';
 import { Mail, ShieldCheck } from 'lucide-react';
 import './PublicPages.css';
 
-const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'contato@hfnew.com.br';
+const defaultSupportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'contato@hfnew.com.br';
 
-function PublicPageShell({ badge, title, lead, sections, footerTitle, footerBody, actions }) {
+function PublicPageShell({
+  badge,
+  title,
+  lead,
+  sections,
+  footerTitle,
+  footerBody,
+  actions,
+  contactHref,
+  contactLabel,
+  supportEmail = defaultSupportEmail
+}) {
+  const finalContactHref = contactHref || (supportEmail ? `mailto:${supportEmail}` : '');
+  const finalContactLabel = contactLabel || supportEmail;
+
   return (
     <div className="public-page-shell">
       <div className="public-page-shell__inner">
@@ -33,7 +47,7 @@ function PublicPageShell({ badge, title, lead, sections, footerTitle, footerBody
           ))}
         </div>
 
-        {(footerTitle || footerBody || supportEmail) && (
+        {(footerTitle || footerBody || finalContactHref) && (
           <footer className="public-page-shell__footer">
             {footerTitle && <h3>{footerTitle}</h3>}
             {footerBody && <p>{footerBody}</p>}
@@ -42,10 +56,10 @@ function PublicPageShell({ badge, title, lead, sections, footerTitle, footerBody
                 {actions.map((action) => action)}
               </div>
             ) : null}
-            {supportEmail && (
-              <a className="public-page-shell__contact" href={`mailto:${supportEmail}`}>
+            {finalContactHref && finalContactLabel && (
+              <a className="public-page-shell__contact" href={finalContactHref}>
                 <Mail size={16} />
-                {supportEmail}
+                {finalContactLabel}
               </a>
             )}
           </footer>
