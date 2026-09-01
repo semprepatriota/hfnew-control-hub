@@ -5,6 +5,7 @@ import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
 import Billing from './components/Pages/Billing';
+import Admin from './components/Pages/Admin';
 import Intel from './components/Pages/Intel';
 import BulkDownload from './modules/bulk-download/pages/BulkDownload';
 import Forge from './components/Pages/Forge';
@@ -53,6 +54,13 @@ function ModuleGate({ allowed, label, children }) {
       </div>
     </section>
   );
+}
+
+function OwnerGate({ currentUser, children }) {
+  if (currentUser?.role === 'owner') {
+    return children;
+  }
+  return <Navigate to="/painel" replace />;
 }
 
 function AppShell() {
@@ -448,6 +456,7 @@ function AppShell() {
           <Route path="/" element={<Dashboard moduleAccess={moduleAccess} />} />
           <Route path="/painel" element={<Dashboard moduleAccess={moduleAccess} />} />
           <Route path="/assinatura" element={<Billing currentUser={authStatus} />} />
+          <Route path="/administracao" element={<OwnerGate currentUser={authStatus}><Admin /></OwnerGate>} />
           <Route path="/conexoes" element={<ModuleGate allowed={canUseModule('connections')} label="Conexões"><Conexoes currentUser={authStatus} /></ModuleGate>} />
           <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="Alliance Intel"><Intel /></ModuleGate>} />
           <Route path="/baixar-em-massa" element={<ModuleGate allowed={canUseModule('bulk_download')} label="Baixar em Massa"><BulkDownload /></ModuleGate>} />

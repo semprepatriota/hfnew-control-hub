@@ -15,6 +15,7 @@ import {
   Users,
   MessageCircle,
   CreditCard,
+  ShieldCheck,
   ChevronRight,
   Menu,
   LogOut,
@@ -45,6 +46,15 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       path: '/assinatura',
       icon: CreditCard,
       color: 'neon-gold',
+      alwaysVisible: true,
+    },
+    {
+      id: 'admin',
+      label: 'Administração',
+      path: '/administracao',
+      icon: ShieldCheck,
+      color: 'neon-blue',
+      ownerOnly: true,
       alwaysVisible: true,
     },
     {
@@ -155,7 +165,8 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
 
   const isActive = (path) => location.pathname === path;
   const visibleMenuItems = menuItems.filter((item) => (
-    item.alwaysVisible || !moduleAccess || moduleAccess[item.module] === true
+    (!item.ownerOnly || currentUser?.role === 'owner')
+    && (item.alwaysVisible || !moduleAccess || moduleAccess[item.module] === true)
   ));
   const billing = currentUser?.billing;
   const footerStatus = currentUser?.role === 'owner'
