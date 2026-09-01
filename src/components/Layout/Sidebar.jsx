@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  GraduationCap,
   Zap,
   Hammer,
   Clapperboard,
@@ -31,14 +30,6 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   };
 
   const menuItems = [
-    {
-      id: 'psychopedagogy',
-      label: 'Psicopedagogia',
-      path: 'https://psi.hfnew.com.br/',
-      icon: GraduationCap,
-      color: 'neon-yellow',
-      external: true
-    },
     {
       id: 1,
       label: 'Painel',
