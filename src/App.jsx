@@ -61,7 +61,12 @@ function AppShell() {
     email: '',
     name: '',
     role: 'owner',
-    scope: ''
+    scope: '',
+    userId: '',
+    workspaceId: '',
+    tenantId: '',
+    workspaceName: '',
+    platformRole: ''
   });
   const authRequestStarted = useRef(false);
   const authRetryCount = useRef(0);
@@ -257,7 +262,12 @@ function AppShell() {
           email: data.email || '',
           name: data.name || '',
           role: data.role || 'owner',
-          scope: data.scope || ''
+          scope: data.scope || '',
+          userId: data.user_id || '',
+          workspaceId: data.workspace_id || '',
+          tenantId: data.tenant_id || data.workspace_id || '',
+          workspaceName: data.workspace_name || '',
+          platformRole: data.platform_role || ''
         });
       } catch (error) {
         const recentAuthAt = Number(window.localStorage.getItem(RECENT_AUTH_KEY) || '0');
@@ -289,10 +299,10 @@ function AppShell() {
           setAuthStatus({
             checked: true,
             loading: false,
-            allowed: true,
+            allowed: false,
             message: error?.name === 'AbortError'
-              ? 'Sessao local mantida. API demorou para responder.'
-              : 'Sessao local mantida. Validacao remota indisponivel.',
+              ? 'A API demorou para responder. Atualize a pagina para validar sua sessao.'
+              : 'Nao foi possivel validar sua sessao com seguranca.',
             email: '',
             name: '',
             role: 'owner',
@@ -361,7 +371,12 @@ function AppShell() {
             email: authStatus.email,
             name: authStatus.name,
             role: authStatus.role,
-            scope: authStatus.scope
+            scope: authStatus.scope,
+            userId: authStatus.userId,
+            workspaceId: authStatus.workspaceId,
+            tenantId: authStatus.tenantId,
+            workspaceName: authStatus.workspaceName,
+            platformRole: authStatus.platformRole
           }}
         />
       )}

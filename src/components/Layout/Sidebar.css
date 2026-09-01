@@ -258,6 +258,13 @@
   line-height: 1.3;
 }
 
+.sidebar-user-workspace {
+  color: var(--neon-green);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .sidebar-user-email {
   color: rgba(255, 255, 255, 0.68);
   font-size: 11px;

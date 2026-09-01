@@ -210,6 +210,9 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
           {isOpen && (currentUser?.email || currentUser?.name) && (
             <div className="sidebar-user">
               <span className="sidebar-user-name">{currentUser.name || 'Usuario autorizado'}{currentUser.role === 'guest' ? ' · Convidado' : ''}</span>
+              {currentUser.workspaceName && (
+                <span className="sidebar-user-workspace">{currentUser.workspaceName}</span>
+              )}
               <span className="sidebar-user-email">{currentUser.email}</span>
             </div>
           )}
