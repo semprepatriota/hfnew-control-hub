@@ -62,4 +62,7 @@ export const generateForge5050Hook = (context, currentHeadline = '') => fetch(ap
 }).then(parse);
 
 export const forge5050FileUrl = (path) => apiUrl(path);
-export const forge5050DownloadUrl = (path) => apiUrl(`${path}/download`);
+export const forge5050DownloadUrl = (path) => {
+  const [pathname, query = ''] = String(path || '').split('?', 2);
+  return apiUrl(`${pathname}/download${query ? `?${query}` : ''}`);
+};

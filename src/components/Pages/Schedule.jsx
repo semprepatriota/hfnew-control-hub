@@ -311,6 +311,20 @@ function Schedule() {
   }, []);
 
   const getSchedulePreview = useCallback((item) => {
+    if (item.preview_url) {
+      return {
+        type: 'video',
+        src: String(item.preview_url).startsWith('/api/') ? apiUrl(item.preview_url) : item.preview_url,
+      };
+    }
+
+    if (item.output_path && String(item.output_path).startsWith('/api/')) {
+      return {
+        type: 'video',
+        src: apiUrl(item.output_path),
+      };
+    }
+
     if (item.filename) {
       return {
         type: 'video',
@@ -329,13 +343,6 @@ function Schedule() {
       return {
         type: 'image',
         src: item.image_url,
-      };
-    }
-
-    if (item.output_path && String(item.output_path).startsWith('/api/')) {
-      return {
-        type: 'video',
-        src: apiUrl(item.output_path),
       };
     }
 
