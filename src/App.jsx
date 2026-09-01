@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
@@ -18,8 +18,6 @@ import Agents from './components/Pages/Agents';
 import Leads from './components/Pages/Leads';
 import WhatsAppHub from './modules/whatsapp/pages/WhatsAppHub';
 import OAuthCallback from './components/Pages/OAuthCallback';
-import InstagramPublisher from './components/Pages/InstagramPublisher';
-import FacebookPublisher from './components/Pages/FacebookPublisher';
 import PublicDashboard from './components/Pages/PublicDashboard';
 import PublicPrivacy from './components/Pages/PublicPrivacy';
 import PublicTerms from './components/Pages/PublicTerms';
@@ -397,8 +395,8 @@ function AppShell() {
           <Route path="/agentes" element={<Agents />} />
           <Route path="/leads" element={<Leads />} />
           <Route path="/whatsapp" element={<WhatsAppHub />} />
-          <Route path="/instagram" element={<InstagramPublisher />} />
-          <Route path="/facebook" element={<FacebookPublisher />} />
+          <Route path="/instagram" element={<Navigate to="/painel" replace />} />
+          <Route path="/facebook" element={<Navigate to="/painel" replace />} />
           <Route path="/vault" element={<Vault />} />
           <Route path="/callback" element={<OAuthCallback />} />
           <Route path="/sobre-dashboard" element={<PublicDashboard />} />

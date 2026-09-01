@@ -1,13 +1,24 @@
 import { apiUrl } from '../../../config/api';
 
+const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
+
+function getAuthHeaders() {
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_TOKEN_KEY) : '';
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function parseResponse(response) {
   const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json')
-    ? await response.json()
-    : { detail: await response.text() };
+  let payload;
+  if (contentType.includes('application/json')) {
+    payload = await response.json().catch(() => ({ detail: 'A API retornou uma resposta JSON invalida.' }));
+  } else {
+    payload = { detail: await response.text() };
+  }
 
   if (!response.ok) {
     const detail = payload?.detail;
+    if (response.status === 401) throw new Error('Sua sessao expirou. Entre novamente no HUB.');
     if (typeof detail === 'string') throw new Error(detail);
     if (detail?.message) throw new Error(detail.message);
     throw new Error('A operacao nao foi concluida.');
@@ -16,14 +27,21 @@ async function parseResponse(response) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(apiUrl(path), {
-    cache: 'no-store',
-    ...options,
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {})
-    }
-  });
+  let response;
+  try {
+    response = await fetch(apiUrl(path), {
+      cache: 'no-store',
+      ...options,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...getAuthHeaders(),
+        ...(options.headers || {})
+      }
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new Error('Nao foi possivel conectar ao servico Baixar em Massa.');
+  }
   return parseResponse(response);
 }
 
@@ -77,22 +95,38 @@ export async function saveBulkDownloadFile(job) {
     fileHandle = await window.showSaveFilePicker({ suggestedName });
   }
 
-  const response = await fetch(apiUrl(`/api/bulk-download/jobs/${encodeURIComponent(job.id)}/file`), {
-    cache: 'no-store'
-  });
+  let response;
+  try {
+    response = await fetch(apiUrl(`/api/bulk-download/jobs/${encodeURIComponent(job.id)}/file`), {
+      cache: 'no-store',
+      headers: getAuthHeaders()
+    });
+  } catch {
+    throw new Error('A conexao caiu antes de iniciar o salvamento do arquivo.');
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) throw new Error('Sua sessao expirou. Entre novamente no HUB.');
     throw new Error(payload.detail || 'Nao foi possivel baixar o arquivo.');
   }
 
-  const blob = await response.blob();
   if (fileHandle) {
     const writable = await fileHandle.createWritable();
-    await writable.write(blob);
-    await writable.close();
+    try {
+      if (response.body?.pipeTo) {
+        await response.body.pipeTo(writable);
+      } else {
+        await writable.write(await response.blob());
+        await writable.close();
+      }
+    } catch (error) {
+      await writable.abort?.().catch(() => null);
+      throw error;
+    }
     return;
   }
 
+  const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = objectUrl;

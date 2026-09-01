@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -84,6 +85,7 @@ function mergeItems(current, incoming) {
 
 function BulkDownload() {
   const profileAbortRef = useRef(null);
+  const profileExtensionTimeoutRef = useRef(null);
   const profileExtensionScanRef = useRef('');
   const lastExtensionDeliveryRef = useRef('');
   const [links, setLinks] = useState('');
@@ -142,13 +144,18 @@ function BulkDownload() {
   }, []);
 
   useEffect(() => {
-    Promise.all([bulkDownloadApi.health(), bulkDownloadApi.jobs(), bulkDownloadApi.extensionInbox()])
-      .then(([healthPayload, jobPayload, inboxPayload]) => {
-        setHealth(healthPayload);
-        setJobs(jobPayload.jobs || []);
-        setItems(inboxPayload.items || []);
-      })
-      .catch((loadError) => setError(loadError.message));
+    Promise.allSettled([bulkDownloadApi.health(), bulkDownloadApi.jobs(), bulkDownloadApi.extensionInbox()])
+      .then(([healthResult, jobsResult, inboxResult]) => {
+        if (healthResult.status === 'fulfilled') setHealth(healthResult.value);
+        if (jobsResult.status === 'fulfilled') setJobs(jobsResult.value.jobs || []);
+        if (inboxResult.status === 'fulfilled') setItems(inboxResult.value.items || []);
+        const firstFailure = [healthResult, jobsResult, inboxResult].find((result) => result.status === 'rejected');
+        if (firstFailure) setError(firstFailure.reason?.message || 'Parte do modulo nao conseguiu carregar.');
+      });
+    return () => {
+      profileAbortRef.current?.abort();
+      window.clearTimeout(profileExtensionTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -160,6 +167,8 @@ function BulkDownload() {
     if (!isRequestedScan && !lastScan.manual) return;
     lastExtensionDeliveryRef.current = deliveryKey;
     profileExtensionScanRef.current = '';
+    window.clearTimeout(profileExtensionTimeoutRef.current);
+    profileExtensionTimeoutRef.current = null;
     setBusy('');
     if (lastScan.status === 'error') {
       setError(lastScan.message || 'A extensão não conseguiu analisar esse perfil.');
@@ -282,6 +291,13 @@ function BulkDownload() {
         }
       }, window.location.origin);
       window.open(`https://www.instagram.com/${username}/reels/`, '_blank', 'noopener,noreferrer');
+      window.clearTimeout(profileExtensionTimeoutRef.current);
+      profileExtensionTimeoutRef.current = window.setTimeout(() => {
+        if (profileExtensionScanRef.current !== requestId) return;
+        profileExtensionScanRef.current = '';
+        setBusy('');
+        setError('A extensao nao respondeu a tempo. Volte ao perfil, role a pagina e tente novamente.');
+      }, 120000);
       setNotice('Perfil aberto no Instagram. Aguarde a extensão analisar os vídeos visíveis e retornar os resultados.');
       return;
     }
@@ -319,6 +335,8 @@ function BulkDownload() {
   const cancelProfileSearch = () => {
     profileAbortRef.current?.abort();
     profileExtensionScanRef.current = '';
+    window.clearTimeout(profileExtensionTimeoutRef.current);
+    profileExtensionTimeoutRef.current = null;
     setBusy('');
     setNotice('Busca cancelada.');
   };

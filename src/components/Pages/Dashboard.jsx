@@ -8,8 +8,6 @@ import {
   TrendingUp,
   Zap,
   Video,
-  Instagram,
-  Facebook,
   MessageCircle,
   Brain,
   Bot,
@@ -27,8 +25,6 @@ function Dashboard() {
   const apiPanels = [
     { label: 'YouTube Data API', detail: 'Upload, agendamento, status do vídeo e leitura operacional do canal conectado.', icon: Video, tone: 'red' },
     { label: 'Google OAuth', detail: 'Autenticação segura dos usuários e autorização dos canais usados no painel.', icon: KeyRound, tone: 'blue' },
-    { label: 'Instagram Graph', detail: 'Publicação, leitura de perfil profissional e integração com ativos da Meta.', icon: Instagram, tone: 'pink' },
-    { label: 'Facebook Pages', detail: 'Gerenciamento de páginas, posts e ativos conectados para distribuição social.', icon: Facebook, tone: 'blue' },
     { label: 'WhatsApp Business', detail: 'Webhook, números conectados, automações supervisionadas e atendimento.', icon: MessageCircle, tone: 'green' },
     { label: 'OpenAI / ChatGPT', detail: 'Geração de títulos, descrições, hooks, headlines e apoio editorial.', icon: Brain, tone: 'gold' },
     { label: 'LM Studio', detail: 'Inferência local para roteiro, análise textual e apoio privado sem depender da nuvem.', icon: Bot, tone: 'green' },

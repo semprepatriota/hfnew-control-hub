@@ -16,8 +16,6 @@ import {
   Users,
   MessageCircle,
   ChevronRight,
-  Facebook,
-  Instagram,
   Menu,
   LogOut,
   X
@@ -131,20 +129,6 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
       path: '/whatsapp',
       icon: MessageCircle,
       color: 'neon-green'
-    },
-    {
-      id: 12,
-      label: 'Instagram',
-      path: '/instagram',
-      icon: Instagram,
-      color: 'neon-red'
-    },
-    {
-      id: 13,
-      label: 'Facebook',
-      path: '/facebook',
-      icon: Facebook,
-      color: 'neon-blue'
     },
     {
       id: 14,
