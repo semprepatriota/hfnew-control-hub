@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertCircle,
   Check,
-  Facebook,
-  Instagram,
   Loader,
   LogOut,
   Plus,
@@ -66,9 +64,6 @@ function Conexoes({ currentUser }) {
   const isGuest = currentUser?.role === 'guest';
   const [guestUsers, setGuestUsers] = useState([]);
   const [youtubeStatus, setYoutubeStatus] = useState(null);
-  const [instagramStatus, setInstagramStatus] = useState(null);
-  const [facebookStatus, setFacebookStatus] = useState(null);
-  const [metaDiagnostics, setMetaDiagnostics] = useState({ instagram: null, facebook: null });
   const [integrationSettings, setIntegrationSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,20 +99,9 @@ function Conexoes({ currentUser }) {
       setError('');
     }
     try {
-      const [
-        youtubeResult,
-        instagramResult,
-        facebookResult,
-        integrationsResult,
-        instagramDiagnosticsResult,
-        facebookDiagnosticsResult,
-      ] = await Promise.allSettled([
+      const [youtubeResult, integrationsResult] = await Promise.allSettled([
         fetch(apiUrl(`/api/conexoes/youtube/status${forceRefresh ? '?refresh=1' : ''}`), { headers: getAuthHeaders(), cache: 'no-store' }),
-        fetch(apiUrl('/api/instagram/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
-        fetch(apiUrl('/api/facebook/status'), { headers: getAuthHeaders(), cache: 'no-store' }),
         fetch(apiUrl('/api/integrations/settings'), { headers: getAuthHeaders(), cache: 'no-store' }),
-        fetch(apiUrl('/api/instagram/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
-        fetch(apiUrl('/api/facebook/diagnostics'), { headers: getAuthHeaders(), cache: 'no-store' }),
       ]);
 
       if (!isGuest) {
@@ -130,8 +114,6 @@ function Conexoes({ currentUser }) {
 
       const refreshFailures = [];
       let youtubeData = null;
-      let instagramData = null;
-      let facebookData = null;
 
       if (youtubeResult.status === 'fulfilled') {
         if (youtubeResult.value.ok) {
@@ -142,28 +124,6 @@ function Conexoes({ currentUser }) {
         }
       } else {
         refreshFailures.push('YouTube');
-      }
-
-      if (instagramResult.status === 'fulfilled') {
-        if (instagramResult.value.ok) {
-          instagramData = await readResponseData(instagramResult.value);
-          setInstagramStatus(instagramData);
-        } else {
-          refreshFailures.push('Instagram');
-        }
-      } else {
-        refreshFailures.push('Instagram');
-      }
-
-      if (facebookResult.status === 'fulfilled') {
-        if (facebookResult.value.ok) {
-          facebookData = await readResponseData(facebookResult.value);
-          setFacebookStatus(facebookData);
-        } else {
-          refreshFailures.push('Facebook');
-        }
-      } else {
-        refreshFailures.push('Facebook');
       }
 
       if (integrationsResult.status === 'fulfilled') {
@@ -177,34 +137,18 @@ function Conexoes({ currentUser }) {
         setIntegrationSettings((current) => current || EMPTY_INTEGRATION_SETTINGS);
       }
 
-      const instagramDiagnostics = instagramDiagnosticsResult.status === 'fulfilled' && instagramDiagnosticsResult.value.ok
-        ? await readResponseData(instagramDiagnosticsResult.value)
-        : instagramData?.diagnostic
-          ? { last_diagnostic: instagramData.diagnostic }
-          : null;
-      const facebookDiagnostics = facebookDiagnosticsResult.status === 'fulfilled' && facebookDiagnosticsResult.value.ok
-        ? await readResponseData(facebookDiagnosticsResult.value)
-        : facebookData?.diagnostic
-          ? { last_diagnostic: facebookData.diagnostic }
-          : null;
-      setMetaDiagnostics({ instagram: instagramDiagnostics, facebook: facebookDiagnostics });
-
       if (refreshFailures.length > 0) {
         console.warn('Atualizacao parcial das conexoes:', refreshFailures.join(', '));
       }
 
       return {
         hasYoutube: Boolean(youtubeData?.channels?.length),
-        hasInstagram: Boolean(instagramData?.profiles?.length),
-        hasFacebook: Boolean(facebookData?.pages?.length),
       };
     } catch (err) {
       console.error('Erro ao verificar conexões:', err);
       setError(connectionErrorMessage(err, 'Não foi possível atualizar os status das conexões. Tente atualizar a página.'));
       return {
         hasYoutube: false,
-        hasInstagram: false,
-        hasFacebook: false,
       };
     } finally {
       setLoading(false);
@@ -215,7 +159,7 @@ function Conexoes({ currentUser }) {
     checkStatuses().then((statusSnapshot) => {
       const oauthError = window.localStorage.getItem(OAUTH_ERROR_KEY);
       if (oauthError) {
-        if (statusSnapshot?.hasYoutube || statusSnapshot?.hasInstagram || statusSnapshot?.hasFacebook) {
+        if (statusSnapshot?.hasYoutube) {
           setError('');
         } else {
           setError(`Falha na autenticação: ${oauthError}`);
@@ -226,11 +170,7 @@ function Conexoes({ currentUser }) {
   }, [checkStatuses]);
 
   const youtubeChannels = youtubeStatus?.channels || [];
-  const instagramProfiles = instagramStatus?.profiles || [];
-  const facebookPages = facebookStatus?.pages || [];
   const hasYoutube = youtubeChannels.length > 0;
-  const hasInstagram = instagramProfiles.length > 0;
-  const hasFacebook = facebookPages.length > 0;
 
   const formatNumber = (value) => Number(value || 0).toLocaleString('pt-BR');
 
@@ -255,43 +195,29 @@ function Conexoes({ currentUser }) {
     setSavingSettings(false);
   };
 
-  const handleConnect = async (provider) => {
-    setConnecting(provider);
+  const handleConnect = async () => {
+    setConnecting('youtube');
     setError('');
     try {
-      if (provider === 'youtube') {
-        const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
-        if (!authToken) {
-          throw new Error('Sessão ausente. Entre novamente antes de conectar o canal.');
-        }
-
-        window.localStorage.setItem(PENDING_AUTH_FLOW_KEY, provider);
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = apiUrl('/api/conexoes/youtube/login');
-        form.style.display = 'none';
-
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'dashboard_token';
-        input.value = authToken;
-        form.appendChild(input);
-
-        document.body.appendChild(form);
-        form.submit();
-        return;
+      const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
+      if (!authToken) {
+        throw new Error('Sessão ausente. Entre novamente antes de conectar o canal.');
       }
 
-      let endpoint = '/api/conexoes/youtube/auth-url';
-      if (provider === 'instagram') endpoint = '/api/instagram/auth-url';
-      if (provider === 'facebook') endpoint = '/api/facebook/auth-url';
-      const response = await fetch(apiUrl(endpoint), { headers: getAuthHeaders() });
-      const data = await readResponseData(response);
-      if (!response.ok) {
-        throw new Error(data.detail || 'Erro ao obter URL de autenticação');
-      }
-      window.localStorage.setItem(PENDING_AUTH_FLOW_KEY, provider);
-      window.location.href = data.auth_url;
+      window.localStorage.setItem(PENDING_AUTH_FLOW_KEY, 'youtube');
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = apiUrl('/api/conexoes/youtube/login');
+      form.style.display = 'none';
+
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'dashboard_token';
+      input.value = authToken;
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -325,54 +251,6 @@ function Conexoes({ currentUser }) {
     }
   };
 
-  const setActiveInstagram = async (profileId) => {
-    setUpdatingId(profileId);
-    setError('');
-    try {
-      const response = await fetch(apiUrl('/api/instagram/active'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ profile_id: profileId }),
-      });
-      const data = await readResponseData(response);
-      if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar perfil');
-      setInstagramStatus((current) => current ? ({
-        ...current,
-        active_profile_id: profileId,
-        profiles: markSingleActive(current.profiles, 'profile_id', profileId),
-      }) : current);
-      refreshSoon(checkStatuses);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUpdatingId('');
-    }
-  };
-
-  const setActiveFacebook = async (pageId) => {
-    setUpdatingId(pageId);
-    setError('');
-    try {
-      const response = await fetch(apiUrl('/api/facebook/active'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ page_id: pageId }),
-      });
-      const data = await readResponseData(response);
-      if (!response.ok) throw new Error(data.detail || 'Erro ao selecionar página');
-      setFacebookStatus((current) => current ? ({
-        ...current,
-        active_page_id: pageId,
-        pages: markSingleActive(current.pages, 'page_id', pageId),
-      }) : current);
-      refreshSoon(checkStatuses);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUpdatingId('');
-    }
-  };
-
   const disconnectYoutube = async (channel) => {
     // eslint-disable-next-line no-restricted-globals
     if (!confirm(`Desconectar o canal "${channel.channel_name}"?`)) return;
@@ -386,48 +264,6 @@ function Conexoes({ currentUser }) {
       });
       const data = await readResponseData(response);
       if (!response.ok) throw new Error(data.detail || 'Erro ao desconectar');
-      await checkStatuses(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUpdatingId('');
-    }
-  };
-
-  const disconnectInstagram = async (profile) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Remover o perfil Instagram "${profile.username || profile.profile_name}"?`)) return;
-    setUpdatingId(profile.profile_id);
-    setError('');
-    try {
-      const response = await fetch(apiUrl('/api/instagram/disconnect'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ profile_id: profile.profile_id }),
-      });
-      const data = await readResponseData(response);
-      if (!response.ok) throw new Error(data.detail || 'Erro ao remover perfil');
-      await checkStatuses(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUpdatingId('');
-    }
-  };
-
-  const disconnectFacebook = async (page) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Remover a página Facebook "${page.page_name}"?`)) return;
-    setUpdatingId(page.page_id);
-    setError('');
-    try {
-      const response = await fetch(apiUrl('/api/facebook/disconnect'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ page_id: page.page_id }),
-      });
-      const data = await readResponseData(response);
-      if (!response.ok) throw new Error(data.detail || 'Erro ao remover página');
       await checkStatuses(true);
     } catch (err) {
       setError(err.message);
@@ -511,60 +347,6 @@ function Conexoes({ currentUser }) {
       APIs
     </button>
   );
-
-  const renderMetaDiagnostic = (provider) => {
-    const diagnostic = metaDiagnostics[provider];
-    const status = provider === 'instagram' ? instagramStatus : facebookStatus;
-    const last = diagnostic?.last_diagnostic || status?.diagnostic;
-    const title = provider === 'instagram' ? 'Diagnóstico Instagram' : 'Diagnóstico Facebook';
-    const requiredShape = diagnostic?.required_account_shape || (
-      provider === 'instagram'
-        ? 'Instagram Profissional vinculado a uma Página Facebook administrada pelo usuário Meta.'
-        : 'Conta Meta que administra pelo menos uma Página Facebook autorizada no login.'
-    );
-
-    if (!diagnostic && !last) {
-      return (
-        <div className="meta-diagnostic">
-          <div className="meta-diagnostic__header">
-            <strong>{title}</strong>
-            <span>Sem erro registrado</span>
-          </div>
-          <p>{requiredShape}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="meta-diagnostic">
-        <div className="meta-diagnostic__header">
-          <strong>{title}</strong>
-          <span>{diagnostic?.configured ? 'Configurado' : 'Configuração pendente'}</span>
-        </div>
-        <div className="meta-diagnostic__grid">
-          <span>App ID</span>
-          <code>{diagnostic?.app_id || last?.app_id || 'ausente'}</code>
-          <span>Redirect</span>
-          <code>{diagnostic?.redirect_uri || last?.instagram_redirect_uri || last?.facebook_redirect_uri || 'ausente'}</code>
-          <span>Fluxo</span>
-          <code>{diagnostic?.current_flow || last?.stage || 'facebook_oauth'}</code>
-        </div>
-        {Array.isArray(diagnostic?.scopes) && diagnostic.scopes.length > 0 && (
-          <p className="meta-diagnostic__scopes">{diagnostic.scopes.join(', ')}</p>
-        )}
-        {last?.detail && (
-          <div className="meta-diagnostic__error">
-            <AlertCircle size={15} />
-            <span>{last.detail}</span>
-          </div>
-        )}
-        {last?.extra?.pages_found !== undefined && (
-          <p>Paginas retornadas pela Meta: {last.extra.pages_found}</p>
-        )}
-        <p>{requiredShape}</p>
-      </div>
-    );
-  };
 
   return (
     <div className="page-container conexoes-page">
@@ -673,7 +455,7 @@ function Conexoes({ currentUser }) {
                 {!hasYoutube && <div className="description"><p>Conecte o YouTube para operar uploads e agenda do canal autorizado.</p></div>}
 
                 <div className="connection-actions">
-                  <button onClick={() => handleConnect('youtube')} disabled={connecting === 'youtube'} className="connect-button">
+                  <button onClick={handleConnect} disabled={connecting === 'youtube'} className="connect-button">
                     {connecting === 'youtube' ? <><Loader size={16} className="spinner" />Conectando...</> : <><Plus size={16} />{hasYoutube ? 'Adicionar outro canal' : 'Conectar com Google'}</>}
                   </button>
                   <button onClick={() => checkStatuses(true)} disabled={loading} className="refresh-button" type="button" aria-label="Atualizar conexões do YouTube">
@@ -686,159 +468,6 @@ function Conexoes({ currentUser }) {
           </div>
         </div>
 
-        <div className="conexao-card instagram instagram-wide">
-          <div className="card-header">
-            <div className="icon-container instagram-icon"><Instagram size={32} /></div>
-            <div className="card-title-group">
-              <h2>Instagram</h2>
-              <span>{hasInstagram ? `${instagramProfiles.length} perfil(is) conectado(s)` : 'Nenhum perfil conectado'}</span>
-            </div>
-          </div>
-
-          <div className="card-body">
-            {loading ? (
-              <div className="loading-state"><Loader size={32} className="spinner" /><p>Verificando...</p></div>
-            ) : (
-              <>
-                <div className={`status-badge ${hasInstagram ? 'connected' : 'disconnected'}`}>
-                  {hasInstagram ? <Check size={16} /> : <AlertCircle size={16} />}
-                  {hasInstagram ? 'Conectado' : 'Desconectado'}
-                </div>
-
-                {instagramStatus?.requires_config && (
-                  <div className="warning-banner">Configure `META_APP_ID` e `META_APP_SECRET` no backend/.env antes de conectar.</div>
-                )}
-
-                {hasInstagram && (
-                  <div className="channels-list">
-                    {instagramProfiles.map((profile) => (
-                      <div key={profile.profile_id} className={`channel-row ${profile.is_active ? 'active' : ''}`}>
-                        <div className="channel-info compact">
-                          {profile.picture ? (
-                            <img src={profile.picture} alt={profile.username} className="channel-thumbnail" />
-                          ) : (
-                            <div className="channel-thumbnail fallback-avatar"><Instagram size={22} /></div>
-                          )}
-                          <div className="channel-details">
-                            <div className="channel-name-line">
-                              <h3>@{profile.username || profile.profile_name}</h3>
-                              {profile.is_active && <span className="active-channel-badge"><Radio size={12} />Ativo</span>}
-                            </div>
-                            <p className="channel-id">IG ID: {profile.profile_id}</p>
-                            <p className="channel-id">Pagina: {profile.facebook_page_name || profile.facebook_page_id}</p>
-                            {renderToolSummary('instagram', profile.profile_id, profile.username || profile.profile_name)}
-                          </div>
-                        </div>
-                        <div className="channel-actions">
-                          {renderChannelSettingsButton('instagram', { id: profile.profile_id, name: profile.username || profile.profile_name })}
-                          {!profile.is_active && (
-                            <button type="button" onClick={() => setActiveInstagram(profile.profile_id)} disabled={updatingId === profile.profile_id} className="active-button">
-                              {updatingId === profile.profile_id ? <Loader size={15} className="spinner" /> : <Radio size={15} />} Usar
-                            </button>
-                          )}
-                          <button type="button" onClick={() => disconnectInstagram(profile)} disabled={updatingId === profile.profile_id} className="disconnect-button compact-button">
-                            <LogOut size={15} /> Remover
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!hasInstagram && <div className="description"><p>Conecte perfis profissionais do Instagram para posts, Reels e carrossel.</p></div>}
-
-                {renderMetaDiagnostic('instagram')}
-
-                <div className="connection-actions">
-                  <button onClick={() => handleConnect('instagram')} disabled={connecting === 'instagram' || instagramStatus?.requires_config} className="connect-button instagram-connect">
-                    {connecting === 'instagram' ? <><Loader size={16} className="spinner" />Conectando...</> : <><Plus size={16} />{hasInstagram ? 'Adicionar outro perfil' : 'Conectar com Meta'}</>}
-                  </button>
-                  <button onClick={() => checkStatuses(true)} disabled={loading} className="refresh-button" type="button" aria-label="Atualizar conexões do Instagram">
-                    <RefreshCw size={16} className={loading ? 'spinner' : ''} />
-                    Atualizar Instagram
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="conexao-card facebook facebook-wide">
-          <div className="card-header">
-            <div className="icon-container facebook-icon"><Facebook size={32} /></div>
-            <div className="card-title-group">
-              <h2>Facebook</h2>
-              <span>{hasFacebook ? `${facebookPages.length} pagina(s) conectada(s)` : 'Nenhuma pagina conectada'}</span>
-            </div>
-          </div>
-
-          <div className="card-body">
-            {loading ? (
-              <div className="loading-state"><Loader size={32} className="spinner" /><p>Verificando...</p></div>
-            ) : (
-              <>
-                <div className={`status-badge ${hasFacebook ? 'connected' : 'disconnected'}`}>
-                  {hasFacebook ? <Check size={16} /> : <AlertCircle size={16} />}
-                  {hasFacebook ? 'Conectado' : 'Desconectado'}
-                </div>
-
-                {facebookStatus?.requires_config && (
-                  <div className="warning-banner">Configure `META_APP_ID`, `META_APP_SECRET` e `FACEBOOK_REDIRECT_URI` no backend/.env antes de conectar.</div>
-                )}
-
-                {hasFacebook && (
-                  <div className="channels-list">
-                    {facebookPages.map((page) => (
-                      <div key={page.page_id} className={`channel-row ${page.is_active ? 'active' : ''}`}>
-                        <div className="channel-info compact">
-                          {page.picture ? (
-                            <img src={page.picture} alt={page.page_name} className="channel-thumbnail" />
-                          ) : (
-                            <div className="channel-thumbnail fallback-avatar facebook-avatar"><Facebook size={22} /></div>
-                          )}
-                          <div className="channel-details">
-                            <div className="channel-name-line">
-                              <h3>{page.page_name}</h3>
-                              {page.is_active && <span className="active-channel-badge"><Radio size={12} />Ativo</span>}
-                            </div>
-                            <p className="channel-id">Pagina ID: {page.page_id}</p>
-                            {page.category && <p className="channel-id">Categoria: {page.category}</p>}
-                            {renderToolSummary('facebook', page.page_id, page.page_name)}
-                          </div>
-                        </div>
-                        <div className="channel-actions">
-                          {renderChannelSettingsButton('facebook', { id: page.page_id, name: page.page_name })}
-                          {!page.is_active && (
-                            <button type="button" onClick={() => setActiveFacebook(page.page_id)} disabled={updatingId === page.page_id} className="active-button">
-                              {updatingId === page.page_id ? <Loader size={15} className="spinner" /> : <Radio size={15} />} Usar
-                            </button>
-                          )}
-                          <button type="button" onClick={() => disconnectFacebook(page)} disabled={updatingId === page.page_id} className="disconnect-button compact-button">
-                            <LogOut size={15} /> Remover
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!hasFacebook && <div className="description"><p>Conecte paginas do Facebook para posts, imagens, videos e carrossel.</p></div>}
-
-                {renderMetaDiagnostic('facebook')}
-
-                <div className="connection-actions">
-                  <button onClick={() => handleConnect('facebook')} disabled={connecting === 'facebook' || facebookStatus?.requires_config} className="connect-button facebook-connect">
-                    {connecting === 'facebook' ? <><Loader size={16} className="spinner" />Conectando...</> : <><Plus size={16} />{hasFacebook ? 'Adicionar outra pagina' : 'Conectar com Meta'}</>}
-                  </button>
-                  <button onClick={() => checkStatuses(true)} disabled={loading} className="refresh-button" type="button" aria-label="Atualizar conexões do Facebook">
-                    <RefreshCw size={16} className={loading ? 'spinner' : ''} />
-                    Atualizar Facebook
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {settingsOpen && (
@@ -850,7 +479,7 @@ function Conexoes({ currentUser }) {
                 <p>
                   {settingsScope === 'global'
                     ? 'Defina as ferramentas base do dashboard.'
-                    : 'Defina as APIs específicas usadas por este canal ou perfil.'}
+                    : 'Defina as APIs específicas usadas por este canal.'}
                 </p>
               </div>
               <button type="button" className="settings-close" onClick={closeSettings}>
