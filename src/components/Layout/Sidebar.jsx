@@ -14,6 +14,7 @@ import {
   Bot,
   Users,
   MessageCircle,
+  CreditCard,
   ChevronRight,
   Menu,
   LogOut,
@@ -37,6 +38,14 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       path: '/painel',
       icon: LayoutDashboard,
       color: 'neon-green'
+    },
+    {
+      id: 'billing',
+      label: currentUser?.role === 'owner' ? 'Assinaturas' : 'Assinatura',
+      path: '/assinatura',
+      icon: CreditCard,
+      color: 'neon-gold',
+      alwaysVisible: true,
     },
     {
       id: 2,
@@ -146,8 +155,17 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
 
   const isActive = (path) => location.pathname === path;
   const visibleMenuItems = menuItems.filter((item) => (
-    !moduleAccess || moduleAccess[item.module] === true
+    item.alwaysVisible || !moduleAccess || moduleAccess[item.module] === true
   ));
+  const billing = currentUser?.billing;
+  const footerStatus = currentUser?.role === 'owner'
+    ? 'Interno'
+    : billing?.grandfathered
+      ? 'Legado ativo'
+      : billing?.entitled
+        ? billing.status_label || 'Ativo'
+        : billing?.status_label || 'Acesso pendente';
+  const footerTone = currentUser?.role === 'owner' || billing?.entitled ? 'active' : 'warning';
 
   return (
     <>
@@ -223,9 +241,9 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
               <span className="sidebar-user-email">{currentUser.email}</span>
             </div>
           )}
-          <div className="footer-badge">
+          <div className={`footer-badge ${footerTone}`}>
             <span className="status-indicator"></span>
-            {isOpen && <span className="status-label">Ativo</span>}
+            {isOpen && <span className="status-label">{footerStatus}</span>}
           </div>
           <button
             type="button"

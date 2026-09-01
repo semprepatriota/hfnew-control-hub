@@ -282,6 +282,20 @@
   border: 1px solid rgba(0, 255, 65, 0.3);
 }
 
+.footer-badge.warning {
+  border-color: rgba(255, 75, 75, 0.38);
+  background: rgba(255, 0, 0, 0.09);
+}
+
+.footer-badge.warning .status-indicator {
+  background: #ff4b4b;
+  box-shadow: 0 0 10px rgba(255, 75, 75, 0.8);
+}
+
+.footer-badge.warning .status-label {
+  color: #ff9b9b;
+}
+
 .sidebar-logout {
   display: flex;
   align-items: center;

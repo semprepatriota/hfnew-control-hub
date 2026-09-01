@@ -4,6 +4,7 @@ import { Menu, ShieldX } from 'lucide-react';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
+import Billing from './components/Pages/Billing';
 import Intel from './components/Pages/Intel';
 import BulkDownload from './modules/bulk-download/pages/BulkDownload';
 import Forge from './components/Pages/Forge';
@@ -274,11 +275,15 @@ function AppShell() {
               throw new Error(`workspace_access_http_${workspaceResponse.status}`);
             }
             const workspaceData = await workspaceResponse.json();
-            setWorkspaceAccess(workspaceData.access || null);
+            setWorkspaceAccess({
+              ...(workspaceData.access || {}),
+              billing: workspaceData.billing || null,
+            });
           } catch (workspaceError) {
             console.warn('Não foi possível carregar os módulos do workspace:', workspaceError);
             setWorkspaceAccess(data.role === 'owner' ? null : {
               modules: { dashboard: true },
+              billing: { entitled: false, status: 'unavailable', status_label: 'Indisponível' },
               unavailable: true,
             });
           }
@@ -397,9 +402,11 @@ function AppShell() {
     navigate('/painel', { replace: true });
   };
 
+  const billingAccess = workspaceAccess?.billing || null;
+  const billingEntitled = authStatus.role === 'owner' || billingAccess?.entitled !== false;
   const moduleAccess = authStatus.role === 'owner'
     ? null
-    : (workspaceAccess?.modules || { dashboard: true });
+    : (billingEntitled ? (workspaceAccess?.modules || { dashboard: true }) : { dashboard: true });
   const canUseModule = (moduleKey) => !moduleAccess || moduleAccess[moduleKey] === true;
 
   return (
@@ -418,7 +425,8 @@ function AppShell() {
             workspaceId: authStatus.workspaceId,
             tenantId: authStatus.tenantId,
             workspaceName: authStatus.workspaceName,
-            platformRole: authStatus.platformRole
+            platformRole: authStatus.platformRole,
+            billing: billingAccess,
           }}
           moduleAccess={moduleAccess}
         />
@@ -439,6 +447,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<Dashboard moduleAccess={moduleAccess} />} />
           <Route path="/painel" element={<Dashboard moduleAccess={moduleAccess} />} />
+          <Route path="/assinatura" element={<Billing currentUser={authStatus} />} />
           <Route path="/conexoes" element={<ModuleGate allowed={canUseModule('connections')} label="Conexões"><Conexoes currentUser={authStatus} /></ModuleGate>} />
           <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="Alliance Intel"><Intel /></ModuleGate>} />
           <Route path="/baixar-em-massa" element={<ModuleGate allowed={canUseModule('bulk_download')} label="Baixar em Massa"><BulkDownload /></ModuleGate>} />
