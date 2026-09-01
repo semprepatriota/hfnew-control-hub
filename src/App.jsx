@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { Menu, ShieldX } from 'lucide-react';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
@@ -38,6 +38,22 @@ const RECENT_AUTH_WINDOW_MS = 30000;
 const AUTH_STATUS_RETRY_LIMIT = 2;
 const AUTH_STATUS_RETRY_DELAY_MS = 1200;
 
+function ModuleGate({ allowed, label, children }) {
+  if (allowed) {
+    return children;
+  }
+
+  return (
+    <section className="module-access-denied" role="alert">
+      <ShieldX size={30} />
+      <div>
+        <h1>Módulo não liberado</h1>
+        <p>{label} não faz parte do plano ativo deste workspace.</p>
+      </div>
+    </section>
+  );
+}
+
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') {
@@ -52,6 +68,7 @@ function AppShell() {
     return window.innerWidth <= MOBILE_BREAKPOINT;
   });
   const [apiStatus, setApiStatus] = useState(null);
+  const [workspaceAccess, setWorkspaceAccess] = useState(null);
   const [authAttempt, setAuthAttempt] = useState(0);
   const [authStatus, setAuthStatus] = useState({
     checked: false,
@@ -178,6 +195,7 @@ function AppShell() {
       const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
 
       if (!authToken) {
+        setWorkspaceAccess(null);
         setAuthStatus({
           checked: true,
           loading: false,
@@ -247,11 +265,29 @@ function AppShell() {
         if (data.authorized) {
           authRetryCount.current = 0;
           window.localStorage.removeItem(RECENT_AUTH_KEY);
+          try {
+            const workspaceResponse = await fetch(apiUrl('/api/workspaces/current'), {
+              headers,
+              cache: 'no-store',
+            });
+            if (!workspaceResponse.ok) {
+              throw new Error(`workspace_access_http_${workspaceResponse.status}`);
+            }
+            const workspaceData = await workspaceResponse.json();
+            setWorkspaceAccess(workspaceData.access || null);
+          } catch (workspaceError) {
+            console.warn('Não foi possível carregar os módulos do workspace:', workspaceError);
+            setWorkspaceAccess(data.role === 'owner' ? null : {
+              modules: { dashboard: true },
+              unavailable: true,
+            });
+          }
         } else if (authToken && hasRecentAuth && !hardFailure && scheduleAuthRetry()) {
           return;
         } else if (!data.authorized && authToken && hardFailure) {
           window.localStorage.removeItem(AUTH_TOKEN_KEY);
           window.localStorage.removeItem(RECENT_AUTH_KEY);
+          setWorkspaceAccess(null);
         }
 
         setAuthStatus({
@@ -349,6 +385,7 @@ function AppShell() {
     window.localStorage.removeItem(RECENT_AUTH_KEY);
     window.localStorage.removeItem('alliance_dark_pending_auth_flow');
     authRequestStarted.current = false;
+    setWorkspaceAccess(null);
     setAuthStatus({
       checked: true,
       loading: false,
@@ -359,6 +396,11 @@ function AppShell() {
     });
     navigate('/painel', { replace: true });
   };
+
+  const moduleAccess = authStatus.role === 'owner'
+    ? null
+    : (workspaceAccess?.modules || { dashboard: true });
+  const canUseModule = (moduleKey) => !moduleAccess || moduleAccess[moduleKey] === true;
 
   return (
     <div className="alliance-dark-app">
@@ -378,6 +420,7 @@ function AppShell() {
             workspaceName: authStatus.workspaceName,
             platformRole: authStatus.platformRole
           }}
+          moduleAccess={moduleAccess}
         />
       )}
 
@@ -394,25 +437,25 @@ function AppShell() {
 
       <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}`}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/painel" element={<Dashboard />} />
-          <Route path="/conexoes" element={<Conexoes currentUser={authStatus} />} />
-          <Route path="/intel" element={<Intel />} />
-          <Route path="/baixar-em-massa" element={<BulkDownload />} />
-          <Route path="/forge" element={<Forge />} />
-          <Route path="/the-forge" element={<TheForge5050 />} />
-          <Route path="/the-forge-50-50" element={<TheForge5050 />} />
-          <Route path="/the-forge/editor" element={<ForgeEasyEditor />} />
-          <Route path="/forge-max" element={<ForgeMaxExtractor />} />
-          <Route path="/research-studio" element={<ResearchStudio />} />
-          <Route path="/agenda" element={<Schedule />} />
-          <Route path="/monitoramento-cota" element={<QuotaMonitor />} />
-          <Route path="/agentes" element={<Agents />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/whatsapp" element={<WhatsAppHub />} />
+          <Route path="/" element={<Dashboard moduleAccess={moduleAccess} />} />
+          <Route path="/painel" element={<Dashboard moduleAccess={moduleAccess} />} />
+          <Route path="/conexoes" element={<ModuleGate allowed={canUseModule('connections')} label="Conexões"><Conexoes currentUser={authStatus} /></ModuleGate>} />
+          <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="Alliance Intel"><Intel /></ModuleGate>} />
+          <Route path="/baixar-em-massa" element={<ModuleGate allowed={canUseModule('bulk_download')} label="Baixar em Massa"><BulkDownload /></ModuleGate>} />
+          <Route path="/forge" element={<ModuleGate allowed={canUseModule('forge_7030')} label="The Forge 70/30"><Forge /></ModuleGate>} />
+          <Route path="/the-forge" element={<ModuleGate allowed={canUseModule('forge_5050')} label="The Forge 50/50"><TheForge5050 /></ModuleGate>} />
+          <Route path="/the-forge-50-50" element={<ModuleGate allowed={canUseModule('forge_5050')} label="The Forge 50/50"><TheForge5050 /></ModuleGate>} />
+          <Route path="/the-forge/editor" element={<ModuleGate allowed={canUseModule('forge_5050')} label="Editor Forge"><ForgeEasyEditor /></ModuleGate>} />
+          <Route path="/forge-max" element={<ModuleGate allowed={canUseModule('forge_max')} label="Forge Max 3.0"><ForgeMaxExtractor /></ModuleGate>} />
+          <Route path="/research-studio" element={<ModuleGate allowed={canUseModule('research_studio')} label="HF Research Studio"><ResearchStudio /></ModuleGate>} />
+          <Route path="/agenda" element={<ModuleGate allowed={canUseModule('schedule')} label="Agenda"><Schedule /></ModuleGate>} />
+          <Route path="/monitoramento-cota" element={<ModuleGate allowed={canUseModule('quota_monitor')} label="Monitoramento de Cota"><QuotaMonitor /></ModuleGate>} />
+          <Route path="/agentes" element={<ModuleGate allowed={canUseModule('agents')} label="Agentes"><Agents /></ModuleGate>} />
+          <Route path="/leads" element={<ModuleGate allowed={canUseModule('leads')} label="Leads"><Leads /></ModuleGate>} />
+          <Route path="/whatsapp" element={<ModuleGate allowed={canUseModule('whatsapp')} label="WhatsApp Hub"><WhatsAppHub /></ModuleGate>} />
           <Route path="/instagram" element={<Navigate to="/painel" replace />} />
           <Route path="/facebook" element={<Navigate to="/painel" replace />} />
-          <Route path="/vault" element={<Vault />} />
+          <Route path="/vault" element={<ModuleGate allowed={canUseModule('vault')} label="The Vault"><Vault /></ModuleGate>} />
           <Route path="/callback" element={<OAuthCallback />} />
           <Route path="/sobre-dashboard" element={<PublicDashboard />} />
           <Route path="/politica-de-privacidade" element={<PublicPrivacy />} />

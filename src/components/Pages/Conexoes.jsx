@@ -63,6 +63,9 @@ function refreshSoon(refreshFn) {
 function Conexoes({ currentUser }) {
   const isGuest = currentUser?.role === 'guest';
   const [guestUsers, setGuestUsers] = useState([]);
+  const [accessCatalog, setAccessCatalog] = useState({ plans: [], modules: [] });
+  const [accessAssignments, setAccessAssignments] = useState([]);
+  const [accessUpdatingId, setAccessUpdatingId] = useState('');
   const [youtubeStatus, setYoutubeStatus] = useState(null);
   const [integrationSettings, setIntegrationSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,10 +108,22 @@ function Conexoes({ currentUser }) {
       ]);
 
       if (!isGuest) {
-        const guestsResponse = await fetch(apiUrl('/api/conexoes/guests'), { headers: getAuthHeaders(), cache: 'no-store' });
-        if (guestsResponse.ok) {
-          const guestsData = await readResponseData(guestsResponse);
+        const ownerResults = await Promise.allSettled([
+          fetch(apiUrl('/api/conexoes/guests'), { headers: getAuthHeaders(), cache: 'no-store' }),
+          fetch(apiUrl('/api/workspaces/access/catalog'), { headers: getAuthHeaders(), cache: 'no-store' }),
+          fetch(apiUrl('/api/workspaces/access/assignments'), { headers: getAuthHeaders(), cache: 'no-store' }),
+        ]);
+        const [guestsResult, catalogResult, assignmentsResult] = ownerResults;
+        if (guestsResult.status === 'fulfilled' && guestsResult.value.ok) {
+          const guestsData = await readResponseData(guestsResult.value);
           setGuestUsers(guestsData.guests || []);
+        }
+        if (catalogResult.status === 'fulfilled' && catalogResult.value.ok) {
+          setAccessCatalog(await readResponseData(catalogResult.value));
+        }
+        if (assignmentsResult.status === 'fulfilled' && assignmentsResult.value.ok) {
+          const assignmentsData = await readResponseData(assignmentsResult.value);
+          setAccessAssignments(assignmentsData.items || []);
         }
       }
 
@@ -173,6 +188,53 @@ function Conexoes({ currentUser }) {
   const hasYoutube = youtubeChannels.length > 0;
 
   const formatNumber = (value) => Number(value || 0).toLocaleString('pt-BR');
+
+  const assignmentForGuest = (guest) => accessAssignments.find((item) => (
+    String(item.owner_email || '').toLowerCase() === String(guest.email || '').toLowerCase()
+  ));
+
+  const saveGuestAccess = async (assignment, planCode, moduleOverrides) => {
+    if (!assignment?.workspace_id) return;
+    setAccessUpdatingId(assignment.workspace_id);
+    setError('');
+    try {
+      const response = await fetch(apiUrl(`/api/workspaces/${encodeURIComponent(assignment.workspace_id)}/access`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          plan_code: planCode,
+          module_overrides: moduleOverrides,
+        }),
+      });
+      const data = await readResponseData(response);
+      if (!response.ok) {
+        throw new Error(data.detail || 'Não foi possível atualizar o acesso do convidado');
+      }
+      setAccessAssignments((current) => current.map((item) => (
+        item.workspace_id === assignment.workspace_id ? data.item : item
+      )));
+    } catch (err) {
+      setError(connectionErrorMessage(err, 'Não foi possível atualizar o plano do convidado.'));
+    } finally {
+      setAccessUpdatingId('');
+    }
+  };
+
+  const changeGuestPlan = (assignment, planCode) => {
+    saveGuestAccess(assignment, planCode, {});
+  };
+
+  const toggleGuestModule = (assignment, moduleKey, enabled) => {
+    const plan = accessCatalog.plans.find((item) => item.code === assignment.plan_code);
+    const baseEnabled = Boolean(plan?.modules?.includes(moduleKey));
+    const nextOverrides = { ...(assignment.access?.overrides || {}) };
+    if (enabled === baseEnabled) {
+      delete nextOverrides[moduleKey];
+    } else {
+      nextOverrides[moduleKey] = enabled;
+    }
+    saveGuestAccess(assignment, assignment.plan_code, nextOverrides);
+  };
 
   const openGlobalSettings = () => {
     setSettingsScope('global');
@@ -384,6 +446,51 @@ function Conexoes({ currentUser }) {
                     </div>
                   )) : <span className="guest-panel__empty">Nenhum canal conectado</span>}
                 </div>
+                {(() => {
+                  const assignment = assignmentForGuest(guest);
+                  if (!assignment) {
+                    return <span className="guest-panel__access-loading">Carregando plano de acesso...</span>;
+                  }
+                  const enabledCount = accessCatalog.modules.filter((module) => (
+                    assignment.access?.modules?.[module.key] === true
+                  )).length;
+                  const updating = accessUpdatingId === assignment.workspace_id;
+                  return (
+                    <div className="guest-panel__access">
+                      <label className="guest-panel__plan">
+                        <span>Plano de acesso</span>
+                        <select
+                          value={assignment.plan_code}
+                          disabled={updating}
+                          onChange={(event) => changeGuestPlan(assignment, event.target.value)}
+                        >
+                          {accessCatalog.plans.map((plan) => (
+                            <option key={plan.code} value={plan.code}>{plan.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <details className="guest-panel__modules">
+                        <summary>
+                          Módulos {enabledCount}/{accessCatalog.modules.length}
+                          {updating && <Loader size={13} className="spinner" />}
+                        </summary>
+                        <div>
+                          {accessCatalog.modules.map((module) => (
+                            <label key={module.key}>
+                              <input
+                                type="checkbox"
+                                checked={assignment.access?.modules?.[module.key] === true}
+                                disabled={updating || module.key === 'dashboard'}
+                                onChange={(event) => toggleGuestModule(assignment, module.key, event.target.checked)}
+                              />
+                              <span>{module.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  );
+                })()}
               </article>
             )) : <span className="guest-panel__empty">Nenhum convidado cadastrado</span>}
           </div>

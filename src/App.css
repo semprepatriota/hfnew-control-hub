@@ -7,6 +7,35 @@
   overflow: hidden;
 }
 
+.module-access-denied {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 720px;
+  margin: 48px auto;
+  padding: 20px;
+  border: 1px solid rgba(255, 76, 76, 0.46);
+  border-radius: 8px;
+  color: #f5f7f8;
+  background: rgba(32, 8, 10, 0.82);
+}
+
+.module-access-denied svg {
+  flex: 0 0 auto;
+  color: #ff5b5b;
+}
+
+.module-access-denied h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.module-access-denied p {
+  margin: 0;
+  color: #bdc4c9;
+  line-height: 1.5;
+}
+
 .main-content {
   flex: 1;
   min-width: 0;

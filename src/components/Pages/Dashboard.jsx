@@ -19,7 +19,7 @@ import { apiUrl } from '../../config/api';
 import './Pages.css';
 import './Dashboard.css';
 
-function Dashboard() {
+function Dashboard({ moduleAccess }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const apiPanels = [
@@ -63,10 +63,10 @@ function Dashboard() {
   ];
 
   const shortcuts = [
-    { label: 'Conexões', path: '/conexoes', icon: Zap, tone: 'blue' },
-    { label: 'Forge', path: '/forge', icon: Sparkles, tone: 'red' },
-    { label: 'Agenda', path: '/agenda', icon: CalendarClock, tone: 'green' },
-  ];
+    { label: 'Conexões', path: '/conexoes', module: 'connections', icon: Zap, tone: 'blue' },
+    { label: 'Forge', path: '/forge', module: 'forge_7030', icon: Sparkles, tone: 'red' },
+    { label: 'Agenda', path: '/agenda', module: 'schedule', icon: CalendarClock, tone: 'green' },
+  ].filter((item) => !moduleAccess || moduleAccess[item.module] === true);
 
   return (
     <div className="page-container dashboard-page">

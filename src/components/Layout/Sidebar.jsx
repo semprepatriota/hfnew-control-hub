@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import './Sidebar.css';
 
-function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
+function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
   const location = useLocation();
   const handleNavigate = () => {
     if (typeof window !== 'undefined' && window.innerWidth <= 767) {
@@ -32,6 +32,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   const menuItems = [
     {
       id: 1,
+      module: 'dashboard',
       label: 'Painel',
       path: '/painel',
       icon: LayoutDashboard,
@@ -39,6 +40,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 2,
+      module: 'connections',
       label: 'Conexões',
       path: '/conexoes',
       icon: Zap,
@@ -46,6 +48,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 3,
+      module: 'intelligence',
       label: 'Alliance Intel',
       path: '/intel',
       icon: Activity,
@@ -53,6 +56,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 'bulk-download',
+      module: 'bulk_download',
       label: 'Baixar em Massa',
       path: '/baixar-em-massa',
       icon: DownloadCloud,
@@ -60,6 +64,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 4,
+      module: 'forge_7030',
       label: 'The Forge 70/30',
       path: '/forge',
       icon: Hammer,
@@ -67,6 +72,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 5,
+      module: 'forge_5050',
       label: 'The Forge 50/50',
       path: '/the-forge',
       icon: Clapperboard,
@@ -74,6 +80,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 6,
+      module: 'forge_max',
       label: 'Forge Max 3.0',
       path: '/forge-max',
       icon: LayoutPanelLeft,
@@ -81,6 +88,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 'research-studio',
+      module: 'research_studio',
       label: 'HF Research Studio',
       path: '/research-studio',
       icon: Search,
@@ -88,6 +96,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 7,
+      module: 'schedule',
       label: 'Agenda',
       path: '/agenda',
       icon: CalendarClock,
@@ -95,6 +104,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 8,
+      module: 'quota_monitor',
       label: 'Monitoramento de Cota',
       path: '/monitoramento-cota',
       icon: Activity,
@@ -102,6 +112,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 9,
+      module: 'agents',
       label: 'Agentes',
       path: '/agentes',
       icon: Bot,
@@ -109,6 +120,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 10,
+      module: 'leads',
       label: 'Leads',
       path: '/leads',
       icon: Users,
@@ -116,6 +128,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 11,
+      module: 'whatsapp',
       label: 'WHATSAPP HUB',
       path: '/whatsapp',
       icon: MessageCircle,
@@ -123,6 +136,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
     },
     {
       id: 14,
+      module: 'vault',
       label: 'The Vault',
       path: '/vault',
       icon: Lock,
@@ -131,7 +145,9 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser }) {
   ];
 
   const isActive = (path) => location.pathname === path;
-  const visibleMenuItems = menuItems;
+  const visibleMenuItems = menuItems.filter((item) => (
+    !moduleAccess || moduleAccess[item.module] === true
+  ));
 
   return (
     <>
