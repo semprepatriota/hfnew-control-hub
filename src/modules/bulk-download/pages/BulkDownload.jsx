@@ -28,15 +28,8 @@ import {
   X
 } from 'lucide-react';
 import { bulkDownloadApi, saveBulkDownloadFile } from '../services/bulkDownloadApi';
+import { isInstagramUrl, PLATFORM_LABELS, PROFILE_PLATFORMS } from '../services/bulkPlatforms';
 import './bulk-download.css';
-
-const PLATFORM_LABELS = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  facebook: 'Facebook',
-  pinterest: 'Pinterest',
-  kwai: 'Kwai'
-};
 
 const ACTIVE_STATUSES = new Set(['queued', 'downloading']);
 
@@ -224,6 +217,10 @@ function BulkDownload() {
       setError('Cole pelo menos um link completo, com https://.');
       return;
     }
+    if (urls.some((url) => !isInstagramUrl(url))) {
+      setError('No momento, use somente links do Instagram. TikTok em breve.');
+      return;
+    }
     setBusy('inspect');
     setError('');
     setNotice('');
@@ -246,8 +243,16 @@ function BulkDownload() {
   };
 
   const analyzeProfile = async () => {
+    if (profilePlatform !== 'instagram') {
+      setError('No momento, a busca está disponível somente para Instagram. TikTok em breve.');
+      return;
+    }
     if (!profileName.trim()) {
       setError('Digite o @ ou nome do perfil.');
+      return;
+    }
+    if (/^https?:\/\//i.test(profileName.trim()) && !isInstagramUrl(profileName.trim())) {
+      setError('Use um perfil do Instagram. TikTok em breve.');
       return;
     }
     if (profilePeriod === 'custom' && (!profileDateFrom || !profileDateTo)) {
@@ -513,7 +518,7 @@ function BulkDownload() {
         </div>
         <div className="bulk-profile-form">
           <select value={profilePlatform} onChange={(event) => setProfilePlatform(event.target.value)} aria-label="Rede social">
-            {Object.entries(PLATFORM_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {PROFILE_PLATFORMS.map(({ value, label, disabled }) => <option key={value} value={value} disabled={disabled}>{label}</option>)}
           </select>
           <input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="@nome_do_perfil" onKeyDown={(event) => { if (event.key === 'Enter') analyzeProfile(); }} />
           <select value={profileLimit} onChange={(event) => setProfileLimit(Number(event.target.value))} aria-label="Quantidade de vídeos">
@@ -558,14 +563,14 @@ function BulkDownload() {
             <p>Até 50 links públicos, um por linha.</p>
           </div>
           <div className="bulk-platforms">
-            {Object.values(PLATFORM_LABELS).map((label) => <span key={label}>{label}</span>)}
+            {PROFILE_PLATFORMS.map(({ value, label, disabled }) => <span key={value} className={disabled ? 'coming-soon' : ''}>{label}</span>)}
           </div>
         </div>
 
         <textarea
           value={links}
           onChange={(event) => setLinks(event.target.value)}
-          placeholder={'https://www.instagram.com/reel/...\nhttps://www.tiktok.com/@perfil/video/...\nhttps://www.facebook.com/reel/...'}
+          placeholder={'https://www.instagram.com/reel/...\nhttps://www.instagram.com/p/...'}
           rows={5}
         />
 

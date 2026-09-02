@@ -81,6 +81,7 @@
 
 .bulk-platforms { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .bulk-platforms span { border: 1px solid #31404c; color: #bcc6cf; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
+.bulk-platforms .coming-soon { color: #9ba8b5; border-style: dashed; }
 
 .bulk-source-panel textarea {
   width: 100%;

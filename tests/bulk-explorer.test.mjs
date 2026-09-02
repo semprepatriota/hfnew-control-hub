@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { isInstagramUrl, PLATFORM_LABELS, PROFILE_PLATFORMS } from '../src/modules/bulk-download/services/bulkPlatforms.js';
 
 const extension = new URL('../extension/hf-bulk-explorer/', import.meta.url);
 const source = (file) => readFileSync(new URL(file, extension), 'utf8');
@@ -163,4 +164,28 @@ test('extension release includes every referenced icon and no broader host acces
   assert.deepEqual(manifest.host_permissions, ['https://app.hfnew.com.br/*', 'https://www.instagram.com/*']);
   for (const icon of Object.values(manifest.icons)) assert.ok(existsSync(new URL(icon, extension)), icon);
   for (const script of manifest.content_scripts.flatMap((entry) => entry.js)) assert.ok(existsSync(new URL(script, extension)), script);
+});
+
+test('only Instagram is available; TikTok is visibly coming soon', () => {
+  assert.deepEqual(PROFILE_PLATFORMS, [
+    { value: 'instagram', label: 'Instagram', disabled: false },
+    { value: 'tiktok', label: 'TikTok (em breve)', disabled: true },
+  ]);
+  const page = readFileSync(new URL('../src/modules/bulk-download/pages/BulkDownload.jsx', import.meta.url), 'utf8');
+  assert.match(page, /<option[^>]*disabled=\{disabled\}/);
+  assert.doesNotMatch(page, /Object\.(entries|values)\(PLATFORM_LABELS\)/);
+  assert.doesNotMatch(page, /https:\/\/www\.(tiktok|facebook|pinterest|kwai)\.com/);
+  assert.equal(PLATFORM_LABELS.facebook, 'Facebook');
+});
+
+test('new link searches accept Instagram, not other networks or lookalike hosts', () => {
+  for (const url of ['https://www.instagram.com/reel/example/', 'https://instagram.com/p/example/', 'http://m.instagram.com/example/']) {
+    assert.equal(isInstagramUrl(url), true, url);
+  }
+  for (const url of ['https://www.tiktok.com/@example/video/123', 'https://www.facebook.com/reel/123',
+    'https://www.pinterest.com/pin/123', 'https://www.kwai.com/@example',
+    'https://instagram.com.evil.example/reel/123', 'https://notinstagram.com/reel/123',
+    'https://instagram.com@evil.example/reel/123', 'ftp://instagram.com/example', 'not a url']) {
+    assert.equal(isInstagramUrl(url), false, url);
+  }
 });
