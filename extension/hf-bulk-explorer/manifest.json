@@ -1,19 +1,26 @@
 {
   "manifest_version": 3,
   "name": "HF Bulk Explorer",
-  "version": "1.2.1",
-  "description": "Coleta e organiza links, miniaturas e metricas publicas visiveis de redes suportadas para o modulo Baixar em Massa do HF.",
+  "version": "1.3.1",
+  "description": "Coleta links, miniaturas e métricas públicas visíveis para o módulo Baixar em Massa do HF New Control Hub.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "https://www.instagram.com/*",
-    "https://www.tiktok.com/*",
-    "https://www.facebook.com/*",
-    "https://www.pinterest.com/*",
-    "https://www.kwai.com/*"
+    "https://app.hfnew.com.br/*",
+    "https://www.instagram.com/*"
   ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_title": "HF Bulk Explorer",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
   },
   "content_scripts": [
     {

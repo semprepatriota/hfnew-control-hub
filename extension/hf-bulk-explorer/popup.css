@@ -16,6 +16,7 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 button.icon { color: #062014; background: #27e77f; font-size: 18px; }
 .status { margin: 8px 0 14px; color: #f3c94f; font-size: 10px; }
 .status.ok { color: #27e77f; }
+.privacy-note { margin: 0 0 14px; padding: 10px; color: #b9c4cc; background: #0f171d; border-left: 3px solid #27e77f; border-radius: 4px; font-size: 10px; line-height: 1.45; }
 section { padding: 12px; background: #111820; border: 1px solid #28343e; border-radius: 6px; }
 .result-line { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
 .result-line strong { color: #35c7e8; font-size: 20px; }

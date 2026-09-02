@@ -495,7 +495,7 @@ function BulkDownload() {
             </div>
             {!extensionReady && (
               <div className="bulk-extension-steps">
-                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip" download><Download size={15} /> Baixar extensão</a></div>
+                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip?v=1.3.1" download><Download size={15} /> Baixar extensão</a></div>
                 <div><b>2</b><span><strong>Faça login no Instagram</strong><small>Abra o Instagram no Chrome e mantenha essa aba aberta.</small></span><button type="button" className="bulk-button ghost" onClick={openInstagram}><ExternalLink size={15} /> Abrir Instagram</button></div>
                 <div><b>3</b><span><strong>Volte ao HF</strong><small>Depois do login, clique em verificar novamente.</small></span><button type="button" className="bulk-button secondary" onClick={checkExtension}><RefreshCw size={15} /> Verificar conexão</button></div>
               </div>
@@ -517,7 +517,7 @@ function BulkDownload() {
           </select>
           <input value={profileName} onChange={(event) => setProfileName(event.target.value)} placeholder="@nome_do_perfil" onKeyDown={(event) => { if (event.key === 'Enter') analyzeProfile(); }} />
           <select value={profileLimit} onChange={(event) => setProfileLimit(Number(event.target.value))} aria-label="Quantidade de vídeos">
-            {[10, 25, 50, 75, 100].map((value) => <option key={value} value={value}>{value} vídeos</option>)}
+            {[5, 10, 25, 50, 75, 100].map((value) => <option key={value} value={value}>{value} vídeos</option>)}
           </select>
           <button type="button" className={`bulk-button ${busy === 'profile' ? 'danger' : 'primary'}`} onClick={busy === 'profile' ? cancelProfileSearch : analyzeProfile}>
             {busy === 'profile' ? <X size={17} /> : <Search size={17} />}
@@ -605,7 +605,7 @@ function BulkDownload() {
                   <div className="bulk-thumbnail">
                     {isPlayablePreview(item.preview_url) ? (
                       <video src={item.preview_url} poster={item.thumbnail || undefined} controls preload="metadata" />
-                    ) : item.thumbnail ? <img src={item.thumbnail} alt="" referrerPolicy="no-referrer" /> : <Video size={30} />}
+                    ) : item.thumbnail ? <img src={item.thumbnail} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <Video size={30} />}
                     <span>{readableDuration(item.duration)}</span>
                   </div>
                   <div className="bulk-card-body">

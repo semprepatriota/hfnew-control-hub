@@ -31,14 +31,44 @@ async function collectVisibleMedia(limit = 25) {
   const collected = new Map();
 
   const parseCount = (text) => {
-    const normalized = String(text || '').toLowerCase().replace(/\s/g, '').replace(',', '.');
-    const match = normalized.match(/(\d+(?:\.\d+)?)(mi|mil|m|k)?/);
+    const match = String(text || '').toLowerCase().match(/(\d[\d.,\s]*)(mil|mi|k|m)?\b/);
     if (!match) return 0;
-    const value = Number(match[1]);
+    const digits = match[1].replace(/\s/g, '').replace(/[.,]+$/, '');
     const suffix = match[2] || '';
-    if (suffix === 'mi' || suffix === 'm') return Math.round(value * 1_000_000);
-    if (suffix === 'mil' || suffix === 'k') return Math.round(value * 1_000);
-    return Math.round(value);
+    const normalized = suffix
+      ? digits.replace(/[.,](?=.*[.,])/g, '').replace(',', '.')
+      : digits.replace(/[.,]/g, '');
+    const multiplier = suffix === 'mil' || suffix === 'k' ? 1000 : suffix ? 1000000 : 1;
+    const count = Number(normalized) * multiplier;
+    return Number.isFinite(count) ? Math.round(count) : 0;
+  };
+
+  const readThumbnail = (anchor) => {
+    const image = anchor.querySelector('img');
+    const video = anchor.querySelector('video');
+    const direct = image?.currentSrc || image?.src || video?.poster || '';
+    if (/^https?:\/\//i.test(direct)) return direct;
+    for (const node of [anchor, ...anchor.querySelectorAll('[style*="background-image"]')]) {
+      const match = (node.style?.backgroundImage || '').match(/url\(\s*(["']?)(.*?)\1\s*\)/i);
+      if (match && /^https?:\/\//i.test(match[2])) return match[2];
+    }
+    return '';
+  };
+
+  const readMetric = (anchor, type) => {
+    const selector = type === 'views'
+      ? '[aria-label*="visualiza" i], [aria-label*="view" i], [aria-label*="contagem" i]'
+      : '[aria-label*="curtida" i], [aria-label*="like" i]';
+    let node = anchor.querySelector(selector);
+    while (node && anchor.contains(node)) {
+      const text = node.innerText || node.getAttribute('aria-label') || '';
+      if (/\d/.test(text)) return parseCount(text);
+      if (node === anchor) break;
+      node = node.parentElement;
+    }
+    const text = anchor.innerText || '';
+    return type === 'views' && /^\s*\d[\d.,\s]*(?:mil|mi|k|m)?\s*$/i.test(text)
+      ? parseCount(text) : 0;
   };
 
   const platform = host.includes('instagram') ? 'instagram'
@@ -49,7 +79,7 @@ async function collectVisibleMedia(limit = 25) {
 
   const supported = (url) => {
     const path = url.pathname;
-    if (platform === 'instagram') return /^\/(p|reel|tv)\//.test(path);
+    if (platform === 'instagram') return /^\/(?:[A-Za-z0-9._]+\/)?(p|reel|tv)\//.test(path);
     if (platform === 'tiktok') return path.includes('/video/');
     if (platform === 'facebook') return path.includes('/reel/') || path.includes('/videos/');
     if (platform === 'pinterest') return path.includes('/pin/');
@@ -67,14 +97,11 @@ async function collectVisibleMedia(limit = 25) {
     const video = anchor.querySelector('video');
     const rawVideoUrl = video?.currentSrc || video?.src || '';
     const safeVideoUrl = /^https?:\/\//i.test(rawVideoUrl) ? rawVideoUrl : '';
-    const container = anchor.closest('article, ytd-rich-item-renderer, ytd-grid-video-renderer') || anchor.parentElement;
-    const countNode = container?.querySelector('[aria-label*="visualiza" i], [aria-label*="view" i], [title*="visualiza" i], [title*="view" i]');
-    const likeNode = container?.querySelector('[aria-label*="curtida" i], [aria-label*="like" i], [title*="curtida" i], [title*="like" i]');
-    const timeNode = container?.querySelector('time[datetime]');
+    const timeNode = anchor.querySelector('time[datetime]');
     const title = image?.alt || anchor.getAttribute('aria-label') || document.title || 'Conteúdo encontrado';
-    const thumbnail = image?.currentSrc || image?.src || video?.poster || '';
-    const mediaUrl = safeVideoUrl || (platform === 'instagram' && image?.currentSrc ? image.currentSrc : '');
+    const thumbnail = readThumbnail(anchor);
     const mediaType = url.pathname.includes('/p/') && !video ? 'image' : 'video';
+    const mediaUrl = safeVideoUrl || (platform === 'instagram' && mediaType === 'image' ? thumbnail : '');
     collected.set(url.href, {
       url: url.href,
       media_url: mediaUrl,
@@ -84,8 +111,8 @@ async function collectVisibleMedia(limit = 25) {
       platform,
       media_type: mediaType,
       duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
-      view_count: parseCount(countNode?.getAttribute('aria-label') || countNode?.getAttribute('title') || countNode?.textContent || ''),
-      like_count: parseCount(likeNode?.getAttribute('aria-label') || likeNode?.getAttribute('title') || likeNode?.textContent || ''),
+      view_count: readMetric(anchor, 'views'),
+      like_count: readMetric(anchor, 'likes'),
       published_at: timeNode?.dateTime || timeNode?.getAttribute('datetime') || ''
     });
   }
@@ -97,7 +124,7 @@ async function collectVisibleMedia(limit = 25) {
       const image = document.querySelector('main img, article img');
       collected.set(current.href.split('?')[0], {
         url: current.href.split('?')[0],
-        media_url: platform === 'instagram' ? (image?.currentSrc || '') : '',
+        media_url: platform === 'instagram' && current.pathname.includes('/p/') ? (image?.currentSrc || '') : '',
         title: document.title || 'Conteúdo encontrado',
         thumbnail: image?.currentSrc || '',
         preview_url: '',

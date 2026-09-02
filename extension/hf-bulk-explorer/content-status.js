@@ -44,13 +44,46 @@ async function postStatusToApp() {
 }
 
 function parseCompactCount(text) {
-  const normalized = String(text || '').toLowerCase().replace(/\s/g, '').replace(',', '.');
-  const match = normalized.match(/(\d+(?:\.\d+)?)(mi|mil|m|k)?/);
+  const match = String(text || '').toLowerCase().match(/(\d[\d.,\s]*)(mil|mi|k|m)?\b/);
   if (!match) return 0;
-  const value = Number(match[1]);
-  if (match[2] === 'mi' || match[2] === 'm') return Math.round(value * 1000000);
-  if (match[2] === 'mil' || match[2] === 'k') return Math.round(value * 1000);
-  return Math.round(value);
+  const digits = match[1].replace(/\s/g, '').replace(/[.,]+$/, '');
+  const suffix = match[2] || '';
+  const normalized = suffix
+    ? digits.replace(/[.,](?=.*[.,])/g, '').replace(',', '.')
+    : digits.replace(/[.,]/g, '');
+  const multiplier = suffix === 'mil' || suffix === 'k' ? 1000 : suffix ? 1000000 : 1;
+  const count = Number(normalized) * multiplier;
+  return Number.isFinite(count) ? Math.round(count) : 0;
+}
+
+function readCardThumbnail(anchor) {
+  const image = anchor.querySelector('img');
+  const video = anchor.querySelector('video');
+  const direct = image?.currentSrc || image?.src || video?.poster || '';
+  if (/^https?:\/\//i.test(direct)) return direct;
+  // Instagram Reels also renders covers as CSS backgrounds, without an img tag.
+  for (const node of [anchor, ...anchor.querySelectorAll('[style*="background-image"]')]) {
+    const background = node.style?.backgroundImage || '';
+    const match = background.match(/url\(\s*(["']?)(.*?)\1\s*\)/i);
+    if (match && /^https?:\/\//i.test(match[2])) return match[2];
+  }
+  return '';
+}
+
+function readCardMetric(anchor, type) {
+  const selector = type === 'views'
+    ? '[aria-label*="visualiza" i], [aria-label*="view" i], [aria-label*="contagem" i]'
+    : '[aria-label*="curtida" i], [aria-label*="like" i]';
+  let node = anchor.querySelector(selector);
+  while (node && anchor.contains(node)) {
+    const text = node.innerText || node.getAttribute('aria-label') || '';
+    if (/\d/.test(text)) return parseCompactCount(text);
+    if (node === anchor) break;
+    node = node.parentElement;
+  }
+  const text = anchor.innerText || '';
+  return type === 'views' && /^\s*\d[\d.,\s]*(?:mil|mi|k|m)?\s*$/i.test(text)
+    ? parseCompactCount(text) : 0;
 }
 
 function periodBounds(request) {
@@ -66,6 +99,12 @@ function periodBounds(request) {
 }
 
 async function collectInstagramProfile(request) {
+  // A new tab can finish navigation before the React media grid is populated.
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const cards = Array.from(document.querySelectorAll('a[href*="/reel/"], a[href*="/p/"]'));
+    if (cards.some((card) => readCardThumbnail(card))) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
   const candidateTarget = request.sortBy === 'recent' && request.period === 'all'
     ? Number(request.limit)
     : Math.min(200, Math.max(100, Number(request.limit) * 3));
@@ -89,21 +128,18 @@ async function collectInstagramProfile(request) {
     const video = anchor.querySelector('video');
     const rawMediaUrl = video?.currentSrc || video?.src || '';
     const mediaUrl = /^https?:\/\//i.test(rawMediaUrl) ? rawMediaUrl : '';
-    const container = anchor.closest('article') || anchor.parentElement;
-    const time = container?.querySelector('time[datetime]');
-    const text = container?.innerText || anchor.innerText || '';
-    const numbers = text.match(/\d+(?:[.,]\d+)?\s*(?:mi|mil|m|k)?/gi) || [];
+    const time = anchor.querySelector('time[datetime]');
     collected.set(url.href, {
       url: url.href,
       media_url: mediaUrl,
       preview_url: mediaUrl,
-      title: (image?.alt || anchor.getAttribute('aria-label') || 'Conteúdo do Instagram').slice(0, 500),
-      thumbnail: image?.currentSrc || image?.src || video?.poster || '',
+      title: (image?.alt || anchor.getAttribute('aria-label') || `Reel de @${request.username}`).slice(0, 500),
+      thumbnail: readCardThumbnail(anchor),
       platform: 'instagram',
       media_type: url.pathname.includes('/p/') && !video ? 'image' : 'video',
       duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
-      view_count: parseCompactCount(numbers[0] || ''),
-      like_count: parseCompactCount(numbers[1] || ''),
+      view_count: readCardMetric(anchor, 'views'),
+      like_count: readCardMetric(anchor, 'likes'),
       published_at: time?.dateTime || time?.getAttribute('datetime') || ''
     });
   }

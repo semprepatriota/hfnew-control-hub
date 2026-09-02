@@ -9,14 +9,19 @@
   <body>
     <main>
       <header>
-        <div class="logo">HF</div>
+        <img class="logo" src="icons/icon128.png" alt="HF Bulk Explorer" />
         <div><h1>Bulk Explorer</h1><p>Extensão do HF New Control Hub</p></div>
       </header>
 
       <div class="status ok">Conexão local protegida pelo Chrome</div>
 
+      <p class="privacy-note">
+        Ao clicar em Escanear, a extensão lê somente links, miniaturas e métricas públicas visíveis da aba atual. Não lê senhas, cookies ou mensagens.
+      </p>
+
       <label for="scanLimit">Quantidade de vídeos</label>
       <select id="scanLimit">
+        <option value="5">5 vídeos</option>
         <option value="10">10 vídeos</option>
         <option value="25" selected>25 vídeos</option>
         <option value="50">50 vídeos</option>
