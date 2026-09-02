@@ -7,7 +7,9 @@ import {
   DatabaseBackup,
   HardDrive,
   Loader2,
+  LockKeyhole,
   RefreshCw,
+  Rocket,
   Search,
   ShieldCheck,
   Trash2,
@@ -49,6 +51,9 @@ const STATUS_LABELS = {
   success: 'Sucesso',
   denied: 'Negado',
   error: 'Erro',
+  pass: 'Pronto',
+  blocker: 'Bloqueio',
+  warning: 'Atenção',
 };
 
 async function readJson(response) {
@@ -79,9 +84,9 @@ function formatDate(value) {
 }
 
 function statusTone(status) {
-  if (['active', 'created', 'verified', 'success', 'trialing'].includes(status)) return 'success';
-  if (['failed', 'error', 'expired', 'suspended'].includes(status)) return 'danger';
-  if (['denied', 'past_due', 'canceled'].includes(status)) return 'warning';
+  if (['active', 'created', 'verified', 'success', 'trialing', 'pass'].includes(status)) return 'success';
+  if (['failed', 'error', 'expired', 'suspended', 'blocker'].includes(status)) return 'danger';
+  if (['denied', 'past_due', 'canceled', 'warning'].includes(status)) return 'warning';
   return 'neutral';
 }
 
@@ -89,6 +94,7 @@ function Admin() {
   const [overview, setOverview] = useState(null);
   const [backups, setBackups] = useState([]);
   const [audit, setAudit] = useState({ items: [], total: 0 });
+  const [readiness, setReadiness] = useState(null);
   const [filters, setFilters] = useState({ workspace_id: '', category: '', outcome: '' });
   const [loading, setLoading] = useState(true);
   const [actionKey, setActionKey] = useState('');
@@ -108,14 +114,16 @@ function Admin() {
     setLoading(true);
     setError('');
     try {
-      const [overviewPayload, backupsPayload, auditPayload] = await Promise.all([
+      const [overviewPayload, backupsPayload, auditPayload, readinessPayload] = await Promise.all([
         fetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
         fetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
         fetch(apiUrl('/api/admin/audit?limit=100'), { cache: 'no-store' }).then(readJson),
+        fetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
       ]);
       setOverview(overviewPayload);
       setBackups(backupsPayload.items || []);
       setAudit(auditPayload);
+      setReadiness(readinessPayload);
     } catch (loadError) {
       setError(loadError.message || 'Falha ao carregar Administração.');
     } finally {
@@ -128,12 +136,14 @@ function Admin() {
   }, [loadAll]);
 
   const refreshAfterAction = useCallback(async () => {
-    const [overviewPayload, backupsPayload] = await Promise.all([
+    const [overviewPayload, backupsPayload, readinessPayload] = await Promise.all([
       fetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
       fetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
+      fetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
     ]);
     setOverview(overviewPayload);
     setBackups(backupsPayload.items || []);
+    setReadiness(readinessPayload);
     await loadAudit();
   }, [loadAudit]);
 
@@ -273,6 +283,29 @@ function Admin() {
           {STATUS_LABELS[overview?.last_backup?.status] || 'Sem backup'}
         </span>
       </div>
+
+      <section className="admin-section admin-readiness">
+        <div className="admin-section-heading">
+          <div><h2>Prontidão comercial</h2><span>Segurança e operação para novos clientes</span></div>
+          <span className={`admin-status-chip ${readiness?.launch_ready ? 'success' : 'danger'}`}>
+            {readiness?.launch_ready ? 'Pronto para lançamento' : 'Ajustes necessários'}
+          </span>
+        </div>
+        <div className="admin-readiness-summary">
+          <span className="admin-readiness-score"><Rocket size={20} /><strong>{readiness?.score || 0}%</strong></span>
+          <span><CheckCircle2 size={15} /> {readiness?.summary?.passed || 0} prontos</span>
+          <span><AlertTriangle size={15} /> {readiness?.summary?.warnings || 0} alertas</span>
+          <span><LockKeyhole size={15} /> {readiness?.summary?.blockers || 0} bloqueios</span>
+        </div>
+        <div className="admin-readiness-grid">
+          {(readiness?.checks || []).map((check) => (
+            <article className={`admin-readiness-item ${statusTone(check.status)}`} key={check.id}>
+              <div><strong>{check.label}</strong><span className={`admin-status-chip ${statusTone(check.status)}`}>{STATUS_LABELS[check.status]}</span></div>
+              <p>{check.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="admin-section">
         <div className="admin-section-heading">

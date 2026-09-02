@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, ShieldX } from 'lucide-react';
+import AppErrorBoundary from './components/AppErrorBoundary';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import Conexoes from './components/Pages/Conexoes';
@@ -393,7 +394,25 @@ function AppShell() {
     return <DashboardLogin message={authStatus.message} />;
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const authToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
+    if (authToken) {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 2500);
+      try {
+        await fetch(apiUrl('/api/auth/logout'), {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}` },
+          cache: 'no-store',
+          keepalive: true,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        console.warn('A sessão local foi encerrada antes da confirmação remota.');
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
     window.localStorage.removeItem(RECENT_AUTH_KEY);
     window.localStorage.removeItem('alliance_dark_pending_auth_flow');
@@ -451,7 +470,7 @@ function AppShell() {
         </button>
       )}
 
-      <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')}`}>
+      <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')} ${location.pathname === '/administracao' ? 'admin-route' : ''}`}>
         <Routes>
           <Route path="/" element={<Dashboard moduleAccess={moduleAccess} />} />
           <Route path="/painel" element={<Dashboard moduleAccess={moduleAccess} />} />
@@ -496,9 +515,11 @@ function AppShell() {
 
 function App() {
   return (
-    <Router>
-      <AppShell />
-    </Router>
+    <AppErrorBoundary>
+      <Router>
+        <AppShell />
+      </Router>
+    </AppErrorBoundary>
   );
 }
 
