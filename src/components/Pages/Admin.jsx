@@ -15,7 +15,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import { apiUrl } from '../../config/api';
+import { apiFetch, apiUrl } from '../../config/api';
 import './Admin.css';
 
 
@@ -95,6 +95,7 @@ function Admin() {
   const [backups, setBackups] = useState([]);
   const [audit, setAudit] = useState({ items: [], total: 0 });
   const [readiness, setReadiness] = useState(null);
+  const [runtime, setRuntime] = useState(null);
   const [filters, setFilters] = useState({ workspace_id: '', category: '', outcome: '' });
   const [loading, setLoading] = useState(true);
   const [actionKey, setActionKey] = useState('');
@@ -106,7 +107,7 @@ function Admin() {
     Object.entries(activeFilters).forEach(([key, value]) => {
       if (value) query.set(key, value);
     });
-    const payload = await readJson(await fetch(apiUrl(`/api/admin/audit?${query.toString()}`), { cache: 'no-store' }));
+    const payload = await readJson(await apiFetch(apiUrl(`/api/admin/audit?${query.toString()}`), { cache: 'no-store' }));
     setAudit(payload);
   }, [filters]);
 
@@ -114,16 +115,18 @@ function Admin() {
     setLoading(true);
     setError('');
     try {
-      const [overviewPayload, backupsPayload, auditPayload, readinessPayload] = await Promise.all([
-        fetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
-        fetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
-        fetch(apiUrl('/api/admin/audit?limit=100'), { cache: 'no-store' }).then(readJson),
-        fetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
+      const [overviewPayload, backupsPayload, auditPayload, readinessPayload, runtimePayload] = await Promise.all([
+        apiFetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
+        apiFetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
+        apiFetch(apiUrl('/api/admin/audit?limit=100'), { cache: 'no-store' }).then(readJson),
+        apiFetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
+        apiFetch(apiUrl('/api/security/runtime'), { cache: 'no-store' }).then(readJson),
       ]);
       setOverview(overviewPayload);
       setBackups(backupsPayload.items || []);
       setAudit(auditPayload);
       setReadiness(readinessPayload);
+      setRuntime(runtimePayload);
     } catch (loadError) {
       setError(loadError.message || 'Falha ao carregar Administração.');
     } finally {
@@ -136,14 +139,16 @@ function Admin() {
   }, [loadAll]);
 
   const refreshAfterAction = useCallback(async () => {
-    const [overviewPayload, backupsPayload, readinessPayload] = await Promise.all([
-      fetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
-      fetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
-      fetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
+    const [overviewPayload, backupsPayload, readinessPayload, runtimePayload] = await Promise.all([
+      apiFetch(apiUrl('/api/admin/overview'), { cache: 'no-store' }).then(readJson),
+      apiFetch(apiUrl('/api/admin/backups'), { cache: 'no-store' }).then(readJson),
+      apiFetch(apiUrl('/api/security/readiness'), { cache: 'no-store' }).then(readJson),
+      apiFetch(apiUrl('/api/security/runtime'), { cache: 'no-store' }).then(readJson),
     ]);
     setOverview(overviewPayload);
     setBackups(backupsPayload.items || []);
     setReadiness(readinessPayload);
+    setRuntime(runtimePayload);
     await loadAudit();
   }, [loadAudit]);
 
@@ -152,7 +157,7 @@ function Admin() {
     setError('');
     setMessage('');
     try {
-      await readJson(await fetch(apiUrl('/api/admin/backups'), { method: 'POST' }));
+      await readJson(await apiFetch(apiUrl('/api/admin/backups'), { method: 'POST' }));
       setMessage('Backup de identidade criado com sucesso.');
       await refreshAfterAction();
     } catch (actionError) {
@@ -167,7 +172,7 @@ function Admin() {
     setError('');
     setMessage('');
     try {
-      await readJson(await fetch(apiUrl(`/api/admin/backups/${encodeURIComponent(backupId)}/verify`), { method: 'POST' }));
+      await readJson(await apiFetch(apiUrl(`/api/admin/backups/${encodeURIComponent(backupId)}/verify`), { method: 'POST' }));
       setMessage('Integridade do backup confirmada.');
       await refreshAfterAction();
     } catch (actionError) {
@@ -183,7 +188,7 @@ function Admin() {
     setError('');
     setMessage('');
     try {
-      await readJson(await fetch(apiUrl(`/api/admin/backups/${encodeURIComponent(backup.id)}`), { method: 'DELETE' }));
+      await readJson(await apiFetch(apiUrl(`/api/admin/backups/${encodeURIComponent(backup.id)}`), { method: 'DELETE' }));
       setMessage('Backup excluído.');
       await refreshAfterAction();
     } catch (actionError) {
@@ -283,6 +288,41 @@ function Admin() {
           {STATUS_LABELS[overview?.last_backup?.status] || 'Sem backup'}
         </span>
       </div>
+
+      <section className="admin-section admin-runtime" aria-label="Monitoramento em tempo real">
+        <div className="admin-section-heading">
+          <div><h2>Operação em tempo real</h2><span>Desde o último reinício da API</span></div>
+          <span className={`admin-status-chip ${runtime?.storage?.status === 'critical' ? 'danger' : 'success'}`}>
+            {runtime?.storage?.status === 'critical' ? 'Espaço crítico' : 'Serviços estáveis'}
+          </span>
+        </div>
+        <div className="admin-runtime-grid">
+          <div><span>Requisições</span><strong>{runtime?.requests?.requests || 0}</strong></div>
+          <div><span>Erros</span><strong>{runtime?.requests?.errors || 0}</strong></div>
+          <div><span>Tempo médio</span><strong>{runtime?.requests?.average_duration_ms || 0} ms</strong></div>
+          <div><span>Renderizações ativas</span><strong>{runtime?.renders?.active_count || 0}</strong></div>
+          <div><span>Fila de render</span><strong>{runtime?.renders?.waiting_count || 0}</strong></div>
+          <div><span>Espaço livre</span><strong>{formatBytes(runtime?.storage?.free_bytes)}</strong></div>
+        </div>
+        {(runtime?.requests?.routes || []).length > 0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-runtime-table">
+              <thead><tr><th>Área da API</th><th>Requisições</th><th>Erros</th><th>Média</th><th>Pior tempo</th></tr></thead>
+              <tbody>
+                {(runtime?.requests?.routes || []).slice(0, 8).map((route) => (
+                  <tr key={route.route}>
+                    <td><strong>{route.route}</strong></td>
+                    <td>{route.requests}</td>
+                    <td>{route.errors}</td>
+                    <td>{route.average_duration_ms} ms</td>
+                    <td>{route.max_duration_ms} ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="admin-section admin-readiness">
         <div className="admin-section-heading">

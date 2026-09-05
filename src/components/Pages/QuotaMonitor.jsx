@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarDays, CheckCircle2, Filter, Loader, Radio, RefreshCcw, Search, Zap } from 'lucide-react';
-import { apiUrl } from '../../config/api';
+import { apiFetch, apiUrl } from '../../config/api';
 import './Pages.css';
 import './QuotaMonitor.css';
 
@@ -87,7 +87,7 @@ function QuotaMonitor() {
         if (endDate) params.set('end_date', `${endDate}T23:59:59`);
       }
 
-      const response = await fetch(apiUrl(`/api/quota-monitor/overview?${params.toString()}`));
+      const response = await apiFetch(apiUrl(`/api/quota-monitor/overview?${params.toString()}`));
       if (!response.ok) {
         const payload = await response.json();
         throw new Error(payload.detail || 'Falha ao carregar monitoramento');

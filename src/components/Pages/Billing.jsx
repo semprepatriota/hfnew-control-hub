@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
-import { apiUrl } from '../../config/api';
+import { apiFetch, apiUrl } from '../../config/api';
 import './Billing.css';
 
 const STATUS_OPTIONS = [
@@ -112,11 +112,11 @@ function Billing({ currentUser }) {
     setError('');
     try {
       const requests = [
-        fetch(apiUrl('/api/billing/current'), { cache: 'no-store' }),
-        fetch(apiUrl('/api/billing/catalog'), { cache: 'no-store' }),
+        apiFetch(apiUrl('/api/billing/current'), { cache: 'no-store' }),
+        apiFetch(apiUrl('/api/billing/catalog'), { cache: 'no-store' }),
       ];
       if (isOwner) {
-        requests.push(fetch(apiUrl('/api/billing/admin/subscriptions'), { cache: 'no-store' }));
+        requests.push(apiFetch(apiUrl('/api/billing/admin/subscriptions'), { cache: 'no-store' }));
       }
       const responses = await Promise.all(requests);
       const payloads = await Promise.all(responses.map(readJson));
@@ -181,7 +181,7 @@ function Billing({ currentUser }) {
     setError('');
     setMessage('');
     try {
-      const response = await fetch(apiUrl(`/api/billing/admin/plans/${encodeURIComponent(planCode)}`), {
+      const response = await apiFetch(apiUrl(`/api/billing/admin/plans/${encodeURIComponent(planCode)}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -224,7 +224,7 @@ function Billing({ currentUser }) {
     setError('');
     setMessage('');
     try {
-      const response = await fetch(apiUrl(`/api/billing/admin/subscriptions/${encodeURIComponent(workspaceId)}`), {
+      const response = await apiFetch(apiUrl(`/api/billing/admin/subscriptions/${encodeURIComponent(workspaceId)}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),
