@@ -2451,6 +2451,39 @@
   animation: spin 1s linear infinite;
 }
 
+.resumable-upload-track {
+  width: min(100%, 360px);
+  height: 7px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.resumable-upload-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #00ff41;
+  transition: width 0.2s ease;
+}
+
+.resumable-upload-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #2f8fbd;
+  border-radius: 6px;
+  background: #12364c;
+  color: #d8f3ff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* Video Preview */
 .video-preview {
   width: 100%;

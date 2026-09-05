@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Sliders,
   Play,
+  Pause,
   Download,
   CalendarClock,
   Loader,
@@ -747,6 +748,9 @@ function ForgeEditor() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [downloadingSocialImage, setDownloadingSocialImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadPaused, setVideoUploadPaused] = useState(false);
+  const resumableVideoUploadRef = useRef(null);
   const [uploadingAvatarVideo, setUploadingAvatarVideo] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [deletingVideoFile, setDeletingVideoFile] = useState(null);
@@ -1743,6 +1747,7 @@ function ForgeEditor() {
   const handleVideoUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    event.target.value = '';
 
     // Validar tipo de arquivo
     if (!file.type.startsWith('video/')) {
@@ -1751,47 +1756,80 @@ function ForgeEditor() {
     }
 
     setUploadingVideo(true);
+    setVideoUploadProgress(0);
+    setVideoUploadPaused(false);
     setError('');
     const channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (channelId) {
-        formData.append('channel_id', channelId);
-      }
-
-      const response = await fetch(apiUrl('/api/forge/upload-video'), {
-        method: 'POST',
-        body: formData,
+      const tus = await import('tus-js-client');
+      const token = safeStorageGet('alliance_dark_auth_token');
+      const data = await new Promise((resolve, reject) => {
+        const upload = new tus.Upload(file, {
+          endpoint: apiUrl('/api/forge/resumable/files'),
+          chunkSize: 8 * 1024 * 1024,
+          retryDelays: [0, 1000, 3000, 5000, 10000],
+          removeFingerprintOnSuccess: true,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          metadata: {
+            filename: file.name,
+            filetype: file.type || 'video/mp4',
+            target: 'forge_video',
+            channel_id: channelId || '',
+          },
+          onError: reject,
+          onProgress: (bytesUploaded, bytesTotal) => {
+            const percent = bytesTotal > 0 ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;
+            setVideoUploadProgress(percent);
+          },
+          onSuccess: async () => {
+            try {
+              const response = await apiFetch(apiUrl('/api/forge/resumable/finalize'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  upload_url: upload.url,
+                  channel_id: channelId || '',
+                  target: 'forge_video',
+                }),
+                timeoutMs: 120000,
+              });
+              if (!response.ok) {
+                throw new Error(await readApiError(response, 'Erro ao finalizar o video'));
+              }
+              resolve(await response.json());
+            } catch (finalizeError) {
+              reject(finalizeError);
+            }
+          },
+        });
+        resumableVideoUploadRef.current = upload;
+        upload.findPreviousUploads().then((previousUploads) => {
+          if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+          upload.start();
+        }).catch(reject);
       });
-
-      if (!response.ok) {
-        const responseText = await response.text();
-        let errorMessage = 'Erro ao fazer upload';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
-          if (response.status === 413) {
-            errorMessage = 'Arquivo muito grande para o proxy da API. Aumente client_max_body_size no Nginx da VPS.';
-          } else if (responseText.trim()) {
-            errorMessage = responseText.trim();
-          }
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
       alert(`✅ Vídeo enviado com sucesso!\nSalvo em: ${data.filename}`);
-
-      loadLocalVideos(channelId);
+      await loadLocalVideos(channelId);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Falha no envio retomavel do video');
     } finally {
+      resumableVideoUploadRef.current = null;
       setUploadingVideo(false);
-      event.target.value = '';
+      setVideoUploadPaused(false);
     }
+  };
+
+  const pauseResumableVideoUpload = async () => {
+    if (!resumableVideoUploadRef.current || videoUploadPaused) return;
+    await resumableVideoUploadRef.current.abort();
+    setVideoUploadPaused(true);
+  };
+
+  const resumeResumableVideoUpload = () => {
+    if (!resumableVideoUploadRef.current || !videoUploadPaused) return;
+    resumableVideoUploadRef.current.start();
+    setVideoUploadPaused(false);
   };
 
   const handleAvatarVideoUpload = async (event) => {
@@ -4144,7 +4182,11 @@ function ForgeEditor() {
                       {uploadingVideo ? (
                         <>
                           <Loader size={32} className="spinner" />
-                          <p>Enviando vídeo...</p>
+                          <p>{videoUploadPaused ? 'Envio pausado' : 'Enviando vídeo em partes...'}</p>
+                          <span className="upload-hint">{videoUploadProgress}% concluído</span>
+                          <span className="resumable-upload-track" aria-hidden="true">
+                            <span style={{ width: `${videoUploadProgress}%` }} />
+                          </span>
                         </>
                       ) : (
                         <>
@@ -4155,6 +4197,16 @@ function ForgeEditor() {
                       )}
                     </div>
                   </label>
+                  {uploadingVideo && (
+                    <button
+                      type="button"
+                      className="resumable-upload-control"
+                      onClick={videoUploadPaused ? resumeResumableVideoUpload : pauseResumableVideoUpload}
+                    >
+                      {videoUploadPaused ? <Play size={15} /> : <Pause size={15} />}
+                      {videoUploadPaused ? 'Continuar envio' : 'Pausar envio'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Grid de Vídeos */}
