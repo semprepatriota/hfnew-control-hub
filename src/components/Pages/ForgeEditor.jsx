@@ -14,7 +14,8 @@ import {
   PanelBottom,
   Maximize2,
   LayoutPanelTop,
-  Link
+  Link,
+  Plus
 } from 'lucide-react';
 import { apiFetch, apiUrl } from '../../config/api';
 import {
