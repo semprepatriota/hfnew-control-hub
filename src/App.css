@@ -294,3 +294,11 @@
     flex-direction: column;
   }
 }
+.module-loading {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  color: #dce8f4;
+  font-size: 14px;
+  font-weight: 700;
+}

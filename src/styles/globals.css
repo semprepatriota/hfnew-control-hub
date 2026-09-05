@@ -219,3 +219,19 @@ select:focus {
     min-height: 42px;
   }
 }
+@supports (content-visibility: auto) {
+  .forge2-library-card,
+  .forge-max-extractor-video-card,
+  .forge-max-extractor-clip-card,
+  .bulk-media-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 280px;
+  }
+
+  .agents-queue-item,
+  .agents-generated-item,
+  .forge2-production-table tbody tr {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 84px;
+  }
+}

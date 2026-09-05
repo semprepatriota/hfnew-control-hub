@@ -1,35 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, ShieldX } from 'lucide-react';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
-import Conexoes from './components/Pages/Conexoes';
-import Billing from './components/Pages/Billing';
-import Admin from './components/Pages/Admin';
-import Intel from './components/Pages/Intel';
-import BulkDownload from './modules/bulk-download/pages/BulkDownload';
-import Forge from './components/Pages/Forge';
-import TheForge5050 from './modules/the-forge-50-50/pages/TheForge5050';
-import ForgeEasyEditor from './modules/forge-easy-editor/pages/ForgeEasyEditor';
-import ForgeMaxExtractor from './modules/forge-max/pages/ForgeMaxExtractor';
-import ResearchStudio from './modules/research-studio/pages/ResearchStudio';
-import Vault from './components/Pages/Vault';
-import Schedule from './components/Pages/Schedule';
-import QuotaMonitor from './components/Pages/QuotaMonitor';
-import Agents from './components/Pages/Agents';
-import Leads from './components/Pages/Leads';
-import WhatsAppHub from './modules/whatsapp/pages/WhatsAppHub';
-import OAuthCallback from './components/Pages/OAuthCallback';
-import PublicDashboard from './components/Pages/PublicDashboard';
-import PublicPrivacy from './components/Pages/PublicPrivacy';
-import PublicTerms from './components/Pages/PublicTerms';
-import PublicRevokeAccess from './components/Pages/PublicRevokeAccess';
-import PublicSupport from './components/Pages/PublicSupport';
-import AccessDenied from './components/Pages/AccessDenied';
 import DashboardLogin from './components/Pages/DashboardLogin';
 import { apiUrl } from './config/api';
 import './App.css';
+
+const Conexoes = lazy(() => import('./components/Pages/Conexoes'));
+const Billing = lazy(() => import('./components/Pages/Billing'));
+const Admin = lazy(() => import('./components/Pages/Admin'));
+const Intel = lazy(() => import('./components/Pages/Intel'));
+const BulkDownload = lazy(() => import('./modules/bulk-download/pages/BulkDownload'));
+const Forge = lazy(() => import('./components/Pages/Forge'));
+const TheForge5050 = lazy(() => import('./modules/the-forge-50-50/pages/TheForge5050'));
+const ForgeEasyEditor = lazy(() => import('./modules/forge-easy-editor/pages/ForgeEasyEditor'));
+const ForgeMaxExtractor = lazy(() => import('./modules/forge-max/pages/ForgeMaxExtractor'));
+const ResearchStudio = lazy(() => import('./modules/research-studio/pages/ResearchStudio'));
+const Vault = lazy(() => import('./components/Pages/Vault'));
+const Schedule = lazy(() => import('./components/Pages/Schedule'));
+const QuotaMonitor = lazy(() => import('./components/Pages/QuotaMonitor'));
+const Agents = lazy(() => import('./components/Pages/Agents'));
+const Leads = lazy(() => import('./components/Pages/Leads'));
+const WhatsAppHub = lazy(() => import('./modules/whatsapp/pages/WhatsAppHub'));
+const OAuthCallback = lazy(() => import('./components/Pages/OAuthCallback'));
+const PublicDashboard = lazy(() => import('./components/Pages/PublicDashboard'));
+const PublicPrivacy = lazy(() => import('./components/Pages/PublicPrivacy'));
+const PublicTerms = lazy(() => import('./components/Pages/PublicTerms'));
+const PublicRevokeAccess = lazy(() => import('./components/Pages/PublicRevokeAccess'));
+const PublicSupport = lazy(() => import('./components/Pages/PublicSupport'));
+const AccessDenied = lazy(() => import('./components/Pages/AccessDenied'));
 
 const AUTH_TOKEN_KEY = 'alliance_dark_auth_token';
 const OAUTH_CALLBACK_URL_KEY = 'alliance_dark_oauth_callback_url';
@@ -471,6 +472,7 @@ function AppShell() {
       )}
 
       <main className={`main-content ${isPublicRoute ? 'public-page' : (sidebarOpen ? 'sidebar-open' : 'sidebar-closed')} ${location.pathname === '/administracao' ? 'admin-route' : ''}`}>
+        <Suspense fallback={<div className="module-loading" role="status">Carregando módulo...</div>}>
         <Routes>
           <Route path="/" element={<Dashboard moduleAccess={moduleAccess} />} />
           <Route path="/painel" element={<Dashboard moduleAccess={moduleAccess} />} />
@@ -501,6 +503,7 @@ function AppShell() {
           <Route path="/suporte" element={<PublicSupport />} />
           <Route path="/acesso-negado" element={<AccessDenied />} />
         </Routes>
+        </Suspense>
       </main>
 
       {!isPublicRoute && apiStatus && (
