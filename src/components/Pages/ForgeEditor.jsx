@@ -145,6 +145,24 @@ const normalizeForge7030ImageTable = (items) => {
     }));
 };
 
+const readApiError = async (response, fallbackMessage) => {
+  const fallback = `${fallbackMessage} (HTTP ${response.status})`;
+
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const payload = await response.json();
+      return payload?.detail || payload?.message || fallback;
+    }
+
+    const message = (await response.text()).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return message || fallback;
+  } catch (error) {
+    console.warn('Nao foi possivel interpretar o erro da API:', error);
+    return fallback;
+  }
+};
+
 const extractForgeUploadedFilename = (value) => {
   if (!value) return '';
 
@@ -822,11 +840,15 @@ function ForgeEditor() {
   const nextImageProductionSlot = nextImageProductionItem?.slot || 1;
 
   useEffect(() => {
-    safeStorageSet(
-      FORGE_7030_IMAGE_TABLE_KEY,
-      JSON.stringify(normalizeForge7030ImageTable(imageProductionItems)),
-      { pruneDrafts: true }
-    );
+    const saveTableTimer = window.setTimeout(() => {
+      safeStorageSet(
+        FORGE_7030_IMAGE_TABLE_KEY,
+        JSON.stringify(normalizeForge7030ImageTable(imageProductionItems)),
+        { pruneDrafts: true }
+      );
+    }, 600);
+
+    return () => window.clearTimeout(saveTableTimer);
   }, [imageProductionItems]);
 
   useEffect(() => {
@@ -2223,11 +2245,6 @@ function ForgeEditor() {
 
     setRendering(true);
     setError('');
-    setRenderResult(null);
-    setMetadataTitle('');
-    setMetadataDescription('');
-    setMetadataHashtags('');
-    setScheduleDateTime('');
     setScheduleMessage('');
 
     const ratioSnapshot = {
@@ -2292,8 +2309,7 @@ function ForgeEditor() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao renderizar');
+        throw new Error(await readApiError(response, 'Erro ao renderizar'));
       }
 
       const data = await response.json();
