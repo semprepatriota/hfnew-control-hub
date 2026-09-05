@@ -424,7 +424,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
     ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
   const showBandHeadline =
-    ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) &&
+    layoutPreset === 'classic7030' &&
     ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
 
@@ -491,7 +491,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
             <ForgeCropGuides active={showImageCropGuides} />
             <span className="label">Carrossel puro</span>
           </div>
-        ) : hasPreviewImage && ['postHeadlineAvatar', 'classic7030'].includes(layoutPreset) && showBandHeadline ? (
+        ) : hasPreviewImage && layoutPreset === 'classic7030' && showBandHeadline ? (
           <div
             className={`post-headline-avatar-preview ${activeHeadlineClassName}`}
             style={{ gridTemplateRows: postHeadlineRows.map((row) => `${row.size}fr`).join(' ') }}
@@ -509,7 +509,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                       }}
                     />
                     <ForgeCropGuides active={showImageCropGuides} />
-                    <span className="label">{layoutPreset === 'classic7030' ? 'Imagem' : 'Imagem'} ({topRatio}%)</span>
+                    <span className="label">Imagem ({topRatio}%)</span>
                   </div>
                 );
               }
@@ -529,7 +529,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                   {selectedVideoMediaType === 'image' ? (
                     <img
                       src={selectedVideoSource}
-                      alt="Avatar"
+                      alt="Vídeo de fundo"
                       style={{ width: '100%', height: '100%', objectFit: videoFit }}
                     />
                   ) : selectedVideoSource ? (
@@ -539,13 +539,13 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                       style={{ width: '100%', height: '100%', objectFit: videoFit }}
                     />
                   ) : selectedVideoThumbnail ? (
-                    <img src={selectedVideoThumbnail} alt="Avatar" style={{ objectFit: videoFit }} />
+                    <img src={selectedVideoThumbnail} alt="Vídeo de fundo" style={{ objectFit: videoFit }} />
                   ) : (
                     <div className="video-placeholder-large">
                       <Play size={48} />
                     </div>
                   )}
-                  <span className="label">{layoutPreset === 'classic7030' ? 'Vídeo' : 'Avatar'} ({bottomRatio}%)</span>
+                  <span className="label">Vídeo ({bottomRatio}%)</span>
                 </div>
               );
             })}
@@ -651,7 +651,7 @@ function ForgeEditor() {
   const [imageCropX, setImageCropX] = useState(10);
   const [imageCropY, setImageCropY] = useState(10);
   const [videoFit, setVideoFit] = useState('contain');
-  const [backgroundMode, setBackgroundMode] = useState('avatar'); // 'avatar' ou 'local'
+  const [backgroundMode, setBackgroundMode] = useState('local');
   const [layoutPreset, setLayoutPreset] = useState('classic7030');
   const [headlineText, setHeadlineText] = useState('Sua Esperança Renasce');
   const [headlineRatio, setHeadlineRatio] = useState(10);
@@ -855,28 +855,13 @@ function ForgeEditor() {
     safeStorageSet(FORGE_LOCAL_VIDEO_LABELS_KEY, JSON.stringify(localVideoLabels), { pruneDrafts: true });
   }, [localVideoLabels]);
 
-  const applyPostHeadlineAvatarRatios = (nextTop, nextHeadline = headlineRatio) => {
-    const safeTop = Math.min(72, Math.max(38, Number(nextTop) || 54));
-    const maxHeadline = Math.min(20, 92 - safeTop);
-    const safeHeadline = Math.min(maxHeadline, Math.max(6, Number(nextHeadline) || 10));
-    const safeBottom = Math.max(8, 100 - safeTop - safeHeadline);
-
-    setTopRatio(safeTop);
-    setHeadlineRatio(safeHeadline);
-    setBottomRatio(safeBottom);
-    ratioLockRef.current = { top: safeTop, bottom: safeBottom };
+  const applyClassicHeadlineRatio = (nextHeadline) => {
+    setHeadlineRatio(Math.min(20, Math.max(6, Number(nextHeadline) || 10)));
   };
 
-  const applyLayoutPreset = (preset) => {
-    setLayoutPreset(preset);
-
-    if (preset === 'postHeadlineAvatar') {
-      setBackgroundMode('avatar');
-      applyPostHeadlineAvatarRatios(topRatio === 70 && bottomRatio === 30 ? 54 : topRatio, headlineRatio);
-      setVideoFit('cover');
-      return;
-    }
-
+  const applyLayoutPreset = () => {
+    setLayoutPreset('classic7030');
+    setBackgroundMode('local');
     setTopRatio(70);
     setBottomRatio(30);
     ratioLockRef.current = { top: 70, bottom: 30 };
@@ -974,16 +959,13 @@ function ForgeEditor() {
   // Carregar vídeos locais
   useEffect(() => {
     loadLocalVideos(safeStorageGet('alliance_forge_library_channel_id'));
-    loadAvatarVideos(safeStorageGet('alliance_forge_library_channel_id'));
     loadLocalAudios(safeStorageGet('alliance_forge_library_channel_id'));
-    loadAvatarGeneratorStatus();
-    loadAvatarEngineRegistry();
     const capturedImage = safeStorageGet('forge_selected_image');
     if (capturedImage) {
       setScreenshotPath(capturedImage);
       safeStorageRemove('forge_selected_image');
     }
-  }, [loadAvatarEngineRegistry, loadAvatarGeneratorStatus, loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
+  }, [loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     let active = true;
@@ -1015,7 +997,6 @@ function ForgeEditor() {
         setLibraryChannelId(storedChannelId);
         setSelectedVideo(null);
         setSelectedAudio(null);
-        setAvatarVideos([]);
         setLocalVideos([]);
         setLocalAudios([]);
         return;
@@ -1034,10 +1015,8 @@ function ForgeEditor() {
           setLibraryChannelId(activeChannelId);
           setSelectedVideo(null);
           setSelectedAudio(null);
-          setAvatarVideos([]);
           setLocalVideos([]);
           setLocalAudios([]);
-          loadAvatarVideos(activeChannelId);
           loadLocalVideos(activeChannelId);
           loadLocalAudios(activeChannelId);
         }
@@ -1047,7 +1026,7 @@ function ForgeEditor() {
     };
 
     syncActiveLibraryChannel();
-  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
+  }, [loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     const syncLibraryChannel = () => {
@@ -1055,10 +1034,8 @@ function ForgeEditor() {
       setLibraryChannelId(nextChannelId);
       setSelectedVideo(null);
       setSelectedAudio(null);
-      setAvatarVideos([]);
       setLocalVideos([]);
       setLocalAudios([]);
-      loadAvatarVideos(nextChannelId);
       loadLocalVideos(nextChannelId);
       loadLocalAudios(nextChannelId);
     };
@@ -1070,7 +1047,7 @@ function ForgeEditor() {
       window.removeEventListener('storage', syncLibraryChannel);
       window.removeEventListener('alliance:forge-library-channel-changed', syncLibraryChannel);
     };
-  }, [loadAvatarVideos, loadLocalAudios, loadLocalVideos]);
+  }, [loadLocalAudios, loadLocalVideos]);
 
   useEffect(() => {
     if (!slideshowMode) return;
@@ -1223,8 +1200,10 @@ function ForgeEditor() {
       setImageCropX(draft.imageCropX ?? 10);
       setImageCropY(draft.imageCropY ?? 10);
       setVideoFit(draft.videoFit || 'contain');
-      setBackgroundMode(draft.backgroundMode === 'local' ? 'local' : 'avatar');
-      setLayoutPreset(draft.layoutPreset || 'classic7030');
+      // O Forge 70/30 possui um unico fluxo ativo. Rascunhos antigos de avatar
+      // sao migrados sem reativar o modo removido.
+      setBackgroundMode('local');
+      setLayoutPreset('classic7030');
       setHeadlineText(draft.headlineText || 'Sua Esperança Renasce');
       setHeadlineRatio(draft.headlineRatio ?? 10);
       setHeadlineFontScale(draft.headlineFontScale ?? 100);
@@ -1249,7 +1228,7 @@ function ForgeEditor() {
       setSlideshowMode(Boolean(draft.slideshowMode));
       setSlideshowStyle(draft.slideshowStyle || 'pure');
       setSocialImageUrl(draft.socialImageUrl || '');
-      setSelectedVideo(draft.selectedVideo || null);
+      setSelectedVideo(draft.backgroundMode === 'avatar' ? null : (draft.selectedVideo || null));
       setSelectedAudio(draft.selectedAudio || null);
       setEffectsEnabled(draft.effectsEnabled ?? true);
       setEffectsMode(draft.effectsMode || 'assisted');
@@ -2257,22 +2236,20 @@ function ForgeEditor() {
       const imagePath = getUploadedImageName();
       const imagePaths = getUploadedImageNames();
       const singleVideoMode = hasSingleVideoPreview;
-      const usesHeadlineLayout = layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode || singleVideoMode;
+      const usesHeadlineLayout = layoutPreset === 'classic7030' || slideshowMode || singleVideoMode;
       const resolvedHeadlinePosition = usesHeadlineLayout
         ? normalizeHeadlinePositionClient(slideshowHeadlinePosition, headlineText)
         : 'none';
 
       const renderPayload = {
         screenshot_path: imagePath,
-        background_mode: backgroundMode,
+        background_mode: 'local',
         background_video: selectedVideo?.path || selectedVideo?.filename || selectedVideo?.url || '',
         background_audio: selectedAudio?.filename || '',
         image_paths: slideshowMode ? imagePaths : [],
         top_ratio: topRatio / 100,
         bottom_ratio: bottomRatio / 100,
-        render_mode: layoutPreset === 'postHeadlineAvatar'
-          ? 'post_headline_avatar'
-          : singleVideoMode
+        render_mode: singleVideoMode
           ? 'single_video'
           : slideshowMode
           ? 'slideshow'
@@ -3350,26 +3327,18 @@ function ForgeEditor() {
             <div className="mode-toggle forge-layout-toggle">
               <button
                 type="button"
-                onClick={() => applyLayoutPreset('classic7030')}
-                className={`mode-button ${layoutPreset === 'classic7030' ? 'active' : ''}`}
+                onClick={applyLayoutPreset}
+                className="mode-button active"
               >
                 <span className="icon">▥</span>
-                70/30 clássico
-              </button>
-              <button
-                type="button"
-                onClick={() => applyLayoutPreset('postHeadlineAvatar')}
-                className={`mode-button ${layoutPreset === 'postHeadlineAvatar' ? 'active' : ''}`}
-              >
-                <span className="icon">▤</span>
-                Post + Headline + Avatar
+                70/30 Clássico + Headline
               </button>
             </div>
 
-            {(layoutPreset === 'postHeadlineAvatar' || layoutPreset === 'classic7030' || slideshowMode) && (
+            {(layoutPreset === 'classic7030' || slideshowMode) && (
               <div className="headline-preset-panel">
                 <label>
-                  {slideshowMode ? 'Headline do carrossel' : layoutPreset === 'classic7030' ? 'Headline do 70/30' : 'Headline central'}
+                  {slideshowMode ? 'Headline do carrossel' : 'Headline do 70/30'}
                   <input
                     type="text"
                     value={headlineText}
@@ -3407,8 +3376,8 @@ function ForgeEditor() {
                         max="20"
                         step="1"
                         value={headlineRatio}
-                        onInput={(event) => applyPostHeadlineAvatarRatios(topRatio, event.target.value)}
-                        onChange={(event) => applyPostHeadlineAvatarRatios(topRatio, event.target.value)}
+                        onInput={(event) => applyClassicHeadlineRatio(event.target.value)}
+                        onChange={(event) => applyClassicHeadlineRatio(event.target.value)}
                         className="slider"
                         aria-label="Ajustar altura da headline"
                       />
@@ -3432,7 +3401,7 @@ function ForgeEditor() {
                     </div>
                   </label>
 
-                  {(slideshowMode || layoutPreset === 'classic7030' || layoutPreset === 'postHeadlineAvatar') && (
+                  {(slideshowMode || layoutPreset === 'classic7030') && (
                     <label>
                       Posição da headline
                       <select
@@ -3468,7 +3437,7 @@ function ForgeEditor() {
                     </button>
                   ))}
                 </div>
-                {layoutPreset === 'postHeadlineAvatar' && (
+                {false && (
                   <>
                 <div className={`avatar-speech-panel collapsible-avatar-panel ${avatarSpeechCollapsed ? 'collapsed' : ''}`}>
                   <div className="avatar-speech-header">
@@ -3961,6 +3930,7 @@ function ForgeEditor() {
           </div>
 
           {/* Section 2: Background Mode */}
+          {false && (
           <div className="control-section">
             <h3>🎬 Modo de Fundo</h3>
 
@@ -3981,10 +3951,11 @@ function ForgeEditor() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Section 3: Video Selection */}
           <div className="control-section">
-            {backgroundMode === 'avatar' ? (
+            {false ? (
               <>
                 <h3>🧑 Biblioteca Avatar</h3>
 
@@ -4480,35 +4451,18 @@ function ForgeEditor() {
                   Proporção vertical
                 </label>
                 <div className="ratio-readout">
-                  {layoutPreset === 'postHeadlineAvatar' ? (
-                    <>
-                      <strong>{topRatio}% imagem</strong>
-                      <span>{headlineRatio}% headline / {bottomRatio}% avatar</span>
-                    </>
-                  ) : (
-                    <>
-                      <strong>{topRatio}% imagem</strong>
-                      <span>{bottomRatio}% vídeo</span>
-                    </>
-                  )}
+                  <strong>{topRatio}% imagem</strong>
+                  <span>{bottomRatio}% vídeo</span>
                 </div>
                 <div className="range-control">
                   <input
                     type="range"
-                    min={layoutPreset === 'postHeadlineAvatar' ? '38' : '50'}
-                    max={layoutPreset === 'postHeadlineAvatar' ? String(Math.max(38, 92 - headlineRatio)) : '100'}
+                    min="50"
+                    max="100"
                     step="5"
                     value={topRatio}
-                    onInput={(e) => (
-                      layoutPreset === 'postHeadlineAvatar'
-                        ? applyPostHeadlineAvatarRatios(e.target.value, headlineRatio)
-                        : handleRatioChange(e.target.value)
-                    )}
-                    onChange={(e) => (
-                      layoutPreset === 'postHeadlineAvatar'
-                        ? applyPostHeadlineAvatarRatios(e.target.value, headlineRatio)
-                        : handleRatioChange(e.target.value)
-                    )}
+                    onInput={(e) => handleRatioChange(e.target.value)}
+                    onChange={(e) => handleRatioChange(e.target.value)}
                     className="slider ratio-slider"
                     aria-label="Ajustar proporção vertical"
                   />
