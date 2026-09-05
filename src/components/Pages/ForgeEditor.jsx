@@ -2810,12 +2810,16 @@ function ForgeEditor() {
 
       const data = await response.json();
       const nextImageUrl = apiUrl(data.image_url);
-      setImageFit('cover');
+      // A API devolve uma nova imagem ja recortada. Zerar as guias evita
+      // aplicar o mesmo corte novamente durante a renderizacao final.
+      setImageFit('contain');
+      setImageCropX(0);
+      setImageCropY(0);
       setRenderResult(null);
       syncMainPreviewCropToFirstSlideshowImage({
-        fit: 'cover',
-        top_percent: topGuidePercent,
-        bottom_percent: bottomGuidePercent,
+        fit: 'contain',
+        top_percent: 0,
+        bottom_percent: 0,
       });
       setScreenshotPath(nextImageUrl);
       setSelectedImagePaths((prev) => {
