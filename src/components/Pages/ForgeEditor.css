@@ -2484,6 +2484,35 @@
   cursor: pointer;
 }
 
+.video-library-summary {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0;
+  color: #a9bac6;
+  font-size: 12px;
+}
+
+.forge-library-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
+  border: 1px solid #2f8fbd;
+  border-radius: 6px;
+  background: #12364c;
+  color: #d8f3ff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.forge-library-load-more:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 /* Video Preview */
 .video-preview {
   width: 100%;

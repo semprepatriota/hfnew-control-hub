@@ -28,6 +28,7 @@ const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
 const FORGE_LOCAL_VIDEO_LABELS_KEY = 'alliance_forge_local_video_labels_v1';
 const FORGE_7030_RENDER_JOB_KEY = 'alliance_forge_7030_active_render_job_v1';
+const FORGE_LIBRARY_PAGE_SIZE = 12;
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
@@ -287,6 +288,7 @@ const ForgeLibraryCard = React.memo(function ForgeLibraryCard({
   video,
   selected,
   source,
+  poster,
   displayName,
   mediaLabel,
   ratioLabel,
@@ -322,6 +324,7 @@ const ForgeLibraryCard = React.memo(function ForgeLibraryCard({
         ) : (
           <video
             src={source}
+            poster={poster || undefined}
             muted
             loop
             playsInline
@@ -757,7 +760,12 @@ function ForgeEditor() {
   const [deletingAvatarFile, setDeletingAvatarFile] = useState(null);
   const [deletingAudioFile, setDeletingAudioFile] = useState(null);
   const [croppingImage, setCroppingImage] = useState(false);
+  const [loadingVideoLibrary, setLoadingVideoLibrary] = useState(false);
+  const [videoLibraryHasMore, setVideoLibraryHasMore] = useState(false);
+  const [videoLibraryTotal, setVideoLibraryTotal] = useState(0);
   const libraryRequestRef = useRef(0);
+  const libraryAbortRef = useRef(null);
+  const libraryOffsetRef = useRef(0);
   const avatarLibraryRequestRef = useRef(0);
   const audioLibraryRequestRef = useRef(0);
   const ratioLockRef = useRef({ top: 70, bottom: 30 });
@@ -951,21 +959,53 @@ function ForgeEditor() {
     ratioLockRef.current = { top: 70, bottom: 30 };
   };
 
-  const loadLocalVideos = useCallback(async (channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id')) => {
+  const loadLocalVideos = useCallback(async (channelId, options = {}) => {
+    const resolvedChannelId = channelId || safeStorageGet('alliance_forge_library_channel_id');
+    const append = Boolean(options.append);
+    const offset = append ? libraryOffsetRef.current : 0;
     const requestId = ++libraryRequestRef.current;
+    libraryAbortRef.current?.abort();
+    const controller = new AbortController();
+    libraryAbortRef.current = controller;
+    if (!append) {
+      libraryOffsetRef.current = 0;
+      setLocalVideos([]);
+      setVideoLibraryTotal(0);
+      setVideoLibraryHasMore(false);
+    }
+    setLoadingVideoLibrary(true);
     try {
-      const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
-      const response = await fetch(apiUrl(`/api/forge/library${query}`), { cache: 'no-store' });
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(FORGE_LIBRARY_PAGE_SIZE),
+      });
+      if (resolvedChannelId) params.set('channel_id', resolvedChannelId);
+      const response = await fetch(apiUrl(`/api/forge/library?${params.toString()}`), {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
       if (response.ok) {
         const data = await response.json();
-        if (requestId === libraryRequestRef.current && (!data.channel_id || data.channel_id === channelId)) {
-          setLocalVideos(data.videos || []);
+        if (requestId === libraryRequestRef.current) {
+          const incoming = data.videos || [];
+          setLocalVideos((current) => {
+            if (!append) return incoming;
+            const existing = new Set(current.map((video) => video.filename));
+            return [...current, ...incoming.filter((video) => !existing.has(video.filename))];
+          });
+          libraryOffsetRef.current = offset + incoming.length;
+          setVideoLibraryTotal(Number(data.total ?? (offset + incoming.length)));
+          setVideoLibraryHasMore(Boolean(data.has_more));
         }
       }
     } catch (err) {
-      console.error('Erro ao carregar vídeos locais:', err);
+      if (err?.name !== 'AbortError') console.error('Erro ao carregar vídeos locais:', err);
+    } finally {
+      if (requestId === libraryRequestRef.current) setLoadingVideoLibrary(false);
     }
-  }, [libraryChannelId]);
+  }, []);
+
+  useEffect(() => () => libraryAbortRef.current?.abort(), []);
 
   const loadAvatarVideos = useCallback(async (channelId = libraryChannelId || safeStorageGet('alliance_forge_library_channel_id')) => {
     const requestId = ++avatarLibraryRequestRef.current;
@@ -1178,7 +1218,7 @@ function ForgeEditor() {
     return toLocalDateTimeValue(date);
   };
 
-  const getSelectedVideoSource = (video) => {
+  const getSelectedVideoSource = useCallback((video) => {
     if (!video) return '';
 
     if (video.url) return video.url;
@@ -1194,7 +1234,7 @@ function ForgeEditor() {
     }
     if (video.thumbnail) return video.thumbnail;
     return '';
-  };
+  }, [libraryChannelId]);
 
   const getSelectedAudioSource = (audio) => {
     if (!audio) return '';
@@ -1933,9 +1973,8 @@ function ForgeEditor() {
     }
   };
 
-  const handleDeleteVideo = async (filename) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Tem certeza que quer deletar este vídeo?\n${filename}`)) {
+  const handleDeleteVideo = useCallback(async (filename) => {
+    if (!window.confirm(`Tem certeza que quer deletar este vídeo?\n${filename}`)) {
       return;
     }
 
@@ -1965,13 +2004,13 @@ function ForgeEditor() {
       }
 
       // Recarregar lista de vídeos locais
-      loadLocalVideos(channelId);
+      await loadLocalVideos(channelId);
     } catch (err) {
       setError(err.message);
     } finally {
       setDeletingVideoFile(null);
     }
-  };
+  }, [libraryChannelId, loadLocalVideos, selectedVideo?.channel_id, selectedVideo?.filename]);
 
   const handleDeleteAvatarVideo = async (filename) => {
     // eslint-disable-next-line no-restricted-globals
@@ -2058,27 +2097,27 @@ function ForgeEditor() {
     handleRatioChange(ratio);
   };
 
-  const playLocalPreview = (event) => {
+  const playLocalPreview = useCallback((event) => {
     event.currentTarget.play().catch(() => {});
-  };
+  }, []);
 
-  const resetLocalPreview = (event) => {
+  const resetLocalPreview = useCallback((event) => {
     event.currentTarget.pause();
     event.currentTarget.currentTime = 0;
-  };
+  }, []);
 
   function shortVideoName(filename = '') {
     if (filename.length <= 26) return filename;
     return `${filename.slice(0, 12)}...${filename.slice(-10)}`;
   }
 
-  function getLocalVideoDisplayName(videoOrFilename = '') {
+  const getLocalVideoDisplayName = useCallback((videoOrFilename = '') => {
     const filename = typeof videoOrFilename === 'string'
       ? videoOrFilename
       : (videoOrFilename?.filename || '');
     const customName = localVideoLabels[filename];
     return (customName || '').trim() || shortVideoName(filename);
-  }
+  }, [localVideoLabels]);
 
   function updateLocalVideoDisplayName(filename, value) {
     const nextName = value.trim();
@@ -2134,6 +2173,7 @@ function ForgeEditor() {
       video={video}
       selected={selectedVideo?.filename === video.filename}
       source={videoSourcesByFilename.get(video.filename) || ''}
+      poster={video.preview_url ? apiUrl(video.preview_url) : ''}
       displayName={getLocalVideoDisplayName(video)}
       mediaLabel={`${video.duration.toFixed(1)}s`}
       ratioLabel={video.aspect_ratio === '9:16' ? '9:16' : 'OUTRO'}
@@ -4210,14 +4250,30 @@ function ForgeEditor() {
                 </div>
 
                 {/* Grid de Vídeos */}
+                <div className="video-library-summary">
+                  <span>{localVideos.length} de {videoLibraryTotal} vídeos carregados</span>
+                </div>
                 <div className="videos-grid-10">{localVideoCards}</div>
+                {(videoLibraryHasMore || loadingVideoLibrary) && (
+                  <button
+                    type="button"
+                    className="forge-library-load-more"
+                    onClick={() => loadLocalVideos(libraryChannelId, { append: true })}
+                    disabled={loadingVideoLibrary}
+                  >
+                    {loadingVideoLibrary ? <Loader size={15} className="spinner" /> : <Plus size={15} />}
+                    {loadingVideoLibrary ? 'Carregando biblioteca...' : 'Carregar mais vídeos'}
+                  </button>
+                )}
 
                 {/* Preview Thumbnail do Vídeo Selecionado */}
                 {selectedVideo && backgroundMode === 'local' && (
                   <div className="video-selected-preview-small">
                     <video
                       src={getSelectedVideoSource(selectedVideo)}
+                      poster={selectedVideo.preview_url ? apiUrl(selectedVideo.preview_url) : undefined}
                       controls
+                      preload="metadata"
                       className="video-thumb"
                     />
                     <span className="selected-video-name">✓ {getLocalVideoDisplayName(selectedVideo)}</span>
