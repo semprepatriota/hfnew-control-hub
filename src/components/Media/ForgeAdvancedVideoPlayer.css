@@ -1,0 +1,200 @@
+.forge-advanced-video {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.forge-advanced-player {
+  width: 100%;
+  max-height: 420px;
+  aspect-ratio: 9 / 16;
+  background: #020604;
+  border: 1px solid rgba(78, 170, 125, 0.32);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.forge-advanced-player video,
+.forge-advanced-player media-outlet {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.forge-player-controls {
+  align-items: center;
+  background: rgba(2, 6, 4, 0.9);
+  bottom: 0;
+  display: grid;
+  gap: 9px;
+  grid-template-columns: 34px minmax(80px, 1fr) auto;
+  left: 0;
+  padding: 7px 9px;
+  position: absolute;
+  right: 0;
+}
+
+.forge-player-icon-button {
+  align-items: center;
+  background: #174c37;
+  border: 1px solid #2d8c62;
+  border-radius: 4px;
+  color: #fff;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+}
+
+.forge-player-time-slider {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  height: 24px;
+  position: relative;
+}
+
+.forge-player-slider-track,
+.forge-player-slider-fill {
+  border-radius: 999px;
+  height: 5px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.forge-player-slider-track { background: #526159; }
+.forge-player-slider-fill { background: #35e78c; transform-origin: left center; }
+
+.forge-player-slider-thumb {
+  background: #fff;
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+}
+
+.forge-player-time-label {
+  align-items: center;
+  color: #eef8f2;
+  display: flex;
+  font-size: 10px;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.forge-scene-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.forge-scene-toolbar > div {
+  display: grid;
+  gap: 2px;
+}
+
+.forge-scene-toolbar strong {
+  color: #f1fff7;
+  font-size: 13px;
+}
+
+.forge-scene-toolbar span,
+.forge-scene-hint {
+  color: #91a79b;
+  font-size: 11px;
+}
+
+.forge-scene-toolbar button {
+  align-items: center;
+  background: #174c37;
+  border: 1px solid #2d8c62;
+  border-radius: 5px;
+  color: #f5fff9;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 11px;
+}
+
+.forge-scene-toolbar button:disabled {
+  cursor: wait;
+  opacity: 0.64;
+}
+
+.forge-scene-track {
+  background: #06100b;
+  border: 1px solid rgba(62, 136, 96, 0.42);
+  border-radius: 5px;
+  height: 54px;
+  overflow: hidden;
+  position: relative;
+}
+
+.forge-scene-segment {
+  background: #123b2b;
+  border: 0;
+  border-right: 2px solid #2dd486;
+  bottom: 0;
+  color: #eafff2;
+  cursor: pointer;
+  min-width: 18px;
+  padding: 0;
+  position: absolute;
+  top: 0;
+}
+
+.forge-scene-segment:nth-of-type(even) {
+  background: #174933;
+}
+
+.forge-scene-segment:hover,
+.forge-scene-segment:focus-visible {
+  background: #216746;
+  outline: 2px solid #6fffb0;
+  outline-offset: -2px;
+}
+
+.forge-scene-segment span {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.forge-scene-playhead {
+  background: #ffffff;
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-1px);
+  width: 2px;
+  z-index: 4;
+}
+
+.forge-scene-empty {
+  align-items: center;
+  color: #84988d;
+  display: flex;
+  font-size: 11px;
+  height: 100%;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .forge-scene-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .forge-scene-toolbar button {
+    justify-content: center;
+    width: 100%;
+  }
+}

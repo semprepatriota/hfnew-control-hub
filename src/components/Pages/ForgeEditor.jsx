@@ -23,6 +23,8 @@ import {
   buildVideoDurationLimitMessage,
   isVideoDurationWithinEditLimit,
 } from '../../config/videoLimits';
+import ForgeAdvancedVideoPlayer from '../Media/ForgeAdvancedVideoPlayer';
+import ForgeAudioWaveform from '../Media/ForgeAudioWaveform';
 import './ForgeEditor.css';
 
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
@@ -30,6 +32,7 @@ const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
 const FORGE_LOCAL_VIDEO_LABELS_KEY = 'alliance_forge_local_video_labels_v1';
 const FORGE_7030_RENDER_JOB_KEY = 'alliance_forge_7030_active_render_job_v1';
 const FORGE_LIBRARY_PAGE_SIZE = 12;
+const FORGE_SCENE_POLL_INTERVAL_MS = 1800;
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
@@ -743,6 +746,8 @@ function ForgeEditor() {
   const [socialImageUrl, setSocialImageUrl] = useState('');
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [selectedAudio, setSelectedAudio] = useState(null);
+  const [sceneAnalysis, setSceneAnalysis] = useState(null);
+  const sceneRequestRef = useRef(0);
   const [effectLibrary, setEffectLibrary] = useState(null);
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [effectsMode, setEffectsMode] = useState('assisted');
@@ -1222,6 +1227,7 @@ function ForgeEditor() {
   const getSelectedVideoSource = useCallback((video) => {
     if (!video) return '';
 
+    if (video.video_url) return apiUrl(video.video_url);
     if (video.url) return video.url;
     if (video.path) {
       const filename = video.filename || video.path.split(/[\\/]/).pop() || '';
@@ -1239,6 +1245,7 @@ function ForgeEditor() {
 
   const getSelectedAudioSource = (audio) => {
     if (!audio) return '';
+    if (audio.audio_url) return apiUrl(audio.audio_url);
     if (audio.url) return audio.url;
     if (audio.path) {
       const filename = audio.filename || audio.path.split(/[\\/]/).pop() || '';
@@ -1249,6 +1256,57 @@ function ForgeEditor() {
     }
     return '';
   };
+
+  useEffect(() => {
+    sceneRequestRef.current += 1;
+    setSceneAnalysis(null);
+  }, [selectedVideo?.filename, selectedVideo?.channel_id]);
+
+  const analyzeSelectedVideoScenes = useCallback(async () => {
+    if (!selectedVideo?.filename) return;
+    const requestId = ++sceneRequestRef.current;
+    const channelId = selectedVideo.channel_id || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id');
+    const params = new URLSearchParams({ sensitivity: '3' });
+    if (channelId) params.set('channel_id', channelId);
+    setSceneAnalysis({ status: 'queued', scenes: [] });
+
+    try {
+      const response = await apiFetch(
+        apiUrl(`/api/forge/library-scenes/${encodeURIComponent(selectedVideo.filename)}?${params.toString()}`),
+        { method: 'POST', timeoutMs: 30000 },
+      );
+      if (!response.ok) throw new Error(await readApiError(response, 'Erro ao iniciar a análise de cenas'));
+      let job = await response.json();
+
+      if (job.status === 'completed') {
+        if (requestId === sceneRequestRef.current) setSceneAnalysis({ status: 'completed', ...(job.result || job) });
+        return;
+      }
+
+      while (requestId === sceneRequestRef.current && !['completed', 'failed'].includes(job.status)) {
+        await new Promise((resolve) => window.setTimeout(resolve, FORGE_SCENE_POLL_INTERVAL_MS));
+        const statusResponse = await apiFetch(
+          apiUrl(`/api/forge/library-scenes/jobs/${encodeURIComponent(job.id)}`),
+          { method: 'GET', timeoutMs: 20000, retries: 2 },
+        );
+        if (!statusResponse.ok) throw new Error(await readApiError(statusResponse, 'Erro ao acompanhar a análise de cenas'));
+        job = await statusResponse.json();
+        if (requestId === sceneRequestRef.current) {
+          setSceneAnalysis(job.status === 'completed'
+            ? { status: 'completed', ...(job.result || {}) }
+            : { status: job.status, scenes: [], error: job.error || '' });
+        }
+      }
+
+      if (job.status === 'failed' && requestId === sceneRequestRef.current) {
+        throw new Error(job.error || 'Não foi possível detectar as cenas deste vídeo.');
+      }
+    } catch (err) {
+      if (requestId === sceneRequestRef.current) {
+        setSceneAnalysis({ status: 'failed', scenes: [], error: err.message });
+      }
+    }
+  }, [libraryChannelId, selectedVideo]);
 
   const getDraftKey = useCallback((channelId) => {
     const resolvedChannelId = channelId || libraryChannelId || safeStorageGet('alliance_forge_library_channel_id') || 'default';
@@ -4270,12 +4328,13 @@ function ForgeEditor() {
                 {/* Preview Thumbnail do Vídeo Selecionado */}
                 {selectedVideo && backgroundMode === 'local' && (
                   <div className="video-selected-preview-small">
-                    <video
-                      src={getSelectedVideoSource(selectedVideo)}
-                      poster={selectedVideo.preview_url ? apiUrl(selectedVideo.preview_url) : undefined}
-                      controls
-                      preload="metadata"
-                      className="video-thumb"
+                    <ForgeAdvancedVideoPlayer
+                      source={getSelectedVideoSource(selectedVideo)}
+                      poster={selectedVideo.preview_url ? apiUrl(selectedVideo.preview_url) : ''}
+                      title={getLocalVideoDisplayName(selectedVideo)}
+                      duration={selectedVideo.duration}
+                      sceneAnalysis={sceneAnalysis}
+                      onAnalyzeScenes={analyzeSelectedVideoScenes}
                     />
                     <span className="selected-video-name">✓ {getLocalVideoDisplayName(selectedVideo)}</span>
                     <span className={`selected-video-ratio ${selectedVideo.aspect_ratio === '9:16' ? 'vertical' : 'other'}`}>
@@ -4392,11 +4451,9 @@ function ForgeEditor() {
                   {selectedAudio && (
                     <div className="selected-audio-preview">
                       <span className="selected-video-name">♪ {shortVideoName(selectedAudio.filename)}</span>
-                      <audio
-                        src={getSelectedAudioSource(selectedAudio)}
-                        controls
-                        preload="metadata"
-                        className="audio-preview selected"
+                      <ForgeAudioWaveform
+                        source={getSelectedAudioSource(selectedAudio)}
+                        fallbackDuration={selectedAudio.duration}
                       />
                       <button
                         type="button"
