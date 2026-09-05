@@ -958,6 +958,18 @@
   cursor: not-allowed;
 }
 
+.forge-render-queue-status {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border: 1px solid #2d78a8;
+  border-radius: 6px;
+  background: #0b2233;
+  color: #bfe8ff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* ============================================================================
    PREVIEW SECTION
    ============================================================================ */

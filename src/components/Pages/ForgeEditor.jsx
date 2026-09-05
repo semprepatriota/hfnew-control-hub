@@ -15,7 +15,7 @@ import {
   LayoutPanelTop,
   Link
 } from 'lucide-react';
-import { apiUrl } from '../../config/api';
+import { apiFetch, apiUrl } from '../../config/api';
 import {
   VIDEO_EDIT_MAX_DURATION_LABEL,
   buildVideoDurationLimitMessage,
@@ -26,6 +26,7 @@ import './ForgeEditor.css';
 const FORGE_DRAFT_KEY_PREFIX = 'alliance_forge_draft_';
 const FORGE_7030_IMAGE_TABLE_KEY = 'alliance_forge_7030_image_table_v1';
 const FORGE_LOCAL_VIDEO_LABELS_KEY = 'alliance_forge_local_video_labels_v1';
+const FORGE_7030_RENDER_JOB_KEY = 'alliance_forge_7030_active_render_job_v1';
 const DEFAULT_HEADLINE_POSITION = 'middle';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
@@ -161,6 +162,48 @@ const readApiError = async (response, fallbackMessage) => {
     console.warn('Nao foi possivel interpretar o erro da API:', error);
     return fallback;
   }
+};
+
+const waitForForgeRenderJob = async (jobId, onProgress, isCancelled = () => false) => {
+  while (!isCancelled()) {
+    let response;
+    try {
+      response = await apiFetch(apiUrl(`/api/forge/render/jobs/${encodeURIComponent(jobId)}`), {
+        method: 'GET',
+        timeoutMs: 20000,
+        retries: 2,
+      });
+    } catch {
+      onProgress?.({ status: 'reconnecting' });
+      await new Promise((resolve) => window.setTimeout(resolve, 5000));
+      continue;
+    }
+    if ([502, 503, 504].includes(response.status)) {
+      onProgress?.({ status: 'reconnecting' });
+      await new Promise((resolve) => window.setTimeout(resolve, 5000));
+      continue;
+    }
+    if (!response.ok) {
+      const error = new Error(await readApiError(response, 'Erro ao acompanhar a renderizacao'));
+      error.keepRenderJob = response.status === 401 || response.status === 403;
+      throw error;
+    }
+
+    const job = await response.json();
+    onProgress?.(job);
+    if (job.status === 'completed') return job.result;
+    if (job.status === 'failed') throw new Error(job.error || 'Falha ao renderizar o video');
+    await new Promise((resolve) => window.setTimeout(resolve, 2000));
+  }
+  return null;
+};
+
+const forgeRenderProgressLabel = (job) => {
+  if (job.status === 'reconnecting') return 'Reconectando a renderizacao na VPS...';
+  if (job.status === 'queued') {
+    return `Na fila${job.queue_position ? ` - posicao ${job.queue_position}` : ''}`;
+  }
+  return 'Renderizando na VPS...';
 };
 
 const extractForgeUploadedFilename = (value) => {
@@ -722,6 +765,7 @@ function ForgeEditor() {
   const [localVideos, setLocalVideos] = useState([]);
   const [localAudios, setLocalAudios] = useState([]);
   const [rendering, setRendering] = useState(false);
+  const [renderQueueStatus, setRenderQueueStatus] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [generatingMetadata, setGeneratingMetadata] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -754,6 +798,42 @@ function ForgeEditor() {
     }
   });
   const [editingLocalVideoName, setEditingLocalVideoName] = useState('');
+
+  useEffect(() => {
+    const pendingJobId = safeStorageGet(FORGE_7030_RENDER_JOB_KEY);
+    if (!pendingJobId) return undefined;
+
+    let cancelled = false;
+    setRendering(true);
+    setRenderQueueStatus('Recuperando renderizacao em andamento...');
+    waitForForgeRenderJob(
+      pendingJobId,
+      (job) => {
+        if (cancelled) return;
+        setRenderQueueStatus(forgeRenderProgressLabel(job));
+      },
+      () => cancelled,
+    ).then((result) => {
+      if (cancelled || !result) return;
+      setRenderResult(result);
+      setMetadataTitle('');
+      setMetadataDescription('');
+      setMetadataHashtags('');
+      safeStorageRemove(FORGE_7030_RENDER_JOB_KEY);
+      setRenderQueueStatus('Renderizacao concluida.');
+    }).catch((err) => {
+      if (cancelled) return;
+      if (!err.keepRenderJob) safeStorageRemove(FORGE_7030_RENDER_JOB_KEY);
+      setError(err.message);
+      setRenderQueueStatus('');
+    }).finally(() => {
+      if (!cancelled) setRendering(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const youtubeCategoryOptions = [
     { value: '1', label: '1 - Film & Animation' },
@@ -2277,19 +2357,30 @@ function ForgeEditor() {
         edit_plan: buildForgeEditPlan()
       };
 
-      const response = await fetch(apiUrl('/api/forge/render'), {
+      const response = await apiFetch(apiUrl('/api/forge/render/jobs'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(renderPayload),
+        timeoutMs: 60000,
       });
 
       if (!response.ok) {
         throw new Error(await readApiError(response, 'Erro ao renderizar'));
       }
 
-      const data = await response.json();
+      const queuedJob = await response.json();
+      safeStorageSet(FORGE_7030_RENDER_JOB_KEY, queuedJob.id);
+      setRenderQueueStatus(
+        queuedJob.queue_position
+          ? `Na fila - posicao ${queuedJob.queue_position}`
+          : 'Na fila de renderizacao...',
+      );
+      const data = await waitForForgeRenderJob(queuedJob.id, (job) => {
+        setRenderQueueStatus(forgeRenderProgressLabel(job));
+      });
+      safeStorageRemove(FORGE_7030_RENDER_JOB_KEY);
       setRenderResult(data);
       // Economiza chamadas/uso de IA: renderizar nunca deve preencher metadados automaticamente.
       // Titulo, descricao e hashtags so entram quando o usuario clicar no botao de gerar.
@@ -2301,6 +2392,7 @@ function ForgeEditor() {
       setTopRatio(ratioSnapshot.top);
       setBottomRatio(ratioSnapshot.bottom);
       setScheduleDateTime(getDefaultScheduleDateTime());
+      setRenderQueueStatus('Renderizacao concluida.');
       if (activeImageProductionItemId) {
         setImageProductionItems((current) => normalizeForge7030ImageTable(
           current.map((entry) => (
@@ -2312,6 +2404,8 @@ function ForgeEditor() {
         setImageProductionMessage('Render concluído. Ao puxar o próximo post, a imagem renderizada sai da tabela automaticamente.');
       }
     } catch (err) {
+      if (!err.keepRenderJob) safeStorageRemove(FORGE_7030_RENDER_JOB_KEY);
+      setRenderQueueStatus('');
       setError(err.message);
     } finally {
       setTopRatio(ratioSnapshot.top);
@@ -4242,6 +4336,12 @@ function ForgeEditor() {
               </>
             )}
           </button>
+
+          {rendering && renderQueueStatus && (
+            <div className="forge-render-queue-status" role="status" aria-live="polite">
+              {renderQueueStatus}
+            </div>
+          )}
 
           {/* Resultado */}
           {renderResult && (
