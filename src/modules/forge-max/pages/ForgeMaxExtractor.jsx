@@ -7,6 +7,7 @@ import {
   Download,
   Film,
   Loader2,
+  Magnet,
   Pause,
   Play,
   RefreshCw,
@@ -15,10 +16,12 @@ import {
   Trash2,
   Upload,
   Video,
+  XCircle,
   ZoomIn,
 } from 'lucide-react';
 import {
   analyzeForgeMaxScenes,
+  cancelForgeMaxTask,
   deleteForgeMaxClip,
   deleteForgeMaxVideo,
   extractForgeMaxClip,
@@ -28,14 +31,16 @@ import {
   getForgeMaxHealth,
   getForgeMaxVideo,
   listForgeMaxVideos,
+  retryForgeMaxTask,
   uploadForgeMaxVideo,
 } from '../services/forgeMaxApi';
+import { clampTimelineValue, snapTimelineTime, uploadPercent } from '../services/forgeMaxTimeline';
 import './forge-max-extractor.css';
 
 const POLL_INTERVAL_MS = 3000;
 
 function clamp(value, minimum, maximum) {
-  return Math.min(maximum, Math.max(minimum, Number(value) || 0));
+  return clampTimelineValue(value, minimum, maximum);
 }
 
 function formatTime(value, compact = false) {
@@ -66,9 +71,11 @@ function formatBytes(value) {
 }
 
 function statusLabel(video) {
-  if (video?.status === 'preparing') return 'Preparando prévia';
+  if (video?.status === 'preparing') return video.prepare_task?.state === 'queued' ? 'Prévia na fila' : `Preparando prévia · ${video.prepare_progress || 0}%`;
+  if (video?.status === 'cancelled') return 'Prévia cancelada';
   if (video?.status === 'error') return 'Falha na prévia';
-  if (video?.analysis_status === 'running') return 'Detectando cenas';
+  if (video?.analysis_status === 'running') return video.analysis_task?.state === 'queued' ? 'Cenas na fila' : `Detectando cenas · ${video.analysis_progress || 0}%`;
+  if (video?.analysis_status === 'cancelled') return 'Detecção cancelada';
   if (video?.analysis_status === 'error') return 'Falha nas cenas';
   return 'Pronto';
 }
@@ -79,16 +86,21 @@ function ForgeMaxExtractor() {
   const timelineViewportRef = useRef(null);
   const dragRef = useRef(null);
   const playbackRangeRef = useRef(null);
+  const resumableUploadRef = useRef(null);
   const [health, setHealth] = useState(null);
   const [videos, setVideos] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
   const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadPaused, setUploadPaused] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [busyAction, setBusyAction] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(true);
   const [clipsOpen, setClipsOpen] = useState(true);
   const [threshold, setThreshold] = useState(0.30);
+  const [sceneMode, setSceneMode] = useState('adaptive');
+  const [snapEnabled, setSnapEnabled] = useState(true);
   const [zoom, setZoom] = useState(2.2);
   const [currentTime, setCurrentTime] = useState(0);
   const [selectionStart, setSelectionStart] = useState(0);
@@ -109,6 +121,10 @@ function ForgeMaxExtractor() {
     setMessage('');
     setError('');
   }, []);
+
+  const snapTime = useCallback((value) => {
+    return snapTimelineTime(value, duration, scenes, snapEnabled, zoom);
+  }, [duration, scenes, snapEnabled, zoom]);
 
   const refreshList = useCallback(async (preferredId = '') => {
     const payload = await listForgeMaxVideos();
@@ -166,14 +182,43 @@ function ForgeMaxExtractor() {
     setSelectionEnd(nextEnd);
     setPlaying(false);
     setSelectedSceneId('');
+    setSceneMode(activeVideo?.scene_mode || 'adaptive');
+    setThreshold(Number(activeVideo?.scene_threshold) || 0.30);
     playbackRangeRef.current = null;
   }, [activeVideo?.id, duration]);
+
+  useEffect(() => {
+    function handleShortcut(event) {
+      if (!activeVideo || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        const player = playerRef.current;
+        if (player?.paused) player.play().catch(() => {});
+        else player?.pause();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        const direction = event.key === 'ArrowLeft' ? -1 : 1;
+        const step = event.shiftKey ? 1 : 0.04;
+        seekTo(currentTime + (direction * step));
+      } else if (event.key.toLowerCase() === 'i') {
+        setSelectedSceneId('');
+        playbackRangeRef.current = null;
+        setSelectionStart(Math.min(snapTime(currentTime), selectionEnd - 0.05));
+      } else if (event.key.toLowerCase() === 'o') {
+        setSelectedSceneId('');
+        playbackRangeRef.current = null;
+        setSelectionEnd(Math.max(snapTime(currentTime), selectionStart + 0.05));
+      }
+    }
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [activeVideo, currentTime, duration, selectionEnd, selectionStart, snapTime]);
 
   useEffect(() => {
     function onPointerMove(event) {
       if (!dragRef.current || !timelineTrackRef.current || !duration) return;
       const bounds = timelineTrackRef.current.getBoundingClientRect();
-      const nextTime = clamp(((event.clientX - bounds.left) / bounds.width) * duration, 0, duration);
+      const nextTime = snapTime(((event.clientX - bounds.left) / bounds.width) * duration);
       if (dragRef.current === 'start') {
         setSelectionStart(Math.min(nextTime, selectionEnd - 0.05));
       } else {
@@ -191,7 +236,7 @@ function ForgeMaxExtractor() {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [duration, selectionEnd, selectionStart]);
+  }, [duration, selectionEnd, selectionStart, snapTime]);
 
   async function handleUpload(event) {
     const file = event.target.files?.[0];
@@ -199,16 +244,47 @@ function ForgeMaxExtractor() {
     if (!file) return;
     clearNotice();
     setUploadBusy(true);
+    setUploadPaused(false);
+    setUploadProgress(0);
     try {
-      const uploaded = await uploadForgeMaxVideo(file);
+      const uploaded = await uploadForgeMaxVideo(file, {
+        onUploadReady: (upload) => { resumableUploadRef.current = upload; },
+        onProgress: (uploadedBytes, totalBytes) => {
+          setUploadProgress(uploadPercent(uploadedBytes, totalBytes));
+        },
+      });
       setVideos((current) => [uploaded, ...current.filter((item) => item.id !== uploaded.id)]);
       setActiveVideo(uploaded);
       setMessage('Vídeo recebido. A prévia leve está sendo preparada em segundo plano.');
     } catch (caught) {
       setError(caught.message);
     } finally {
+      resumableUploadRef.current = null;
       setUploadBusy(false);
+      setUploadPaused(false);
     }
+  }
+
+  async function pauseUpload() {
+    if (!resumableUploadRef.current || uploadPaused) return;
+    await resumableUploadRef.current.abort();
+    setUploadPaused(true);
+  }
+
+  function resumeUpload() {
+    if (!resumableUploadRef.current || !uploadPaused) return;
+    resumableUploadRef.current.start();
+    setUploadPaused(false);
+  }
+
+  async function cancelUpload() {
+    if (!resumableUploadRef.current) return;
+    await resumableUploadRef.current.abort(true);
+    resumableUploadRef.current = null;
+    setUploadBusy(false);
+    setUploadPaused(false);
+    setUploadProgress(0);
+    setMessage('Envio cancelado. O arquivo parcial foi removido.');
   }
 
   async function handleDeleteVideo(videoId) {
@@ -233,10 +309,29 @@ function ForgeMaxExtractor() {
     clearNotice();
     setBusyAction('analyze');
     try {
-      const updated = await analyzeForgeMaxScenes(activeVideo.id, Number(threshold));
+      const updated = await analyzeForgeMaxScenes(activeVideo.id, Number(threshold), sceneMode);
       setActiveVideo(updated);
       setVideos((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setMessage('Detecção iniciada. A timeline será atualizada automaticamente.');
+    } catch (caught) {
+      setError(caught.message);
+    } finally {
+      setBusyAction('');
+    }
+  }
+
+  async function handleTaskAction(action, taskType, clipId = '') {
+    if (!activeVideo?.id) return;
+    clearNotice();
+    const actionKey = `${action}-${taskType}-${clipId}`;
+    setBusyAction(actionKey);
+    try {
+      const updated = action === 'cancel'
+        ? await cancelForgeMaxTask(activeVideo.id, taskType, clipId)
+        : await retryForgeMaxTask(activeVideo.id, taskType, clipId);
+      setActiveVideo(updated);
+      setVideos((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setMessage(action === 'cancel' ? 'Processamento cancelado.' : 'Processamento colocado novamente na fila.');
     } catch (caught) {
       setError(caught.message);
     } finally {
@@ -388,7 +483,7 @@ function ForgeMaxExtractor() {
         </div>
         <div className="forge-max-extractor-health">
           <span className={health?.status === 'operational' ? 'online' : ''} />
-          <div><strong>{health?.status === 'operational' ? 'Operacional' : 'Verificando'}</strong><small>até 60 minutos</small></div>
+          <div><strong>{health?.status === 'operational' ? 'Operacional' : 'Verificando'}</strong><small>até {Math.round((health?.max_duration_seconds || 12000) / 60)} minutos</small></div>
         </div>
       </header>
 
@@ -406,11 +501,21 @@ function ForgeMaxExtractor() {
         </button>
         {libraryOpen && (
           <div className="forge-max-extractor-library-body">
-            <label className={`forge-max-extractor-upload ${uploadBusy ? 'busy' : ''}`}>
-              {uploadBusy ? <Loader2 className="spin" size={22} /> : <Upload size={22} />}
-              <span><strong>{uploadBusy ? 'Enviando vídeo...' : 'Adicionar vídeo longo'}</strong><small>MP4, MOV, M4V, MKV, WEBM ou AVI · máximo 60 minutos</small></span>
-              <input type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm,video/x-msvideo" onChange={handleUpload} disabled={uploadBusy} />
-            </label>
+            <div className="forge-max-extractor-upload-stack">
+              <label className={`forge-max-extractor-upload ${uploadBusy ? 'busy' : ''}`}>
+                {uploadBusy ? <Loader2 className="spin" size={22} /> : <Upload size={22} />}
+                <span><strong>{uploadPaused ? 'Envio pausado' : uploadBusy ? `Enviando vídeo · ${uploadProgress}%` : 'Adicionar vídeo longo'}</strong><small>MP4, MOV, M4V, MKV, WEBM ou AVI · máximo 200 minutos</small></span>
+                <input type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm,video/x-msvideo" onChange={handleUpload} disabled={uploadBusy} />
+              </label>
+              {uploadBusy && (
+                <div className="forge-max-extractor-upload-status">
+                  <div><span style={{ width: `${uploadProgress}%` }} /></div>
+                  <strong>{uploadProgress}%</strong>
+                  <button type="button" onClick={uploadPaused ? resumeUpload : pauseUpload}>{uploadPaused ? <Play size={15} /> : <Pause size={15} />}{uploadPaused ? 'Continuar' : 'Pausar'}</button>
+                  <button type="button" className="danger" onClick={cancelUpload}><XCircle size={15} />Cancelar</button>
+                </div>
+              )}
+            </div>
             <div className="forge-max-extractor-video-list">
               {videos.map((video) => (
                 <article key={video.id} className={`forge-max-extractor-video-card ${activeVideo?.id === video.id ? 'active' : ''}`}>
@@ -439,7 +544,8 @@ function ForgeMaxExtractor() {
                 <button type="button" onClick={() => refreshActive().catch((caught) => setError(caught.message))} title="Atualizar status"><RefreshCw size={16} /></button>
               </div>
               <div className="forge-max-extractor-player-shell">
-                {activeVideo.status === 'preparing' && <div className="forge-max-extractor-processing"><Loader2 className="spin" size={28} /><strong>Preparando prévia leve</strong><span>O original permanece intacto.</span></div>}
+                {activeVideo.status === 'preparing' && <div className="forge-max-extractor-processing"><Loader2 className="spin" size={28} /><strong>Preparando prévia leve · {activeVideo.prepare_progress || 0}%</strong><span>{activeVideo.prepare_task?.state === 'queued' ? `Fila: posição ${activeVideo.prepare_task.queue_position}` : 'O original permanece intacto.'}</span><button type="button" onClick={() => handleTaskAction('cancel', 'prepare')}>Cancelar</button></div>}
+                {['error', 'cancelled'].includes(activeVideo.status) && <div className="forge-max-extractor-processing error"><XCircle size={28} /><strong>{activeVideo.status_detail || 'Falha na prévia'}</strong><span>{activeVideo.error || 'Você pode tentar novamente.'}</span><button type="button" onClick={() => handleTaskAction('retry', 'prepare')}>Tentar novamente</button></div>}
                 {playbackUrl && (
                   <video
                     ref={playerRef}
@@ -464,12 +570,12 @@ function ForgeMaxExtractor() {
               <div className="forge-max-extractor-panel-title"><span><Scissors size={17} /><strong>Trecho selecionado</strong></span></div>
               <label className="forge-max-extractor-title-field">Nome do trecho<input value={clipTitle} onChange={(event) => setClipTitle(event.target.value)} maxLength={120} /></label>
               <div className="forge-max-extractor-time-grid">
-                <label>Início<input type="number" min="0" max={duration} step="0.001" value={selectionStart.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(Number(event.target.value), selectionEnd - 0.05)); }} /></label>
-                <label>Fim<input type="number" min="0" max={duration} step="0.001" value={selectionEnd.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(Number(event.target.value), selectionStart + 0.05)); }} /></label>
+                <label>Início<input type="number" min="0" max={duration} step="0.001" value={selectionStart.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(snapTime(Number(event.target.value)), selectionEnd - 0.05)); }} /></label>
+                <label>Fim<input type="number" min="0" max={duration} step="0.001" value={selectionEnd.toFixed(3)} onChange={(event) => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(snapTime(Number(event.target.value)), selectionStart + 0.05)); }} /></label>
               </div>
               <div className="forge-max-extractor-mark-actions">
-                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(currentTime, selectionEnd - 0.05)); }}>Marcar início</button>
-                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(currentTime, selectionStart + 0.05)); }}>Marcar fim</button>
+                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionStart(Math.min(snapTime(currentTime), selectionEnd - 0.05)); }}>Marcar início</button>
+                <button type="button" onClick={() => { setSelectedSceneId(''); playbackRangeRef.current = null; setSelectionEnd(Math.max(snapTime(currentTime), selectionStart + 0.05)); }}>Marcar fim</button>
               </div>
               <div className="forge-max-extractor-duration"><Clock3 size={17} /><span>Duração selecionada</span><strong>{formatTime(selectedDuration)}</strong></div>
               <small className="forge-max-extractor-precision">Corte preciso: início e fim respeitados, áudio preservado e MP4 compatível.</small>
@@ -492,14 +598,25 @@ function ForgeMaxExtractor() {
                 </button>
               </div>
               <div className="forge-max-extractor-timeline-actions">
+                <div className="forge-max-extractor-mode" aria-label="Modo de detecção">
+                  <button type="button" className={sceneMode === 'adaptive' ? 'active' : ''} onClick={() => setSceneMode('adaptive')} title="Melhor equilíbrio para vídeos variados">Adaptativo</button>
+                  <button type="button" className={sceneMode === 'fast' ? 'active' : ''} onClick={() => setSceneMode('fast')} title="Mudanças diretas e processamento mais simples">Rápido</button>
+                  <button type="button" className={sceneMode === 'fade' ? 'active' : ''} onClick={() => setSceneMode('fade')} title="Transições com escurecimento e clareamento">Fades</button>
+                </div>
                 <label title="Menor valor encontra mais cortes; maior valor encontra apenas mudanças fortes.">Sensibilidade da detecção <input type="range" min="0.12" max="0.75" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><strong>{threshold.toFixed(2)}</strong></label>
-                <button type="button" onClick={handleAnalyze} disabled={busyAction === 'analyze' || activeVideo.analysis_status === 'running' || activeVideo.status === 'preparing'}>
+                {activeVideo.analysis_status === 'running' ? (
+                  <button type="button" className="danger" onClick={() => handleTaskAction('cancel', 'analysis')} disabled={busyAction.startsWith('cancel-analysis')}>
+                    <XCircle size={17} /> Cancelar · {activeVideo.analysis_progress || 0}%
+                  </button>
+                ) : (
+                  <button type="button" onClick={['error', 'cancelled'].includes(activeVideo.analysis_status) ? () => handleTaskAction('retry', 'analysis') : handleAnalyze} disabled={busyAction === 'analyze' || activeVideo.status === 'preparing'}>
                   {activeVideo.analysis_status === 'running' ? <Loader2 className="spin" size={17} /> : <ScanLine size={17} />}
-                  {scenes.length ? 'Analisar novamente' : 'Detectar cenas'}
-                </button>
+                    {['error', 'cancelled'].includes(activeVideo.analysis_status) ? 'Tentar novamente' : scenes.length ? 'Analisar novamente' : 'Detectar cenas'}
+                  </button>
+                )}
               </div>
             </div>
-            <div className="forge-max-extractor-zoom"><ZoomIn size={16} /><span>Zoom da timeline</span><input type="range" min="0.5" max="8" step="0.1" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /><strong>{zoom.toFixed(1)}×</strong></div>
+            <div className="forge-max-extractor-zoom"><ZoomIn size={16} /><span>Zoom da timeline</span><input type="range" min="0.5" max="8" step="0.1" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /><strong>{zoom.toFixed(1)}×</strong><button type="button" className={snapEnabled ? 'active' : ''} onClick={() => setSnapEnabled((value) => !value)} title="Encaixar o corte nas cenas e nos quadros"><Magnet size={15} />Encaixe</button></div>
             <div
               ref={timelineViewportRef}
               className="forge-max-extractor-timeline-viewport"
@@ -542,7 +659,7 @@ function ForgeMaxExtractor() {
                 <div className="forge-max-extractor-playhead" style={{ left: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
               </div>
             </div>
-            <p className="forge-max-extractor-timeline-help">Clique em uma cena para assistir somente aquele trecho. Arraste as bordas verdes para ajustar o início e o fim.</p>
+            <p className="forge-max-extractor-timeline-help">Clique em uma cena para assistir o trecho. Arraste as bordas verdes. Atalhos: Espaço reproduz, I marca o início, O marca o fim e as setas avançam quadro a quadro.</p>
           </section>
 
           <section className={`forge-max-extractor-panel forge-max-extractor-clips ${clipsOpen ? '' : 'collapsed'}`}>
@@ -555,11 +672,13 @@ function ForgeMaxExtractor() {
                 {clips.map((clip) => (
                   <article key={clip.id} className="forge-max-extractor-clip-card">
                     <div className="forge-max-extractor-clip-preview">
-                      {clip.status === 'ready' ? <video src={forgeMaxMediaUrl(clip.preview_url)} controls preload="metadata" /> : <div><Loader2 className={clip.status === 'extracting' ? 'spin' : ''} size={25} /><span>{clip.status === 'error' ? 'Falha na extração' : 'Extraindo trecho'}</span></div>}
+                      {clip.status === 'ready' ? <video src={forgeMaxMediaUrl(clip.preview_url)} controls preload="metadata" /> : <div>{clip.status === 'extracting' ? <Loader2 className="spin" size={25} /> : <XCircle size={25} />}<span>{clip.status === 'error' ? 'Falha na extração' : clip.status === 'cancelled' ? 'Extração cancelada' : `${clip.status_detail || 'Extraindo trecho'} · ${clip.progress || 0}%`}</span></div>}
                     </div>
                     <div className="forge-max-extractor-clip-info"><strong>{clip.title}</strong><small>{formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {formatTime(clip.duration, true)}</small>{clip.error && <em>{clip.error}</em>}</div>
                     <div className="forge-max-extractor-clip-actions">
                       {clip.status === 'ready' && <a href={forgeMaxMediaUrl(clip.download_url)} download><Download size={16} /> Baixar MP4</a>}
+                      {clip.status === 'extracting' && <button type="button" onClick={() => handleTaskAction('cancel', 'clip', clip.id)} disabled={busyAction === `cancel-clip-${clip.id}`} title="Cancelar extração"><XCircle size={16} /></button>}
+                      {['error', 'cancelled'].includes(clip.status) && <button type="button" onClick={() => handleTaskAction('retry', 'clip', clip.id)} disabled={busyAction === `retry-clip-${clip.id}`} title="Tentar novamente"><RefreshCw size={16} /></button>}
                       <button type="button" onClick={() => handleDeleteClip(clip.id)} disabled={clip.status === 'extracting' || busyAction === `clip-${clip.id}`} title="Excluir trecho"><Trash2 size={16} /></button>
                     </div>
                   </article>

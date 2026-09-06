@@ -43,14 +43,47 @@ export async function getForgeMaxVideo(videoId) {
   }));
 }
 
-export async function uploadForgeMaxVideo(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  return parseResponse(await apiFetch(apiUrl('/api/forge-max/extractor/videos'), {
-    method: 'POST',
-    body: formData,
-    timeoutMs: 60 * 60 * 1000,
-  }));
+export async function uploadForgeMaxVideo(file, handlers = {}) {
+  const tus = await import('tus-js-client');
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem('alliance_dark_auth_token') : '';
+  return new Promise((resolve, reject) => {
+    const upload = new tus.Upload(file, {
+      endpoint: apiUrl('/api/forge/resumable/files'),
+      chunkSize: 8 * 1024 * 1024,
+      retryDelays: [0, 1000, 3000, 5000, 10000],
+      removeFingerprintOnSuccess: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      metadata: {
+        filename: file.name,
+        filetype: file.type || 'video/mp4',
+        target: 'forge_max_extractor',
+      },
+      onError: reject,
+      onProgress: (bytesUploaded, bytesTotal) => {
+        handlers.onProgress?.(bytesUploaded, bytesTotal);
+      },
+      onSuccess: async () => {
+        try {
+          const response = await apiFetch(apiUrl('/api/forge/resumable/finalize'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ upload_url: upload.url, target: 'forge_max_extractor' }),
+            timeoutMs: 120000,
+          });
+          resolve(await parseResponse(response));
+        } catch (error) {
+          reject(error);
+        }
+      },
+    });
+    handlers.onUploadReady?.(upload);
+    upload.findPreviousUploads()
+      .then((previousUploads) => {
+        if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+        upload.start();
+      })
+      .catch(reject);
+  });
 }
 
 export async function deleteForgeMaxVideo(videoId) {
@@ -59,11 +92,11 @@ export async function deleteForgeMaxVideo(videoId) {
   }));
 }
 
-export async function analyzeForgeMaxScenes(videoId, threshold) {
+export async function analyzeForgeMaxScenes(videoId, threshold, mode = 'adaptive') {
   return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/analyze`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ threshold }),
+    body: JSON.stringify({ threshold, mode }),
     timeoutMs: 60 * 60 * 1000,
   }));
 }
@@ -80,5 +113,21 @@ export async function extractForgeMaxClip(videoId, payload) {
 export async function deleteForgeMaxClip(videoId, clipId) {
   return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/clips/${encodeURIComponent(clipId)}`), {
     method: 'DELETE',
+  }));
+}
+
+export async function cancelForgeMaxTask(videoId, taskType, clipId = '') {
+  return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/tasks/cancel`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_type: taskType, clip_id: clipId }),
+  }));
+}
+
+export async function retryForgeMaxTask(videoId, taskType, clipId = '') {
+  return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/tasks/retry`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_type: taskType, clip_id: clipId }),
   }));
 }
