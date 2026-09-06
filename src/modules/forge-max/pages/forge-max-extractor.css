@@ -668,26 +668,6 @@ button.forge-max-extractor-panel-heading {
   gap: 10px;
 }
 
-.forge-max-extractor-mode {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 4px;
-}
-
-.forge-max-extractor-timeline-actions .forge-max-extractor-mode button {
-  min-height: 32px;
-  padding: 0 8px;
-  border-color: var(--fmx-border);
-  background: #202832;
-  font-size: 10px;
-}
-
-.forge-max-extractor-timeline-actions .forge-max-extractor-mode button.active {
-  border-color: var(--fmx-green);
-  background: #174328;
-  color: #d8ffe3;
-}
-
 .forge-max-extractor-timeline-actions label,
 .forge-max-extractor-zoom {
   display: flex;
@@ -1116,10 +1096,6 @@ button.forge-max-extractor-panel-heading {
   }
 
   .forge-max-extractor-upload-status button {
-    width: 100%;
-  }
-
-  .forge-max-extractor-mode {
     width: 100%;
   }
 

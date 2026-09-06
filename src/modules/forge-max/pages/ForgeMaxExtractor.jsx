@@ -99,7 +99,6 @@ function ForgeMaxExtractor() {
   const [libraryOpen, setLibraryOpen] = useState(true);
   const [clipsOpen, setClipsOpen] = useState(true);
   const [threshold, setThreshold] = useState(0.30);
-  const [sceneMode, setSceneMode] = useState('adaptive');
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [zoom, setZoom] = useState(2.2);
   const [currentTime, setCurrentTime] = useState(0);
@@ -182,7 +181,6 @@ function ForgeMaxExtractor() {
     setSelectionEnd(nextEnd);
     setPlaying(false);
     setSelectedSceneId('');
-    setSceneMode(activeVideo?.scene_mode || 'adaptive');
     setThreshold(Number(activeVideo?.scene_threshold) || 0.30);
     playbackRangeRef.current = null;
   }, [activeVideo?.id, duration]);
@@ -309,7 +307,7 @@ function ForgeMaxExtractor() {
     clearNotice();
     setBusyAction('analyze');
     try {
-      const updated = await analyzeForgeMaxScenes(activeVideo.id, Number(threshold), sceneMode);
+      const updated = await analyzeForgeMaxScenes(activeVideo.id, Number(threshold));
       setActiveVideo(updated);
       setVideos((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setMessage('Detecção iniciada. A timeline será atualizada automaticamente.');
@@ -598,11 +596,6 @@ function ForgeMaxExtractor() {
                 </button>
               </div>
               <div className="forge-max-extractor-timeline-actions">
-                <div className="forge-max-extractor-mode" aria-label="Modo de detecção">
-                  <button type="button" className={sceneMode === 'adaptive' ? 'active' : ''} onClick={() => setSceneMode('adaptive')} title="Melhor equilíbrio para vídeos variados">Adaptativo</button>
-                  <button type="button" className={sceneMode === 'fast' ? 'active' : ''} onClick={() => setSceneMode('fast')} title="Mudanças diretas e processamento mais simples">Rápido</button>
-                  <button type="button" className={sceneMode === 'fade' ? 'active' : ''} onClick={() => setSceneMode('fade')} title="Transições com escurecimento e clareamento">Fades</button>
-                </div>
                 <label title="Menor valor encontra mais cortes; maior valor encontra apenas mudanças fortes.">Sensibilidade da detecção <input type="range" min="0.12" max="0.75" step="0.01" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} /><strong>{threshold.toFixed(2)}</strong></label>
                 {activeVideo.analysis_status === 'running' ? (
                   <button type="button" className="danger" onClick={() => handleTaskAction('cancel', 'analysis')} disabled={busyAction.startsWith('cancel-analysis')}>

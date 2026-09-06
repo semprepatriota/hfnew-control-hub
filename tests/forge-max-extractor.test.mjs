@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -6,6 +7,9 @@ import {
   snapTimelineTime,
   uploadPercent,
 } from '../src/modules/forge-max/services/forgeMaxTimeline.js';
+
+const extractorSource = readFileSync(new URL('../src/modules/forge-max/pages/ForgeMaxExtractor.jsx', import.meta.url), 'utf8');
+const apiSource = readFileSync(new URL('../src/modules/forge-max/services/forgeMaxApi.js', import.meta.url), 'utf8');
 
 
 test('Forge Max upload progress stays inside zero and one hundred', () => {
@@ -30,4 +34,13 @@ test('Forge Max snapping uses a nearby detected scene boundary', () => {
   assert.equal(snapTimelineTime(12.43, 60, scenes, true, 8), 12.5);
   assert.equal(snapTimelineTime(9.2, 60, scenes, true, 0.5), 9.2);
   assert.equal(snapTimelineTime(18.123, 60, scenes, false, 8), 18.12);
+});
+
+
+test('Forge Max scene locator keeps one sensitivity-based detector', () => {
+  assert.doesNotMatch(extractorSource, />Adaptativo</);
+  assert.doesNotMatch(extractorSource, />Rápido</);
+  assert.doesNotMatch(extractorSource, />Fades</);
+  assert.match(apiSource, /JSON\.stringify\(\{ threshold \}\)/);
+  assert.doesNotMatch(apiSource, /threshold, mode/);
 });

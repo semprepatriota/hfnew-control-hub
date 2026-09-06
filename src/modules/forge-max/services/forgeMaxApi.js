@@ -92,11 +92,11 @@ export async function deleteForgeMaxVideo(videoId) {
   }));
 }
 
-export async function analyzeForgeMaxScenes(videoId, threshold, mode = 'adaptive') {
+export async function analyzeForgeMaxScenes(videoId, threshold) {
   return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/analyze`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ threshold, mode }),
+    body: JSON.stringify({ threshold }),
     timeoutMs: 60 * 60 * 1000,
   }));
 }
