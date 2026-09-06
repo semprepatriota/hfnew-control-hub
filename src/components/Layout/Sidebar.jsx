@@ -9,6 +9,7 @@ import {
   Lock,
   CalendarClock,
   Activity,
+  Radar,
   DownloadCloud,
   Search,
   Bot,
@@ -68,9 +69,9 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
     {
       id: 3,
       module: 'intelligence',
-      label: 'Alliance Intel',
+      label: 'YouTube Radar',
       path: '/intel',
-      icon: Activity,
+      icon: Radar,
       color: 'neon-gold'
     },
     {

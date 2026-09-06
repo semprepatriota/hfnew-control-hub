@@ -479,7 +479,7 @@ function AppShell() {
           <Route path="/assinatura" element={<Billing currentUser={authStatus} />} />
           <Route path="/administracao" element={<OwnerGate currentUser={authStatus}><Admin /></OwnerGate>} />
           <Route path="/conexoes" element={<ModuleGate allowed={canUseModule('connections')} label="Conexões"><Conexoes currentUser={authStatus} /></ModuleGate>} />
-          <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="Alliance Intel"><Intel /></ModuleGate>} />
+          <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="YouTube Radar"><Intel /></ModuleGate>} />
           <Route path="/baixar-em-massa" element={<ModuleGate allowed={canUseModule('bulk_download')} label="Baixar em Massa"><BulkDownload /></ModuleGate>} />
           <Route path="/forge" element={<ModuleGate allowed={canUseModule('forge_7030')} label="The Forge 70/30"><Forge /></ModuleGate>} />
           <Route path="/the-forge" element={<ModuleGate allowed={canUseModule('forge_5050')} label="The Forge 50/50"><TheForge5050 /></ModuleGate>} />

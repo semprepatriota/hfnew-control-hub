@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity } from 'lucide-react';
+import { Radar } from 'lucide-react';
 import YouTubeAnalyticsTab from './Tabs/YouTubeAnalyticsTab';
 import './Pages.css';
 import './Intel.css';
@@ -10,11 +10,11 @@ function Intel() {
       <div className="page-header intel-monitor-page__header">
         <div>
           <span className="intel-monitor-page__eyebrow">
-            <Activity size={16} />
-            Monitoramento de canal
+            <Radar size={16} />
+            Inteligência de canal
           </span>
-          <h1>Alliance Intel</h1>
-          <p>Acompanhe cada canal conectado, os vídeos recentes e as mudanças registradas.</p>
+          <h1>YouTube Radar</h1>
+          <p>Monitore desempenho, frequência e oportunidades nos seus canais conectados.</p>
         </div>
       </div>
 

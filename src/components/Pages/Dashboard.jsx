@@ -49,7 +49,7 @@ function Dashboard({ moduleAccess }) {
       tone: 'green',
     },
     {
-      label: 'Alliance Intels',
+      label: 'Canais no Radar',
       value: stats?.total_intels || 0,
       icon: TrendingUp,
       tone: 'gold',
