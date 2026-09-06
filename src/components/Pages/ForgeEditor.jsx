@@ -34,6 +34,7 @@ const FORGE_7030_RENDER_JOB_KEY = 'alliance_forge_7030_active_render_job_v1';
 const FORGE_LIBRARY_PAGE_SIZE = 12;
 const FORGE_SCENE_POLL_INTERVAL_MS = 1800;
 const DEFAULT_HEADLINE_POSITION = 'middle';
+const FIXED_BOTTOM_VIDEO_FIT = 'cover';
 // Headline pack travado em 2026-06-17.
 // Ordem/base visual aprovada:
 // 1. Azul / Branco
@@ -478,6 +479,7 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
     layoutPreset === 'classic7030' &&
     ['top', 'middle', 'bottom'].includes(effectiveHeadlinePosition) &&
     Boolean((headlineText || '').trim());
+  const resolvedVideoFit = layoutPreset === 'classic7030' ? FIXED_BOTTOM_VIDEO_FIT : videoFit;
 
   const postHeadlineRows = (() => {
     if (!showBandHeadline) {
@@ -581,16 +583,16 @@ const ForgeVerticalPreview = React.memo(function ForgeVerticalPreview({
                     <img
                       src={selectedVideoSource}
                       alt="Vídeo de fundo"
-                      style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                      style={{ width: '100%', height: '100%', objectFit: resolvedVideoFit, objectPosition: '50% 50%' }}
                     />
                   ) : selectedVideoSource ? (
                     <video
                       src={selectedVideoSource}
                       className="video-preview"
-                      style={{ width: '100%', height: '100%', objectFit: videoFit }}
+                      style={{ width: '100%', height: '100%', objectFit: resolvedVideoFit, objectPosition: '50% 50%' }}
                     />
                   ) : selectedVideoThumbnail ? (
-                    <img src={selectedVideoThumbnail} alt="Vídeo de fundo" style={{ objectFit: videoFit }} />
+                    <img src={selectedVideoThumbnail} alt="Vídeo de fundo" style={{ objectFit: resolvedVideoFit, objectPosition: '50% 50%' }} />
                   ) : (
                     <div className="video-placeholder-large">
                       <Play size={48} />
@@ -701,7 +703,7 @@ function ForgeEditor() {
   const [imageFit, setImageFit] = useState('contain');
   const [imageCropX, setImageCropX] = useState(10);
   const [imageCropY, setImageCropY] = useState(10);
-  const [videoFit, setVideoFit] = useState('contain');
+  const [videoFit, setVideoFit] = useState(FIXED_BOTTOM_VIDEO_FIT);
   const [backgroundMode, setBackgroundMode] = useState('local');
   const [layoutPreset, setLayoutPreset] = useState('classic7030');
   const [headlineText, setHeadlineText] = useState('Sua Esperança Renasce');
@@ -960,6 +962,7 @@ function ForgeEditor() {
   const applyLayoutPreset = () => {
     setLayoutPreset('classic7030');
     setBackgroundMode('local');
+    setVideoFit(FIXED_BOTTOM_VIDEO_FIT);
     setTopRatio(70);
     setBottomRatio(30);
     ratioLockRef.current = { top: 70, bottom: 30 };
@@ -1382,7 +1385,8 @@ function ForgeEditor() {
       setImageFit(draft.imageFit || 'contain');
       setImageCropX(draft.imageCropX ?? 10);
       setImageCropY(draft.imageCropY ?? 10);
-      setVideoFit(draft.videoFit || 'contain');
+      // Rascunhos antigos podiam restaurar "contain" e criar bordas no vídeo inferior.
+      setVideoFit(FIXED_BOTTOM_VIDEO_FIT);
       // O Forge 70/30 possui um unico fluxo ativo. Rascunhos antigos de avatar
       // sao migrados sem reativar o modo removido.
       setBackgroundMode('local');
@@ -2484,7 +2488,10 @@ function ForgeEditor() {
         image_crop_y: verticalCenterPercent / 100,
         image_crop_top: topGuidePercent,
         image_crop_bottom: bottomGuidePercent,
-        video_fit: videoFit,
+        // No 70/30 o vídeo inferior é uma base fixa e sempre preenche sua faixa.
+        video_fit: layoutPreset === 'classic7030' && bottomRatio > 0
+          ? FIXED_BOTTOM_VIDEO_FIT
+          : videoFit,
         slideshow_seconds_per_image: 3,
         slideshow_intro_seconds: 1.5,
         slideshow_style: slideshowStyle,
@@ -4844,24 +4851,10 @@ function ForgeEditor() {
                   )}
                 </div>
 
-                <div className="fit-control-group">
-                  <span>Vídeo</span>
-                  <div className="fit-toggle" role="group" aria-label="Encaixe do vídeo">
-                    <button
-                      type="button"
-                      className={videoFit === 'contain' ? 'active' : ''}
-                      onClick={() => setVideoFit('contain')}
-                    >
-                      Sem cortar
-                    </button>
-                    <button
-                      type="button"
-                      className={videoFit === 'cover' ? 'active' : ''}
-                      onClick={() => setVideoFit('cover')}
-                    >
-                      Preencher
-                    </button>
-                  </div>
+                <div className="fit-control-group fixed-bottom-video-fit">
+                  <span>Vídeo inferior</span>
+                  <strong>Preenchimento fixo</strong>
+                  <small>Ocupa toda a faixa inferior sem bordas.</small>
                 </div>
               </div>
 

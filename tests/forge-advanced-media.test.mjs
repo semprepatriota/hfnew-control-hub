@@ -26,3 +26,11 @@ test('waveform is loaded on demand and retains a native audio fallback', () => {
   assert.match(waveform, /failed && <audio/);
   assert.match(waveform, /dragToSeek: true/);
 });
+
+test('Forge 70/30 keeps the lower video fill fixed', () => {
+  assert.match(forge, /const FIXED_BOTTOM_VIDEO_FIT = 'cover'/);
+  assert.match(forge, /layoutPreset === 'classic7030' && bottomRatio > 0[\s\S]{0,120}FIXED_BOTTOM_VIDEO_FIT/);
+  assert.match(forge, /Vídeo inferior[\s\S]{0,120}Preenchimento fixo/);
+  assert.doesNotMatch(forge, />\s*Sem cortar\s*</);
+  assert.match(forge, />\s*Cortar laterais\s*</);
+});

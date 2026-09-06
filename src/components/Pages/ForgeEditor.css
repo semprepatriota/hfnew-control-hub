@@ -2451,6 +2451,21 @@
   animation: spin 1s linear infinite;
 }
 
+.fixed-bottom-video-fit {
+  justify-content: center;
+}
+
+.fixed-bottom-video-fit strong {
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.fixed-bottom-video-fit small {
+  color: #8fa3bd;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .resumable-upload-track {
   width: min(100%, 360px);
   height: 7px;
