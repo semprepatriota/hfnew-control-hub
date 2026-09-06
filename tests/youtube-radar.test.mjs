@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildPeriodBars,
   buildTrendBars,
   filterRadarVideos,
   formatRelativeTime,
@@ -30,4 +31,14 @@ test('trend bars respect the selected period and normalize view heights', () => 
   const bars = buildTrendBars(videos, 7, 18, NOW);
   assert.deepEqual(bars.map((item) => item.video_id), ['c', 'a']);
   assert.equal(Math.max(...bars.map((item) => item.bar_percent)), 100);
+});
+
+test('period bars use the complete daily series rather than only visible cards', () => {
+  const bars = buildPeriodBars([
+    { date: '2026-07-01', views: 900 },
+    { date: '2026-09-03', views: 200 },
+    { date: '2026-09-04', views: 400 },
+  ], 7, 18, NOW);
+  assert.deepEqual(bars.map((item) => item.date), ['2026-09-03', '2026-09-04']);
+  assert.equal(bars[1].bar_percent, 100);
 });

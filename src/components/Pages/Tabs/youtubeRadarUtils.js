@@ -15,7 +15,7 @@ export const PERFORMANCE_LABELS = {
 export function filterRadarVideos(videos = [], filter = 'all', now = Date.now()) {
   const list = Array.isArray(videos) ? [...videos] : [];
   if (filter === 'shorts') return list.filter((video) => video.is_short);
-  if (filter === 'long') return list.filter((video) => !video.is_short);
+  if (filter === 'long') return list.filter((video) => video.is_long ?? !video.is_short);
   if (filter === 'recent') {
     const cutoff = now - (30 * 24 * 60 * 60 * 1000);
     return list
@@ -50,4 +50,24 @@ export function buildTrendBars(videos = [], days = 30, limit = 18, now = Date.no
     ...video,
     bar_percent: Math.max(5, Math.round((Number(video.views || 0) / maximum) * 100)),
   }));
+}
+
+export function buildPeriodBars(series = [], days = 30, limit = 18, now = Date.now()) {
+  const cutoff = now - (Number(days) * 24 * 60 * 60 * 1000);
+  const items = (Array.isArray(series) ? series : [])
+    .filter((item) => new Date(`${item.date || ''}T23:59:59Z`).getTime() >= cutoff)
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .slice(-limit);
+  const maximum = Math.max(1, ...items.map((item) => Number(item.views || 0)));
+  const average = items.length
+    ? items.reduce((total, item) => total + Number(item.views || 0), 0) / items.length
+    : 0;
+  return items.map((item) => {
+    const ratio = average ? Number(item.views || 0) / average : 1;
+    return {
+      ...item,
+      bar_percent: Math.max(5, Math.round((Number(item.views || 0) / maximum) * 100)),
+      performance_status: ratio >= 1.25 ? 'above' : ratio <= 0.75 ? 'below' : 'normal',
+    };
+  });
 }

@@ -238,6 +238,25 @@
   overflow-x: auto;
 }
 
+.intel-period-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.intel-period-coverage {
+  color: #55dc8d;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.intel-period-coverage.partial {
+  color: #f4bd5f;
+}
+
 .intel-period-tabs button,
 .intel-video-filters button {
   min-height: 30px;
@@ -691,6 +710,11 @@
 
   .intel-period-tabs {
     align-self: flex-start;
+  }
+
+  .intel-period-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .intel-performance-band {

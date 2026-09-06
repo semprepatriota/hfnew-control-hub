@@ -20,7 +20,7 @@ import {
 import SourceBadge from '../../Branding/SourceBadge';
 import { apiFetch, apiUrl } from '../../../config/api';
 import {
-  buildTrendBars,
+  buildPeriodBars,
   filterRadarVideos,
   formatRelativeTime,
   PERFORMANCE_LABELS,
@@ -94,13 +94,15 @@ function YouTubeAnalyticsTab() {
 
   const channel = monitor?.selected_channel || {};
   const videos = channel.recent_videos || [];
+  const longVideos = channel.long_videos || videos.filter((video) => video.is_long ?? !video.is_short);
+  const videoSource = videoFilter === 'long' ? longVideos : videos;
   const visibleVideos = useMemo(
-    () => filterRadarVideos(videos, videoFilter, clock),
-    [clock, videoFilter, videos],
+    () => filterRadarVideos(videoSource, videoFilter, clock),
+    [clock, videoFilter, videoSource],
   );
   const trendBars = useMemo(
-    () => buildTrendBars(videos, periodDays, 18, clock),
-    [clock, periodDays, videos],
+    () => buildPeriodBars(channel.period_series || [], periodDays, 18, clock),
+    [channel.period_series, clock, periodDays],
   );
   const period = channel.periods?.[String(periodDays)] || fallbackPeriod(periodDays);
 
@@ -116,7 +118,7 @@ function YouTubeAnalyticsTab() {
       const suffix = params.toString() ? `?${params.toString()}` : '';
       const response = await apiFetch(apiUrl(`/api/intel/youtube-monitor${suffix}`), {
         retries: force ? 0 : 1,
-        timeoutMs: 30000,
+        timeoutMs: 60000,
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -255,7 +257,7 @@ function YouTubeAnalyticsTab() {
           <Video size={21} />
           <span>Vídeos publicados</span>
           <strong>{formatNumber(channel.video_count)}</strong>
-          <small>{channel.short_count || 0} Shorts · {channel.long_video_count || 0} longos na leitura</small>
+          <small>{channel.short_count || 0} Shorts recentes · {channel.long_video_catalog_count || channel.long_video_count || 0} longos encontrados</small>
         </article>
         <article className="intel-kpi">
           <BarChart3 size={21} />
@@ -269,19 +271,24 @@ function YouTubeAnalyticsTab() {
         <div className="intel-section-heading">
           <div>
             <h3>Desempenho por período</h3>
-            <p>Leitura dos vídeos publicados entre os 50 mais recentes do canal.</p>
+            <p>Publicações localizadas no histórico varrido do canal.</p>
           </div>
-          <div className="intel-period-tabs" aria-label="Período da análise">
-            {PERIOD_OPTIONS.map((days) => (
-              <button
-                type="button"
-                key={days}
-                className={periodDays === days ? 'active' : ''}
-                onClick={() => setPeriodDays(days)}
-              >
-                {days} dias
-              </button>
-            ))}
+          <div className="intel-period-actions">
+            <span className={`intel-period-coverage ${period.complete === false ? 'partial' : ''}`}>
+              {period.complete === false ? 'Leitura parcial' : 'Período completo'}
+            </span>
+            <div className="intel-period-tabs" aria-label="Período da análise">
+              {PERIOD_OPTIONS.map((days) => (
+                <button
+                  type="button"
+                  key={days}
+                  className={periodDays === days ? 'active' : ''}
+                  onClick={() => setPeriodDays(days)}
+                >
+                  {days} dias
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -293,7 +300,7 @@ function YouTubeAnalyticsTab() {
           </div>
           <div>
             <Eye size={17} />
-            <span>Views</span>
+            <span>Views atuais</span>
             <strong>{formatNumber(period.views)}</strong>
           </div>
           <div>
@@ -314,17 +321,14 @@ function YouTubeAnalyticsTab() {
         </div>
 
         <div className="intel-trend-chart" aria-label={`Visualizações das publicações nos últimos ${periodDays} dias`}>
-          {trendBars.length ? trendBars.map((video) => (
-            <a
-              key={video.video_id}
-              href={video.url}
-              target="_blank"
-              rel="noreferrer"
-              className={`intel-trend-bar performance-${video.performance_status || 'normal'}`}
-              title={`${video.title}: ${formatNumber(video.views)} visualizações`}
+          {trendBars.length ? trendBars.map((item) => (
+            <div
+              key={item.date}
+              className={`intel-trend-bar performance-${item.performance_status || 'normal'}`}
+              title={`${formatDate(`${item.date}T12:00:00Z`)}: ${item.video_count} publicação(ões), ${formatNumber(item.views)} visualizações atuais`}
             >
-              <span style={{ height: `${video.bar_percent}%` }} />
-            </a>
+              <span style={{ height: `${item.bar_percent}%` }} />
+            </div>
           )) : <span className="intel-trend-empty">Sem publicações nesse período.</span>}
         </div>
       </section>
@@ -362,7 +366,7 @@ function YouTubeAnalyticsTab() {
             <h3>Vídeos recentes</h3>
             <p>Compare cada publicação com a média atual do canal.</p>
           </div>
-          <span>{visibleVideos.length} de {videos.length}</span>
+          <span>{visibleVideos.length} de {videoFilter === 'long' ? longVideos.length : videos.length}</span>
         </div>
 
         <div className="intel-video-filters" aria-label="Filtrar vídeos">
