@@ -17,6 +17,7 @@ import {
   MessageCircle,
   CreditCard,
   ShieldCheck,
+  Heart,
   ChevronRight,
   Menu,
   LogOut,
@@ -33,6 +34,16 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
   };
 
   const menuItems = [
+    {
+      id: 'jesus-te-ama',
+      label: 'Jesus Te Ama',
+      path: 'https://jesus.hfnew.com.br/',
+      icon: Heart,
+      color: 'neon-yellow',
+      external: true,
+      ownerOnly: true,
+      alwaysVisible: true,
+    },
     {
       id: 1,
       module: 'dashboard',
