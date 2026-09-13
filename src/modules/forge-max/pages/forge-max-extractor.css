@@ -934,9 +934,78 @@ button.forge-max-extractor-panel-heading {
 
 .forge-max-extractor-clips-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
   gap: 12px;
   padding: 14px;
+}
+
+.forge-max-extractor-clips-toolbar,
+.forge-max-extractor-clip-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fmx-border);
+  font-size: 12px;
+}
+
+.forge-max-extractor-clips-toolbar > span,
+.forge-max-extractor-clip-progress {
+  color: var(--fmx-muted);
+}
+
+.forge-max-extractor-select-all,
+.forge-max-extractor-clip-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.forge-max-extractor-select-all input,
+.forge-max-extractor-clip-selection input {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--fmx-green);
+}
+
+.forge-max-extractor-clips-toolbar button,
+.forge-max-extractor-clip-progress button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid var(--fmx-border);
+  border-radius: 4px;
+  background: #202832;
+  color: var(--fmx-text);
+  cursor: pointer;
+}
+
+.forge-max-extractor-clips-toolbar button.danger {
+  border-color: #71323a;
+  background: #301419;
+  color: #ff7c86;
+}
+
+.forge-max-extractor-clips-toolbar button:disabled,
+.forge-max-extractor-clip-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.forge-max-extractor-clip-progress {
+  overflow-wrap: anywhere;
+}
+
+.forge-max-extractor-clip-progress > svg {
+  flex-shrink: 0;
 }
 
 .forge-max-extractor-clip-card {
@@ -1003,6 +1072,7 @@ button.forge-max-extractor-panel-heading {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .forge-max-extractor-clip-actions a,
@@ -1015,6 +1085,14 @@ button.forge-max-extractor-panel-heading {
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
+}
+
+.forge-max-extractor-clip-actions .forge-max-extractor-download-mp4 {
+  min-height: 28px;
+  padding: 0 7px;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 10px;
 }
 
 .forge-max-extractor-clip-actions a {

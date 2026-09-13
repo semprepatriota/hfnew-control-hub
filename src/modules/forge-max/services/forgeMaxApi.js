@@ -1,4 +1,4 @@
-import { apiFetch, apiUrl } from '../../../config/api';
+import { apiFetch, apiUrl } from '../../../config/api.js';
 
 async function parseResponse(response) {
   const contentType = response.headers.get('content-type') || '';
@@ -23,10 +23,31 @@ export function forgeMaxThumbnailUrl(video, seconds) {
   return apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(video.id)}/thumbnail?${query}`);
 }
 
-export function forgeMaxClipsArchiveUrl(video) {
+export function forgeMaxClipsArchiveUrl(video, clipIds = []) {
   if (!video?.id || !video?.media_key) return '';
   const query = new URLSearchParams({ key: video.media_key });
+  for (const id of [...new Set(clipIds)]) query.append('clip_ids', id);
   return apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(video.id)}/clips/download-all?${query}`);
+}
+
+export function downloadForgeMaxClipsArchive(video, clipIds = null, signal) {
+  if (!video?.id || !video?.media_key) throw new Error('Vídeo sem chave de download.');
+  const options = { cache: 'no-store', retries: 0, timeoutMs: 120000, signal };
+  if (clipIds === null) return apiFetch(forgeMaxClipsArchiveUrl(video), options);
+  const ids = [...new Set(clipIds)];
+  if (!ids.length) throw new Error('Selecione pelo menos um trecho pronto.');
+  return apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(video.id)}/clips/download-selected`), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: video.media_key, clip_ids: ids }),
+  });
+}
+
+export function pruneForgeMaxClipSelection(ids, clips, previousVideoId, videoId) {
+  if (previousVideoId !== videoId) return [];
+  const available = new Set(clips.filter((clip) => clip.status !== 'extracting').map((clip) => clip.id));
+  return [...new Set(ids)].filter((id) => available.has(id));
 }
 
 export async function getForgeMaxHealth() {
@@ -114,6 +135,26 @@ export async function deleteForgeMaxClip(videoId, clipId) {
   return parseResponse(await apiFetch(apiUrl(`/api/forge-max/extractor/videos/${encodeURIComponent(videoId)}/clips/${encodeURIComponent(clipId)}`), {
     method: 'DELETE',
   }));
+}
+
+export async function deleteForgeMaxClips(videoId, clips, onProgress) {
+  const deletedIds = [];
+  const failures = [];
+  const seen = new Set();
+  for (const clip of clips) {
+    if (seen.has(clip.id)) continue;
+    seen.add(clip.id);
+    try {
+      if (clip.status === 'extracting') throw new Error('Extração em andamento; trecho não excluído.');
+      await deleteForgeMaxClip(videoId, clip.id);
+      deletedIds.push(clip.id);
+      onProgress?.({ deletedId: clip.id, completed: seen.size, deleted: deletedIds.length, failed: failures.length });
+    } catch (caught) {
+      failures.push({ id: clip.id, title: clip.title || clip.id, error: caught.message });
+      onProgress?.({ completed: seen.size, deleted: deletedIds.length, failed: failures.length });
+    }
+  }
+  return { deletedIds, failures };
 }
 
 export async function cancelForgeMaxTask(videoId, taskType, clipId = '') {

@@ -22,8 +22,9 @@ import {
 import {
   analyzeForgeMaxScenes,
   cancelForgeMaxTask,
-  deleteForgeMaxClip,
+  deleteForgeMaxClips,
   deleteForgeMaxVideo,
+  downloadForgeMaxClipsArchive,
   extractForgeMaxClip,
   forgeMaxClipsArchiveUrl,
   forgeMaxMediaUrl,
@@ -31,9 +32,11 @@ import {
   getForgeMaxHealth,
   getForgeMaxVideo,
   listForgeMaxVideos,
+  pruneForgeMaxClipSelection,
   retryForgeMaxTask,
   uploadForgeMaxVideo,
 } from '../services/forgeMaxApi';
+import { saveZIP } from '../services/forgeMaxDownload';
 import { clampTimelineValue, snapTimelineTime, uploadPercent } from '../services/forgeMaxTimeline';
 import './forge-max-extractor.css';
 
@@ -87,6 +90,10 @@ function ForgeMaxExtractor() {
   const dragRef = useRef(null);
   const playbackRangeRef = useRef(null);
   const resumableUploadRef = useRef(null);
+  const clipOperationRef = useRef('');
+  const zipAbortRef = useRef(null);
+  const clipSelectionVideoRef = useRef(null);
+  const selectAllClipsRef = useRef(null);
   const [health, setHealth] = useState(null);
   const [videos, setVideos] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
@@ -107,14 +114,37 @@ function ForgeMaxExtractor() {
   const [clipTitle, setClipTitle] = useState('Reportagem extraída');
   const [playing, setPlaying] = useState(false);
   const [selectedSceneId, setSelectedSceneId] = useState('');
+  const [selectedClipIds, setSelectedClipIds] = useState([]);
+  const [clipBusy, setClipBusy] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(null);
+  const [deleteProgress, setDeleteProgress] = useState(null);
 
   const duration = Number(activeVideo?.duration) || 0;
   const scenes = activeVideo?.scenes || [];
   const clips = activeVideo?.clips || [];
+  const selectableClips = clips.filter((clip) => clip.status !== 'extracting');
+  const selectedClips = selectableClips.filter((clip) => selectedClipIds.includes(clip.id));
+  const allClipsSelected = selectableClips.length > 0 && selectedClips.length === selectableClips.length;
+  const selectedClipsReady = selectedClips.length > 0 && selectedClips.every((clip) => clip.status === 'ready');
   const playbackUrl = forgeMaxMediaUrl(activeVideo?.playback_url);
   const waveformUrl = forgeMaxMediaUrl(activeVideo?.waveform_url);
   const timelineWidth = Math.max(900, duration * zoom);
   const selectedDuration = Math.max(0, selectionEnd - selectionStart);
+
+  useEffect(() => {
+    const previousVideoId = clipSelectionVideoRef.current;
+    clipSelectionVideoRef.current = activeVideo?.id;
+    setSelectedClipIds((current) => {
+      const next = pruneForgeMaxClipSelection(current, activeVideo?.clips || [], previousVideoId, activeVideo?.id);
+      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+    });
+  }, [activeVideo?.id, activeVideo?.clips]);
+
+  useEffect(() => {
+    if (selectAllClipsRef.current) selectAllClipsRef.current.indeterminate = selectedClips.length > 0 && !allClipsSelected;
+  }, [selectedClips.length, allClipsSelected, clipsOpen]);
+
+  useEffect(() => () => zipAbortRef.current?.abort(), []);
 
   const clearNotice = useCallback(() => {
     setMessage('');
@@ -138,7 +168,7 @@ function ForgeMaxExtractor() {
   const refreshActive = useCallback(async () => {
     if (!activeVideo?.id) return null;
     const updated = await getForgeMaxVideo(activeVideo.id);
-    setActiveVideo(updated);
+    setActiveVideo((current) => current?.id === updated.id ? updated : current);
     setVideos((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     return updated;
   }, [activeVideo?.id]);
@@ -239,7 +269,7 @@ function ForgeMaxExtractor() {
   async function handleUpload(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file || clipOperationRef.current) return;
     clearNotice();
     setUploadBusy(true);
     setUploadPaused(false);
@@ -286,6 +316,7 @@ function ForgeMaxExtractor() {
   }
 
   async function handleDeleteVideo(videoId) {
+    if (clipOperationRef.current) return;
     if (!window.confirm('Excluir este vídeo e todos os trechos extraídos dele?')) return;
     clearNotice();
     setBusyAction(`delete-${videoId}`);
@@ -319,7 +350,7 @@ function ForgeMaxExtractor() {
   }
 
   async function handleTaskAction(action, taskType, clipId = '') {
-    if (!activeVideo?.id) return;
+    if (!activeVideo?.id || clipOperationRef.current) return;
     clearNotice();
     const actionKey = `${action}-${taskType}-${clipId}`;
     setBusyAction(actionKey);
@@ -396,6 +427,7 @@ function ForgeMaxExtractor() {
   }
 
   async function handleExtract() {
+    if (clipOperationRef.current) return;
     if (!activeVideo?.id || selectedDuration < 0.25) return;
     clearNotice();
     setBusyAction('extract');
@@ -416,48 +448,94 @@ function ForgeMaxExtractor() {
     }
   }
 
-  async function handleDeleteClip(clipId) {
-    if (!window.confirm('Excluir este trecho extraído?')) return;
+  async function handleDeleteClips(targetClips) {
+    if (!activeVideo?.id || clipOperationRef.current || uploadBusy || busyAction || !targetClips.length) return;
+    if (targetClips.some((clip) => clip.status === 'extracting')) {
+      setError('Aguarde a extração terminar antes de excluir o trecho.');
+      return;
+    }
+    if (!window.confirm(`Excluir ${targetClips.length} trecho(s) extraído(s)?`)) return;
+    const videoId = activeVideo.id;
     clearNotice();
-    setBusyAction(`clip-${clipId}`);
+    clipOperationRef.current = 'delete';
+    setClipBusy('delete');
+    setDeleteProgress({ completed: 0, total: targetClips.length });
     try {
-      await deleteForgeMaxClip(activeVideo.id, clipId);
-      await refreshActive();
+      const result = await deleteForgeMaxClips(videoId, targetClips, ({ deletedId, completed }) => {
+        setDeleteProgress({ completed, total: targetClips.length });
+        if (!deletedId) return;
+        const removeClip = (video) => video?.id === videoId
+          ? { ...video, clips: (video.clips || []).filter((clip) => clip.id !== deletedId) }
+          : video;
+        setActiveVideo(removeClip);
+        setVideos((current) => current.map(removeClip));
+        setSelectedClipIds((current) => current.filter((id) => id !== deletedId));
+      });
+      if (result.failures.length) {
+        setError(`${result.deletedIds.length} de ${targetClips.length} trecho(s) excluído(s). ${result.failures.length} falha(s): ${result.failures.map((failure) => `${failure.title}: ${failure.error}`).join('; ')}`);
+      } else {
+        setMessage(`${result.deletedIds.length} trecho(s) excluído(s).`);
+      }
     } catch (caught) {
       setError(caught.message);
     } finally {
-      setBusyAction('');
+      clipOperationRef.current = '';
+      setClipBusy('');
+      setDeleteProgress(null);
     }
   }
 
-  function handleDownloadAllClips() {
+  function handleDeleteClip(clipId) {
+    const clip = clips.find((item) => item.id === clipId);
+    if (clip) return handleDeleteClips([clip]);
+  }
+
+  async function handleDownloadClips(clipIds = null) {
+    if (!activeVideo?.id || clipOperationRef.current || uploadBusy || busyAction) return;
     clearNotice();
-    if (!clips.length) {
-      setError('Extraia pelo menos uma cena antes de baixar todas.');
+    const targetClips = clipIds === null ? clips : selectedClips;
+    if (!targetClips.length || targetClips.some((clip) => clip.status !== 'ready')) {
+      setError('Selecione apenas trechos com extração concluída para baixar o ZIP.');
       return;
     }
-    const processing = clips.filter((clip) => clip.status === 'extracting').length;
-    const failed = clips.filter((clip) => clip.status === 'error').length;
-    if (processing) {
-      setError(`Aguarde ${processing} cena(s) terminar(em) a extração.`);
-      return;
-    }
-    if (failed) {
-      setError(`Existem ${failed} cena(s) com falha. Exclua ou extraia novamente antes do ZIP.`);
-      return;
-    }
-    const archiveUrl = forgeMaxClipsArchiveUrl(activeVideo);
+    const video = activeVideo;
+    const archiveUrl = forgeMaxClipsArchiveUrl(video, clipIds || []);
     if (!archiveUrl) {
       setError('Não foi possível preparar o endereço do ZIP.');
       return;
     }
-    const anchor = document.createElement('a');
-    anchor.href = archiveUrl;
-    anchor.download = `forge_max_cenas_${activeVideo.id.slice(-8)}.zip`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setMessage(`${clips.length} cena(s) pronta(s) para download em um único ZIP.`);
+    clipOperationRef.current = 'download';
+    setClipBusy('download');
+    setDownloadProgress({ phase: 'choosing', bytes: 0, totalBytes: null });
+    const controller = new AbortController();
+    zipAbortRef.current = controller;
+    let lastProgressTime = 0;
+    try {
+      const result = await saveZIP({
+        filename: `forge_max_${clipIds === null ? 'cenas' : 'selecionados'}_${video.id.slice(-8)}.zip`,
+        fallbackUrl: archiveUrl,
+        request: (signal) => downloadForgeMaxClipsArchive(video, clipIds, signal),
+        signal: controller.signal,
+        expectedClipCount: targetClips.length,
+        onProgress: (progress) => {
+          const now = Date.now();
+          if (progress.phase !== 'saving' || now - lastProgressTime >= 200) {
+            lastProgressTime = now;
+            setDownloadProgress(progress);
+          }
+        },
+      });
+      if (result.status === 'saved') setMessage(`ZIP salvo no computador: ${targetClips.length} trecho(s) · ${formatBytes(result.bytes)}.`);
+      else if (result.status === 'cancelled') setMessage('Download cancelado. Nenhum ZIP concluído foi confirmado.');
+      else setMessage('Download encaminhado ao navegador. A conclusão não pode ser verificada aqui; confira o arquivo na pasta de downloads.');
+    } catch (caught) {
+      setError(caught.message);
+    } finally {
+      zipAbortRef.current = null;
+      clipOperationRef.current = '';
+      setClipBusy('');
+      setDownloadProgress(null);
+    }
   }
 
   const tickMarks = useMemo(() => {
@@ -503,7 +581,7 @@ function ForgeMaxExtractor() {
               <label className={`forge-max-extractor-upload ${uploadBusy ? 'busy' : ''}`}>
                 {uploadBusy ? <Loader2 className="spin" size={22} /> : <Upload size={22} />}
                 <span><strong>{uploadPaused ? 'Envio pausado' : uploadBusy ? `Enviando vídeo · ${uploadProgress}%` : 'Adicionar vídeo longo'}</strong><small>MP4, MOV, M4V, MKV, WEBM ou AVI · máximo 200 minutos</small></span>
-                <input type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm,video/x-msvideo" onChange={handleUpload} disabled={uploadBusy} />
+                <input type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm,video/x-msvideo" onChange={handleUpload} disabled={uploadBusy || Boolean(clipBusy)} />
               </label>
               {uploadBusy && (
                 <div className="forge-max-extractor-upload-status">
@@ -517,12 +595,12 @@ function ForgeMaxExtractor() {
             <div className="forge-max-extractor-video-list">
               {videos.map((video) => (
                 <article key={video.id} className={`forge-max-extractor-video-card ${activeVideo?.id === video.id ? 'active' : ''}`}>
-                  <button type="button" className="forge-max-extractor-video-select" onClick={() => setActiveVideo(video)}>
+                  <button type="button" className="forge-max-extractor-video-select" onClick={() => setActiveVideo(video)} disabled={Boolean(clipBusy)}>
                     <Film size={21} />
                     <span><strong>{video.original_name}</strong><small>{formatTime(video.duration, true)} · {video.width}×{video.height} · {formatBytes(video.size_bytes)}</small></span>
                     <em className={video.status === 'error' || video.analysis_status === 'error' ? 'error' : ''}>{statusLabel(video)}</em>
                   </button>
-                  <button type="button" className="forge-max-extractor-delete" onClick={() => handleDeleteVideo(video.id)} disabled={busyAction === `delete-${video.id}`} title="Excluir vídeo">
+                  <button type="button" className="forge-max-extractor-delete" onClick={() => handleDeleteVideo(video.id)} disabled={Boolean(clipBusy) || busyAction === `delete-${video.id}`} title="Excluir vídeo">
                     <Trash2 size={16} />
                   </button>
                 </article>
@@ -577,7 +655,7 @@ function ForgeMaxExtractor() {
               </div>
               <div className="forge-max-extractor-duration"><Clock3 size={17} /><span>Duração selecionada</span><strong>{formatTime(selectedDuration)}</strong></div>
               <small className="forge-max-extractor-precision">Corte preciso: início e fim respeitados, áudio preservado e MP4 compatível.</small>
-              <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={busyAction === 'extract' || selectedDuration < 0.25}>
+              <button type="button" className="forge-max-extractor-extract" onClick={handleExtract} disabled={Boolean(clipBusy) || busyAction === 'extract' || selectedDuration < 0.25}>
                 {busyAction === 'extract' ? <Loader2 className="spin" size={16} /> : <Scissors size={16} />}
                 Extrair MP4
               </button>
@@ -591,8 +669,8 @@ function ForgeMaxExtractor() {
                 <button type="button" className="forge-max-extractor-preview-selection" onClick={previewSelection} disabled={selectedDuration <= 0}>
                   <Play size={16} /> Assistir trecho
                 </button>
-                <button type="button" className="forge-max-extractor-download-all" onClick={handleDownloadAllClips} disabled={!clips.length} title="Baixar todos os trechos extraídos em um ZIP">
-                  <Download size={16} /> Baixar Todas Cenas
+                <button type="button" className="forge-max-extractor-download-all" onClick={() => handleDownloadClips()} disabled={!clips.length || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Baixar todos os trechos extraídos em um ZIP">
+                  {clipBusy === 'download' ? <Loader2 className="spin" size={16} /> : <Download size={16} />} Baixar Todas Cenas
                 </button>
               </div>
               <div className="forge-max-extractor-timeline-actions">
@@ -661,23 +739,40 @@ function ForgeMaxExtractor() {
               {clipsOpen ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
             </button>
             {clipsOpen && (
+              <>
+              <div className="forge-max-extractor-clips-toolbar">
+                <label className="forge-max-extractor-select-all">
+                  <input ref={selectAllClipsRef} type="checkbox" checked={allClipsSelected} disabled={!selectableClips.length || Boolean(clipBusy)} onChange={(event) => setSelectedClipIds(event.target.checked ? selectableClips.map((clip) => clip.id) : [])} />
+                  Selecionar todos
+                </label>
+                <span>{selectedClips.length} selecionado(s)</span>
+                <button type="button" title="Limpar seleção" onClick={() => setSelectedClipIds([])} disabled={!selectedClips.length || Boolean(clipBusy)}><XCircle size={15} />Limpar</button>
+                <button type="button" onClick={() => handleDownloadClips(selectedClips.map((clip) => clip.id))} disabled={!selectedClipsReady || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Baixar trechos selecionados em ZIP"><Download size={15} />Baixar selecionados</button>
+                <button type="button" className="danger" onClick={() => handleDeleteClips(selectedClips)} disabled={!selectedClips.length || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Excluir trechos selecionados"><Trash2 size={15} />Excluir selecionados</button>
+              </div>
+              {(downloadProgress || deleteProgress) && <div className="forge-max-extractor-clip-progress" role="status" aria-live="polite">
+                <Loader2 className="spin" size={16} />
+                {deleteProgress ? `Excluindo trechos · ${deleteProgress.completed}/${deleteProgress.total}` : downloadProgress.phase === 'choosing' ? 'Escolhendo destino do ZIP…' : downloadProgress.phase === 'connecting' ? 'Conectando para baixar ZIP…' : downloadProgress.phase === 'closing' ? 'Finalizando gravação do ZIP…' : `Salvando ZIP · ${formatBytes(downloadProgress.bytes)}${downloadProgress.totalBytes ? ` / ${formatBytes(downloadProgress.totalBytes)}` : ''}`}
+                {downloadProgress && downloadProgress.phase !== 'closing' && <button type="button" title="Cancelar download do ZIP" onClick={() => zipAbortRef.current?.abort()}><XCircle size={15} />Cancelar</button>}
+              </div>}
               <div className="forge-max-extractor-clips-grid">
                 {clips.map((clip) => (
                   <article key={clip.id} className="forge-max-extractor-clip-card">
                     <div className="forge-max-extractor-clip-preview">
                       {clip.status === 'ready' ? <video src={forgeMaxMediaUrl(clip.preview_url)} controls preload="metadata" /> : <div>{clip.status === 'extracting' ? <Loader2 className="spin" size={25} /> : <XCircle size={25} />}<span>{clip.status === 'error' ? 'Falha na extração' : clip.status === 'cancelled' ? 'Extração cancelada' : `${clip.status_detail || 'Extraindo trecho'} · ${clip.progress || 0}%`}</span></div>}
                     </div>
-                    <div className="forge-max-extractor-clip-info"><strong>{clip.title}</strong><small>{formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {formatTime(clip.duration, true)}</small>{clip.error && <em>{clip.error}</em>}</div>
+                    <div className="forge-max-extractor-clip-info"><label className="forge-max-extractor-clip-selection"><input type="checkbox" checked={selectedClipIds.includes(clip.id)} disabled={clip.status === 'extracting' || Boolean(clipBusy)} onChange={(event) => setSelectedClipIds((current) => event.target.checked ? [...new Set([...current, clip.id])] : current.filter((id) => id !== clip.id))} aria-label={`Selecionar ${clip.title}`} /><strong title={clip.title}>{clip.title}</strong></label><small>{formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {formatTime(clip.duration, true)}</small>{clip.error && <em>{clip.error}</em>}</div>
                     <div className="forge-max-extractor-clip-actions">
-                      {clip.status === 'ready' && <a href={forgeMaxMediaUrl(clip.download_url)} download><Download size={16} /> Baixar MP4</a>}
-                      {clip.status === 'extracting' && <button type="button" onClick={() => handleTaskAction('cancel', 'clip', clip.id)} disabled={busyAction === `cancel-clip-${clip.id}`} title="Cancelar extração"><XCircle size={16} /></button>}
-                      {['error', 'cancelled'].includes(clip.status) && <button type="button" onClick={() => handleTaskAction('retry', 'clip', clip.id)} disabled={busyAction === `retry-clip-${clip.id}`} title="Tentar novamente"><RefreshCw size={16} /></button>}
-                      <button type="button" onClick={() => handleDeleteClip(clip.id)} disabled={clip.status === 'extracting' || busyAction === `clip-${clip.id}`} title="Excluir trecho"><Trash2 size={16} /></button>
+                      {clip.status === 'ready' && <a className="forge-max-extractor-download-mp4" href={forgeMaxMediaUrl(clip.download_url)} download><Download size={14} /> Baixar MP4</a>}
+                      {clip.status === 'extracting' && <button type="button" onClick={() => handleTaskAction('cancel', 'clip', clip.id)} disabled={Boolean(clipBusy) || busyAction === `cancel-clip-${clip.id}`} title="Cancelar extração"><XCircle size={16} /></button>}
+                      {['error', 'cancelled'].includes(clip.status) && <button type="button" onClick={() => handleTaskAction('retry', 'clip', clip.id)} disabled={Boolean(clipBusy) || busyAction === `retry-clip-${clip.id}`} title="Tentar novamente"><RefreshCw size={16} /></button>}
+                      <button type="button" onClick={() => handleDeleteClip(clip.id)} disabled={clip.status === 'extracting' || Boolean(clipBusy) || busyAction === `clip-${clip.id}`} title="Excluir trecho"><Trash2 size={16} /></button>
                     </div>
                   </article>
                 ))}
                 {!clips.length && <p className="forge-max-extractor-empty">Os trechos extraídos aparecerão aqui para prévia e download.</p>}
               </div>
+              </>
             )}
           </section>
         </>
