@@ -6,6 +6,7 @@ import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Pages/Dashboard';
 import DashboardLogin from './components/Pages/DashboardLogin';
 import { apiUrl } from './config/api';
+import { normalizeRoutePath } from './utils/routePath';
 import './App.css';
 
 const Conexoes = lazy(() => import('./components/Pages/Conexoes'));
@@ -101,8 +102,9 @@ function AppShell() {
   const authRetryTimeout = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
-  const isAuthBypassRoute = AUTH_BYPASS_ROUTES.includes(location.pathname);
+  const currentPath = normalizeRoutePath(location.pathname);
+  const isPublicRoute = PUBLIC_ROUTES.includes(currentPath);
+  const isAuthBypassRoute = AUTH_BYPASS_ROUTES.includes(currentPath);
   const pendingOAuthCallbackUrl = typeof window !== 'undefined'
     ? window.sessionStorage.getItem(OAUTH_CALLBACK_URL_KEY) || ''
     : '';
