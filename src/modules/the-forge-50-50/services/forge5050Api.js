@@ -22,6 +22,10 @@ export const uploadForge5050Video = (id, slot, file) => {
   return apiFetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/upload?slot=${slot}`), { method: 'POST', body: form, timeoutMs: 30 * 60 * 1000 }).then(parse);
 };
 
+export const deleteForge5050Media = (id, filename) => apiFetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/media/${encodeURIComponent(filename)}`), {
+  method: 'DELETE',
+}).then(parse);
+
 export const uploadForge5050Logo = (id, file) => {
   const form = new FormData();
   form.append('file', file);

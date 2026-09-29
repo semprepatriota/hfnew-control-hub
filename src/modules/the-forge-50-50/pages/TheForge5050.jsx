@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, ChevronUp, Download, Eye, EyeOff, Film, Image as ImageIcon, Loader, MousePointer2, Plus, RefreshCw, Search, Scissors, Trash2, Upload, X } from 'lucide-react';
 import {
   createForge5050Project,
+  deleteForge5050Media,
   deleteForge5050Project,
   deleteForge5050Render,
   forge5050DownloadUrl,
@@ -186,6 +187,24 @@ function TheForge5050() {
     try {
       const data = await uploadForge5050Video(project.id, slot, file);
       setProject(data); setConfig(normalizeForge5050Config(data.config)); setRender(null); setJoinedPreview(false); setShowCombinedPreview(false); setCropMode(false);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const removeMedia = async (media) => {
+    if (!media || !project) return;
+    const kind = isImageMedia(media) ? 'imagem' : 'vídeo';
+    const name = media.original_name || media.filename;
+    if (!window.confirm(`Apagar ${kind} “${name}” da Biblioteca? O arquivo original será removido deste projeto. O vídeo já renderizado continuará na área de resultados.`)) return;
+    setBusy(true); setError('');
+    try {
+      const data = await deleteForge5050Media(project.id, media.filename);
+      setProject(data);
+      setConfig(normalizeForge5050Config(data.config));
+      setRender(data.last_render || null);
+      setJoinedPreview(false);
+      setShowCombinedPreview(false);
+      setCropMode(false);
+      if (cropEditingSlot === media.slot) setCropEditingSlot(media.slot === 'top' && data.config?.bottom_video ? 'bottom' : 'top');
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
 
@@ -420,7 +439,7 @@ function TheForge5050() {
 
     {project && <>
       <Panel title="Biblioteca de mídias" open={open.library} onToggle={() => setOpen((v) => ({ ...v, library: !v.library }))}>
-        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} config={config} update={update} onSelect={() => activateCropVideo(slot)} />)}</div>
+        <div className="forge5050-library">{['top', 'bottom'].map((slot) => <VideoSlot key={slot} slot={slot} video={slot === 'top' ? topVideo : bottomVideo} busy={busy} onUpload={upload} onDelete={removeMedia} config={config} update={update} onSelect={() => activateCropVideo(slot)} />)}</div>
       </Panel>
 
       <div className="forge5050-grid">
@@ -584,7 +603,7 @@ function PreviewVideo({ video, className, cropActive = false, whole = false, cro
   </div>;
 }
 function VideoCropGuides() { return <div className="forge5050-video-guides" aria-hidden="true"><div className="top" /><div className="bottom" /></div>; }
-function VideoSlot({ slot, video, busy, onUpload, config, update, onSelect }) {
+function VideoSlot({ slot, video, busy, onUpload, onDelete, config, update, onSelect }) {
   const prefix = slot;
   const duration = Math.max(0, Number(video?.duration || 0));
   const rawStart = Number(config?.[`${prefix}_start`] || 0);
@@ -614,7 +633,10 @@ function VideoSlot({ slot, video, busy, onUpload, config, update, onSelect }) {
   return <div className={`forge5050-slot ${video ? 'filled' : ''}`}>
     <div className="forge5050-slot-title"><strong>{slot === 'top' ? 'Vídeo de cima' : 'Mídia de baixo'}</strong><span>{video ? `${video.width}×${video.height}${image ? ' · imagem' : ` · ${duration.toFixed(1)}s`}` : bottom ? 'Vídeo ou imagem' : 'Aguardando vídeo'}</span></div>
     {video ? image ? <img className="forge5050-thumb forge5050-thumb-image" src={forge5050FileUrl(video.url)} alt={video.original_name || 'Imagem inferior'} /> : <video className="forge5050-thumb" src={forge5050FileUrl(video.url)} controls /> : <div className="forge5050-empty">{bottom ? <ImageIcon size={24} /> : <Film size={24} />} {bottom ? 'Escolha vídeo ou imagem' : 'Escolha um vídeo'}</div>}
-    <label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar mídia' : bottom ? 'Adicionar vídeo ou imagem' : 'Adicionar vídeo'}<input type="file" accept={bottom ? 'video/*,image/png,image/jpeg,image/webp' : 'video/*'} onChange={(e) => { onUpload(slot, e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={busy} /></label>
+    <div className="forge5050-media-actions">
+      <label className="forge5050-upload"><Upload size={15} /> {video ? 'Trocar mídia' : bottom ? 'Adicionar vídeo ou imagem' : 'Adicionar vídeo'}<input type="file" accept={bottom ? 'video/*,image/png,image/jpeg,image/webp' : 'video/*'} onChange={(e) => { onUpload(slot, e.target.files?.[0]); e.currentTarget.value = ''; }} disabled={busy} /></label>
+      {video && <button type="button" className="forge5050-media-delete" onClick={() => onDelete(video)} disabled={busy} title={`Apagar ${image ? 'imagem' : 'vídeo'} da Biblioteca`} aria-label={`Apagar ${image ? 'imagem' : 'vídeo'} ${video.original_name || video.filename}`}><Trash2 size={15} /> Apagar {image ? 'imagem' : 'vídeo'}</button>}
+    </div>
     {video && !image && <div className="forge5050-slot-trim">
       <div className="forge5050-slot-trim-heading"><strong>Corte de duração separado</strong><span>{hasTrim ? `${selectedDuration.toFixed(1)}s selecionados` : 'Vídeo inteiro'}</span></div>
       <div className="forge5050-trim-duration">
