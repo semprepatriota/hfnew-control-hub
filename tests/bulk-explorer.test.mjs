@@ -160,7 +160,7 @@ test('five-item option exists in both interfaces and dashboard covers load lazil
 
 test('extension release includes every referenced icon and no broader host access', () => {
   const manifest = JSON.parse(source('manifest.json'));
-  assert.equal(manifest.version, '1.3.1');
+  assert.equal(manifest.version, '1.4.0');
   assert.deepEqual(manifest.host_permissions, ['https://app.hfnew.com.br/*', 'https://www.instagram.com/*']);
   for (const icon of Object.values(manifest.icons)) assert.ok(existsSync(new URL(icon, extension)), icon);
   for (const script of manifest.content_scripts.flatMap((entry) => entry.js)) assert.ok(existsSync(new URL(script, extension)), script);

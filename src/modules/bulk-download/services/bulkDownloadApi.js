@@ -68,6 +68,10 @@ export const bulkDownloadApi = {
     method: 'POST',
     body: JSON.stringify({ items, output_format: outputFormat, quality })
   }),
+  createCarouselJob: (posts, requestId) => request('/api/bulk-download/carousels/jobs', {
+    method: 'POST',
+    body: JSON.stringify({ posts, request_id: requestId })
+  }),
   jobs: () => request('/api/bulk-download/jobs'),
   retry: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' }),
   remove: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),

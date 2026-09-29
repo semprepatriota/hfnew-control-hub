@@ -15,4 +15,18 @@ A extensao nao le senhas, nao exporta cookies e nao acessa tokens do app. Ela
 compartilha localmente com o painel apenas links, miniaturas e metricas que ja
 estejam visiveis na pagina aberta.
 
-Redes suportadas: Instagram, TikTok, Facebook, Pinterest e Kwai.
+Instagram ativo. TikTok permanece em breve no painel.
+
+## Carrosseis - versao 1.4.0
+
+No Baixar em Massa, escolha Carrosseis e informe o link da publicacao.
+A extensao percorre somente as imagens e videos dessa publicacao, comecando
+no primeiro item. Aguarde a leitura sem mover as setas da aba aberta.
+Escolha todos os itens ou apenas alguns e solicite o ZIP pelo painel.
+
+Os arquivos mantem a ordem original, em uma pasta por publicacao. O ZIP
+inclui manifest.json e relatorio.csv. Se uma midia nao estiver disponivel,
+o pacote fica INCOMPLETO e indica exatamente o item que falhou.
+
+Esta atualizacao nao amplia as permissoes de acesso da extensao.
+Um pacote ja submetido a Chrome Web Store nao e alterado automaticamente.

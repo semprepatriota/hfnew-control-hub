@@ -2,6 +2,10 @@ const HF_STATUS_KEY = 'hfInstagramBrowserStatus';
 const HF_PENDING_SCAN_KEY = 'hfBulkPendingScan';
 const HF_LAST_SCAN_KEY = 'hfBulkLastScan';
 const HF_MESSAGE_SOURCE = 'HF_BULK_EXPLORER';
+const HF_PENDING_CAROUSEL_KEY = 'hfBulkPendingCarousel';
+const HF_LAST_CAROUSEL_KEY = 'hfBulkLastCarousel';
+let carouselRunning = false;
+let appCarouselRequestId = '';
 
 function nowIso() {
   return new Date().toISOString();
@@ -29,7 +33,7 @@ async function updateInstagramStatus() {
 }
 
 async function postStatusToApp() {
-  const stored = await chrome.storage.local.get([HF_STATUS_KEY, HF_LAST_SCAN_KEY]);
+  const stored = await chrome.storage.local.get([HF_STATUS_KEY, HF_LAST_SCAN_KEY, HF_LAST_CAROUSEL_KEY]);
   window.postMessage({
     source: HF_MESSAGE_SOURCE,
     type: 'HF_BULK_EXTENSION_STATUS',
@@ -38,7 +42,9 @@ async function postStatusToApp() {
       version: chrome.runtime.getManifest().version,
       checkedAt: nowIso(),
       instagram: stored[HF_STATUS_KEY] || null,
-      lastScan: stored[HF_LAST_SCAN_KEY] || null
+      lastScan: stored[HF_LAST_SCAN_KEY] || null,
+      lastCarousel: appCarouselRequestId && stored[HF_LAST_CAROUSEL_KEY]?.requestId === appCarouselRequestId
+        ? stored[HF_LAST_CAROUSEL_KEY] : null
     }
   }, window.location.origin);
 }
@@ -207,9 +213,41 @@ async function runPendingInstagramScan() {
   }
 }
 
+async function runPendingCarousel() {
+  if (carouselRunning) return;
+  const stored = await chrome.storage.local.get(HF_PENDING_CAROUSEL_KEY);
+  const request = stored[HF_PENDING_CAROUSEL_KEY];
+  if (!request || window.location.hash !== `#hf-carousel=${request.requestId}`
+    || HFCarousel.postUrl(window.location.href) !== HFCarousel.postUrl(request.url)) return;
+  if (Date.now() - Number(request.requestedAt) > 180000) return;
+  carouselRunning = true;
+  const isCurrent = async () => (await chrome.storage.local.get(HF_PENDING_CAROUSEL_KEY))[HF_PENDING_CAROUSEL_KEY]?.requestId === request.requestId;
+  const publish = async (payload) => {
+    if (await isCurrent()) await chrome.storage.local.set({ [HF_LAST_CAROUSEL_KEY]: {
+      ...payload, requestId: request.requestId, checkedAt: nowIso(),
+    } });
+  };
+  try {
+    const post = await HFCarousel.collect(request, {
+      cancelled: async () => !(await isCurrent()),
+      progress: async (count) => publish({ status: 'reading', count }),
+    });
+    await publish({ status: 'success', post });
+  } catch (error) {
+    await publish({ status: 'error', message: error.message || 'A leitura do carrossel falhou.' });
+  } finally {
+    if (await isCurrent()) await chrome.storage.local.remove(HF_PENDING_CAROUSEL_KEY);
+    carouselRunning = false;
+  }
+}
+
 if (window.location.hostname === 'www.instagram.com') {
   updateInstagramStatus();
   window.setTimeout(runPendingInstagramScan, 1800);
+  window.setTimeout(runPendingCarousel, 1800);
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes[HF_PENDING_CAROUSEL_KEY]) runPendingCarousel();
+  });
   window.setInterval(updateInstagramStatus, 15000);
 }
 
@@ -223,8 +261,26 @@ if (window.location.hostname === 'app.hfnew.com.br') {
         [HF_PENDING_SCAN_KEY]: { ...event.data.payload, requestedAt: Date.now() }
       });
     }
+    if (event.data?.type === 'HF_BULK_CAROUSEL_SCAN') {
+      const payload = event.data.payload;
+      const url = HFCarousel.postUrl(payload?.url || '');
+      if (url && /^[A-Za-z0-9-]{1,64}$/.test(payload?.requestId || '')) {
+        appCarouselRequestId = payload.requestId;
+        chrome.storage.local.set({ [HF_PENDING_CAROUSEL_KEY]: {
+          url, requestId: payload.requestId, requestedAt: Date.now(),
+        } });
+      }
+    }
+    if (event.data?.type === 'HF_BULK_CAROUSEL_CANCEL') {
+      if (appCarouselRequestId === event.data.payload?.requestId) appCarouselRequestId = '';
+      chrome.storage.local.get(HF_PENDING_CAROUSEL_KEY).then((stored) => {
+        if (stored[HF_PENDING_CAROUSEL_KEY]?.requestId === event.data.payload?.requestId) {
+          chrome.storage.local.remove(HF_PENDING_CAROUSEL_KEY);
+        }
+      });
+    }
   });
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && (changes[HF_STATUS_KEY] || changes[HF_LAST_SCAN_KEY])) postStatusToApp();
+    if (areaName === 'local' && (changes[HF_STATUS_KEY] || changes[HF_LAST_SCAN_KEY] || changes[HF_LAST_CAROUSEL_KEY])) postStatusToApp();
   });
 }

@@ -11,6 +11,7 @@ import {
   FileArchive,
   Image as ImageIcon,
   Instagram,
+  Layers,
   Link2,
   Loader2,
   Eye,
@@ -29,6 +30,8 @@ import {
 } from 'lucide-react';
 import { bulkDownloadApi, saveBulkDownloadFile } from '../services/bulkDownloadApi';
 import { isInstagramUrl, PLATFORM_LABELS, PROFILE_PLATFORMS } from '../services/bulkPlatforms';
+import { CAROUSEL_EXTENSION_VERSION } from '../services/bulkCarousels';
+import CarouselPanel from './CarouselPanel';
 import './bulk-download.css';
 
 const ACTIVE_STATUSES = new Set(['queued', 'downloading']);
@@ -101,6 +104,12 @@ function BulkDownload() {
   const [extensionStatus, setExtensionStatus] = useState(null);
   const [queueOpen, setQueueOpen] = useState(true);
   const [health, setHealth] = useState(null);
+  const [mediaMode, setMediaMode] = useState('videos');
+
+  const addCarouselJobs = useCallback((created) => {
+    setJobs((current) => [...created, ...current.filter((job) => !created.some((item) => item.id === job.id))]);
+    setQueueOpen(true);
+  }, []);
 
   const activeCount = useMemo(() => jobs.filter((job) => ACTIVE_STATUSES.has(job.status)).length, [jobs]);
   const completedCount = useMemo(() => jobs.filter((job) => job.status === 'completed').length, [jobs]);
@@ -500,7 +509,7 @@ function BulkDownload() {
             </div>
             {!extensionReady && (
               <div className="bulk-extension-steps">
-                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href="/downloads/hf-bulk-explorer.zip?v=1.3.1" download><Download size={15} /> Baixar extensão</a></div>
+                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href={`/downloads/hf-bulk-explorer.zip?v=${CAROUSEL_EXTENSION_VERSION}`} download><Download size={15} /> Baixar extensão</a></div>
                 <div><b>2</b><span><strong>Faça login no Instagram</strong><small>Abra o Instagram no Chrome e mantenha essa aba aberta.</small></span><button type="button" className="bulk-button ghost" onClick={openInstagram}><ExternalLink size={15} /> Abrir Instagram</button></div>
                 <div><b>3</b><span><strong>Volte ao HF</strong><small>Depois do login, clique em verificar novamente.</small></span><button type="button" className="bulk-button secondary" onClick={checkExtension}><RefreshCw size={15} /> Verificar conexão</button></div>
               </div>
@@ -509,6 +518,14 @@ function BulkDownload() {
         )}
       </section>
 
+      <div className="bulk-mode-switch" role="tablist" aria-label="Tipo de conteúdo">
+        <button type="button" role="tab" aria-selected={mediaMode === 'videos'} className={mediaMode === 'videos' ? 'active' : ''} onClick={() => setMediaMode('videos')}><Video size={17} /> Vídeos</button>
+        <button type="button" role="tab" aria-selected={mediaMode === 'carousels'} className={mediaMode === 'carousels' ? 'active' : ''} onClick={() => setMediaMode('carousels')}><Layers size={17} /> Carrosséis</button>
+      </div>
+      <div hidden={mediaMode !== 'carousels'}>
+        <CarouselPanel extensionStatus={extensionStatus} serviceReady={health?.carousel_downloads === true} onJobs={addCarouselJobs} onError={setError} onNotice={setNotice} />
+      </div>
+      <div hidden={mediaMode !== 'videos'}>
       <section className="bulk-source-panel bulk-profile-panel">
         <div className="bulk-section-heading">
           <div>
@@ -608,7 +625,7 @@ function BulkDownload() {
                   </button>
                   <button type="button" className="bulk-card-remove" onClick={() => removeResult(item.url)} title="Remover da lista" aria-label="Remover da lista"><X size={15} /></button>
                   <div className="bulk-thumbnail">
-                    {isPlayablePreview(item.preview_url) ? (
+                    {item.media_type !== 'image' && isPlayablePreview(item.preview_url) ? (
                       <video src={item.preview_url} poster={item.thumbnail || undefined} controls preload="metadata" />
                     ) : item.thumbnail ? <img src={item.thumbnail} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" /> : <Video size={30} />}
                     <span>{readableDuration(item.duration)}</span>
@@ -658,6 +675,7 @@ function BulkDownload() {
         </div>
       </section>
 
+      </div>
       <section className="bulk-queue-section">
         <button type="button" className="bulk-collapse-button" onClick={() => setQueueOpen((value) => !value)}>
           <span><Download size={18} /> Fila e histórico <b>{activeCount ? `${activeCount} ativo(s)` : `${completedCount} concluído(s)`}</b></span>
@@ -675,13 +693,20 @@ function BulkDownload() {
                   <div className="bulk-job-title"><strong>{job.title}</strong><span>{PLATFORM_LABELS[job.platform] || job.platform} · {job.output_format}</span></div>
                   <div className="bulk-progress"><span style={{ width: `${job.progress || 0}%` }} /></div>
                   <div className="bulk-job-detail">
-                    <span>{job.status === 'failed' ? job.error : `${job.progress || 0}% · ${readableBytes(job.downloaded_bytes)}`}</span>
+                    <span>{job.media_type === 'carousel'
+                      ? `${job.status === 'completed' ? 'Completo' : job.status === 'partial' ? 'INCOMPLETO' : job.status === 'failed' ? 'Falhou' : 'Preparando'} · ${job.completed_items || 0}/${job.selected_items || 0} arquivos${job.failed_items ? ` · ${job.failed_items} falha(s)` : ''}`
+                      : job.status === 'failed' ? job.error : `${job.progress || 0}% · ${readableBytes(job.downloaded_bytes)}`}</span>
                     {job.status === 'completed' && <span>{readableBytes(job.size_bytes)}</span>}
                   </div>
+                  {job.media_type === 'carousel' && (job.error || job.report?.items?.some((item) => item.status === 'download_failed')) && <details className="bulk-carousel-report">
+                    <summary>Ver falhas por item</summary>
+                    {job.error && <p>{job.error}</p>}
+                    {job.report?.items?.filter((item) => item.status === 'download_failed').map((item) => <p key={`${item.post_id}:${item.position}`}>{item.post_id} · Item {item.position}: {item.error}</p>)}
+                  </details>}
                 </div>
                 <div className="bulk-job-actions">
-                  {job.status === 'completed' && <button type="button" className="bulk-icon-button success" onClick={() => saveFile(job)} title="Salvar arquivo" aria-label="Salvar arquivo"><Download size={17} /></button>}
-                  {job.status === 'failed' && <button type="button" className="bulk-icon-button" onClick={() => retryJob(job.id)} title="Tentar novamente" aria-label="Tentar novamente"><RotateCcw size={17} /></button>}
+                  {(job.status === 'completed' || (job.status === 'partial' && job.filename)) && <button type="button" className="bulk-icon-button success" onClick={() => saveFile(job)} title={job.status === 'partial' ? 'Salvar ZIP incompleto com relatório' : 'Salvar arquivo'} aria-label={job.status === 'partial' ? 'Salvar ZIP incompleto com relatório' : 'Salvar arquivo'}><Download size={17} /></button>}
+                  {['failed', 'partial'].includes(job.status) && <button type="button" className="bulk-icon-button" onClick={() => retryJob(job.id)} title="Tentar novamente" aria-label="Tentar novamente"><RotateCcw size={17} /></button>}
                   {!ACTIVE_STATUSES.has(job.status) && <button type="button" className="bulk-icon-button danger" onClick={() => removeJob(job.id)} title="Excluir" aria-label="Excluir"><Trash2 size={17} /></button>}
                 </div>
               </div>
