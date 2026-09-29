@@ -6,7 +6,7 @@ function PublicPrivacy() {
     <PublicPageShell
       badge="Política de Privacidade"
       title="Política de Privacidade"
-      lead="Esta política descreve como o HF New Control Hub trata dados pessoais e dados de integração quando usuários autorizados acessam o dashboard por Google OAuth 2.0 e utilizam recursos ligados à YouTube Data API v3."
+      lead="Esta política descreve como o HF New Control Hub e a extensão HF Bulk Explorer tratam dados pessoais, dados de integração e conteúdos públicos solicitados por usuários autorizados."
       sections={[
         {
           title: 'Dados coletados ou acessados',
@@ -15,6 +15,18 @@ function PublicPrivacy() {
         {
           title: 'Finalidades do tratamento',
           body: 'Os dados são usados para autenticação, controle de acesso, gerenciamento de canais autorizados, upload, agendamento, publicação, revisão de conteúdo, manutenção de sessão, auditoria operacional, segurança e suporte técnico.'
+        },
+        {
+          title: 'HF Bulk Explorer - dados tratados',
+          body: 'Quando o usuário inicia uma leitura na extensão ou no módulo Baixar em Massa, o HF Bulk Explorer trata a URL da página aberta e conteúdos públicos visíveis necessários à função solicitada, como links de publicações, endereços de mídia e miniaturas, títulos, datas, métricas públicas, tipo de mídia e ordem de itens de carrossel. A extensão também informa ao painel sua versão e se uma sessão do Instagram aparenta estar ativa. Ela não lê nem coleta senhas, cookies, tokens de autenticação, mensagens privadas, dados de pagamento ou histórico geral de navegação.'
+        },
+        {
+          title: 'HF Bulk Explorer - uso, armazenamento e transmissão',
+          body: 'Os resultados da leitura são mantidos temporariamente no armazenamento local do Chrome para comunicação entre a página suportada e o HF New Control Hub. Quando o usuário solicita a organização ou o download das mídias selecionadas, os links e metadados públicos necessários são enviados ao serviço do HF New Control Hub por conexão HTTPS para executar essa solicitação. A extensão não vende os dados, não os utiliza para publicidade, perfil comportamental, análise de crédito ou finalidade diferente da coleta e organização pedidas pelo usuário.'
+        },
+        {
+          title: 'HF Bulk Explorer - controle do usuário',
+          body: 'A leitura de conteúdo ocorre em páginas suportadas para uma função iniciada pelo usuário na extensão ou no módulo Baixar em Massa. Os dados locais podem ser removidos ao excluir os dados da extensão no Chrome ou ao desinstalá-la. O acesso da extensão pode ser revogado a qualquer momento nas configurações de extensões do navegador.'
         },
         {
           title: 'Base legal e acesso restrito',
@@ -26,7 +38,11 @@ function PublicPrivacy() {
         },
         {
           title: 'Retenção, descarte e segurança',
-          body: 'Dados operacionais e registros técnicos podem ser mantidos pelo tempo necessário para segurança, auditoria, suporte, cumprimento legal e exercício regular de direitos. Tokens e credenciais devem ser protegidos e não são exibidos publicamente na interface.'
+          body: 'Dados operacionais e registros técnicos podem ser mantidos pelo tempo necessário para executar a solicitação, segurança, auditoria, suporte, cumprimento legal e exercício regular de direitos. A extensão usa armazenamento local do Chrome e transmite dados ao HF New Control Hub somente por HTTPS. Tokens e credenciais são protegidos e não são exibidos publicamente na interface.'
+        },
+        {
+          title: 'Uso limitado de dados da Chrome Web Store',
+          body: 'O uso e a transferência de informações recebidas das APIs do Chrome obedecem à Política de Dados do Usuário da Chrome Web Store, inclusive aos requisitos de Uso Limitado. Esses dados são usados somente para fornecer ou melhorar a finalidade única e visível da extensão, não são usados para publicidade personalizada e não são disponibilizados para leitura humana, salvo mediante consentimento específico do usuário, por necessidade de segurança, para cumprir a lei ou quando agregados e anonimizados para operação interna.'
         },
         {
           title: 'Direitos do titular',

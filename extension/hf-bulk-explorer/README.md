@@ -17,7 +17,7 @@ estejam visiveis na pagina aberta.
 
 Instagram ativo. TikTok permanece em breve no painel.
 
-## Carrosseis - versao 1.4.0
+## Carrosseis - versao 1.4.1
 
 No Baixar em Massa, escolha Carrosseis e informe o link da publicacao.
 A extensao percorre somente as imagens e videos dessa publicacao, comecando

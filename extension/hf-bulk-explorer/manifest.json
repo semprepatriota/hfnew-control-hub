@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HF Bulk Explorer",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Coleta links, miniaturas e métricas públicas visíveis para o módulo Baixar em Massa do HF New Control Hub.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [

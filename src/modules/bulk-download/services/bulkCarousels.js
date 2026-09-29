@@ -1,4 +1,4 @@
-export const CAROUSEL_EXTENSION_VERSION = '1.4.0';
+export const CAROUSEL_EXTENSION_VERSION = '1.4.1';
 
 export function supportsCarousels(version) {
   const [major, minor] = String(version || '').split('.').map(Number);
