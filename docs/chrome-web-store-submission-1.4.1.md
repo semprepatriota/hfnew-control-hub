@@ -22,7 +22,7 @@ A extensão não lê senhas, cookies, mensagens privadas, dados de pagamento ou 
 ## URLs
 
 - Política de privacidade: https://app.hfnew.com.br/politica-de-privacidade/
-- Página inicial: https://app.hfnew.com.br/baixar-em-massa/
+- Página inicial: https://app.hfnew.com.br/suporte/
 - Suporte: https://app.hfnew.com.br/suporte/
 
 ## Finalidade única
