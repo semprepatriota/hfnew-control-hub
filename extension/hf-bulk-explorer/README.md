@@ -12,8 +12,10 @@ visiveis para o modulo Baixar em Massa do HF New Control Hub.
 5. Selecione a pasta `hf-bulk-explorer` extraida.
 
 A extensao nao le senhas, nao exporta cookies e nao acessa tokens do app. Ela
-compartilha localmente com o painel apenas links, miniaturas e metricas que ja
-estejam visiveis na pagina aberta.
+compartilha com o painel links, miniaturas e metricas visiveis. Ao salvar um
+Reel, tambem consulta o endereco do MP4 na pagina do Instagram e envia esse
+endereco ao painel para a VPS baixar o arquivo. O link pode expirar ou ser
+recusado pelo Instagram; nesse caso a fila informa a falha.
 
 Instagram ativo. TikTok permanece em breve no painel.
 

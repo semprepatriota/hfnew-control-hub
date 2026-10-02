@@ -4,8 +4,10 @@ const HF_LAST_SCAN_KEY = 'hfBulkLastScan';
 const HF_MESSAGE_SOURCE = 'HF_BULK_EXPLORER';
 const HF_PENDING_CAROUSEL_KEY = 'hfBulkPendingCarousel';
 const HF_LAST_CAROUSEL_KEY = 'hfBulkLastCarousel';
+const HF_LAST_RESOLVE_KEY = 'hfBulkLastMediaResolve';
 let carouselRunning = false;
 let appCarouselRequestId = '';
+let appMediaResolveRequestId = '';
 
 function nowIso() {
   return new Date().toISOString();
@@ -33,7 +35,12 @@ async function updateInstagramStatus() {
 }
 
 async function postStatusToApp() {
-  const stored = await chrome.storage.local.get([HF_STATUS_KEY, HF_LAST_SCAN_KEY, HF_LAST_CAROUSEL_KEY]);
+  const stored = await chrome.storage.local.get([
+    HF_STATUS_KEY,
+    HF_LAST_SCAN_KEY,
+    HF_LAST_CAROUSEL_KEY,
+    HF_LAST_RESOLVE_KEY
+  ]);
   window.postMessage({
     source: HF_MESSAGE_SOURCE,
     type: 'HF_BULK_EXTENSION_STATUS',
@@ -44,7 +51,10 @@ async function postStatusToApp() {
       instagram: stored[HF_STATUS_KEY] || null,
       lastScan: stored[HF_LAST_SCAN_KEY] || null,
       lastCarousel: appCarouselRequestId && stored[HF_LAST_CAROUSEL_KEY]?.requestId === appCarouselRequestId
-        ? stored[HF_LAST_CAROUSEL_KEY] : null
+        ? stored[HF_LAST_CAROUSEL_KEY] : null,
+      lastMediaResolve: appMediaResolveRequestId
+        && stored[HF_LAST_RESOLVE_KEY]?.requestId === appMediaResolveRequestId
+        ? stored[HF_LAST_RESOLVE_KEY] : null
     }
   }, window.location.origin);
 }
@@ -142,7 +152,7 @@ async function collectInstagramProfile(request) {
       title: (image?.alt || anchor.getAttribute('aria-label') || `Reel de @${request.username}`).slice(0, 500),
       thumbnail: readCardThumbnail(anchor),
       platform: 'instagram',
-      media_type: url.pathname.includes('/p/') && !video ? 'image' : 'video',
+      media_type: 'video',
       duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
       view_count: readCardMetric(anchor, 'views'),
       like_count: readCardMetric(anchor, 'likes'),
@@ -261,6 +271,29 @@ if (window.location.hostname === 'app.hfnew.com.br') {
         [HF_PENDING_SCAN_KEY]: { ...event.data.payload, requestedAt: Date.now() }
       });
     }
+    if (event.data?.type === 'HF_BULK_RESOLVE_MEDIA' && event.data?.payload) {
+      const payload = event.data.payload;
+      if (/^[A-Za-z0-9-]{1,80}$/.test(payload.requestId || '') && Array.isArray(payload.items)) {
+        appMediaResolveRequestId = payload.requestId;
+        chrome.runtime.sendMessage({
+          type: 'HF_BULK_RESOLVE_MEDIA_BATCH',
+          payload: {
+            requestId: payload.requestId,
+            items: payload.items.slice(0, 10).map((item) => ({ url: item?.url || '' }))
+          }
+        }).catch((error) => chrome.storage.local.set({
+          [HF_LAST_RESOLVE_KEY]: {
+            requestId: payload.requestId,
+            status: 'error',
+            total: payload.items.length,
+            completed: 0,
+            results: [],
+            message: error?.message || 'Atualize a extensão HF Bulk Explorer.',
+            checkedAt: nowIso()
+          }
+        }));
+      }
+    }
     if (event.data?.type === 'HF_BULK_CAROUSEL_SCAN') {
       const payload = event.data.payload;
       const url = HFCarousel.postUrl(payload?.url || '');
@@ -281,6 +314,11 @@ if (window.location.hostname === 'app.hfnew.com.br') {
     }
   });
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && (changes[HF_STATUS_KEY] || changes[HF_LAST_SCAN_KEY] || changes[HF_LAST_CAROUSEL_KEY])) postStatusToApp();
+    if (areaName === 'local' && (
+      changes[HF_STATUS_KEY]
+      || changes[HF_LAST_SCAN_KEY]
+      || changes[HF_LAST_CAROUSEL_KEY]
+      || changes[HF_LAST_RESOLVE_KEY]
+    )) postStatusToApp();
   });
 }

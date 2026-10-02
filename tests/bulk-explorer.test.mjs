@@ -160,10 +160,32 @@ test('five-item option exists in both interfaces and dashboard covers load lazil
 
 test('extension release includes every referenced icon and no broader host access', () => {
   const manifest = JSON.parse(source('manifest.json'));
-  assert.equal(manifest.version, '1.4.1');
+  assert.equal(manifest.version, '1.5.0');
+  assert.equal(manifest.background.service_worker, 'background.js');
   assert.deepEqual(manifest.host_permissions, ['https://app.hfnew.com.br/*', 'https://www.instagram.com/*']);
   for (const icon of Object.values(manifest.icons)) assert.ok(existsSync(new URL(icon, extension)), icon);
   for (const script of manifest.content_scripts.flatMap((entry) => entry.js)) assert.ok(existsSync(new URL(script, extension)), script);
+});
+
+test('media resolver keeps the selected Reel and ignores blob video sources', async () => {
+  const background = vm.createContext({
+    URL,
+    Date,
+    setTimeout(callback) { callback(); },
+    chrome: { runtime: { onMessage: { addListener() {} } } },
+  });
+  vm.runInContext(source('background.js'), background);
+  assert.equal(background.normalizeInstagramMediaUrl('https://www.instagram.com/reel/ABC123/?utm_source=test'), 'https://www.instagram.com/reel/ABC123/');
+  assert.equal(background.normalizeInstagramMediaUrl('https://instagram.com.evil.invalid/reel/ABC123/'), '');
+  const document = {
+    title: 'Cena escolhida',
+    querySelectorAll: () => [{ currentSrc: 'blob:https://www.instagram.com/video', src: 'https://scontent.cdninstagram.com/cena.mp4', duration: 9, poster: '', querySelector: () => null }],
+    querySelector: () => null,
+  };
+  const media = vm.createContext({ document, setTimeout(callback) { callback(); } });
+  vm.runInContext(`const extract = ${background.extractInstagramMedia.toString()};`, media);
+  const result = await vm.runInContext('extract()', media);
+  assert.equal(result.media_url, 'https://scontent.cdninstagram.com/cena.mp4');
 });
 
 test('only Instagram is available; TikTok is visibly coming soon', () => {

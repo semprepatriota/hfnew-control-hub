@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { bulkDownloadApi, saveBulkDownloadFile } from '../services/bulkDownloadApi';
 import { isInstagramUrl, PLATFORM_LABELS, PROFILE_PLATFORMS } from '../services/bulkPlatforms';
-import { CAROUSEL_EXTENSION_VERSION } from '../services/bulkCarousels';
+import { MEDIA_EXTENSION_VERSION } from '../services/bulkCarousels';
 import CarouselPanel from './CarouselPanel';
 import './bulk-download.css';
 
@@ -79,11 +79,24 @@ function mergeItems(current, incoming) {
   return Array.from(merged.values());
 }
 
+function versionAtLeast(current, required) {
+  const left = String(current || '').split('.').map((part) => Number(part) || 0);
+  const right = String(required || '').split('.').map((part) => Number(part) || 0);
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    if ((left[index] || 0) > (right[index] || 0)) return true;
+    if ((left[index] || 0) < (right[index] || 0)) return false;
+  }
+  return true;
+}
+
 function BulkDownload() {
   const profileAbortRef = useRef(null);
   const profileExtensionTimeoutRef = useRef(null);
   const profileExtensionScanRef = useRef('');
   const lastExtensionDeliveryRef = useRef('');
+  const mediaResolveRef = useRef(null);
+  const mediaResolveTimeoutRef = useRef(null);
+  const lastMediaResolveDeliveryRef = useRef('');
   const [links, setLinks] = useState('');
   const [profilePlatform, setProfilePlatform] = useState('instagram');
   const [profileName, setProfileName] = useState('');
@@ -161,6 +174,7 @@ function BulkDownload() {
     return () => {
       profileAbortRef.current?.abort();
       window.clearTimeout(profileExtensionTimeoutRef.current);
+      window.clearTimeout(mediaResolveTimeoutRef.current);
     };
   }, []);
 
@@ -192,6 +206,47 @@ function BulkDownload() {
       : '';
     setNotice(`${lastScan.total || incoming.length} conteúdo(s) recebido(s) da extensão${unavailable}.`);
   }, [extensionStatus?.lastScan]);
+
+  useEffect(() => {
+    const resolution = extensionStatus?.lastMediaResolve;
+    const pending = mediaResolveRef.current;
+    if (!resolution?.checkedAt || !pending || resolution.requestId !== pending.requestId) return;
+    if (resolution.status === 'resolving') {
+      setNotice(`Preparando MP4 no Instagram: ${resolution.completed || 0}/${resolution.total || pending.items.length}.`);
+      return;
+    }
+    const deliveryKey = `${resolution.requestId}:${resolution.checkedAt}`;
+    if (deliveryKey === lastMediaResolveDeliveryRef.current) return;
+    lastMediaResolveDeliveryRef.current = deliveryKey;
+    mediaResolveRef.current = null;
+    window.clearTimeout(mediaResolveTimeoutRef.current);
+    mediaResolveTimeoutRef.current = null;
+
+    const resolvedByUrl = new Map(
+      (resolution.results || [])
+        .filter((item) => item.status === 'resolved' && item.media_url)
+        .map((item) => [item.url, item])
+    );
+    const prepared = pending.items
+      .map((item) => ({ ...item, ...(resolvedByUrl.get(item.url) || {}) }))
+      .filter((item) => item.media_type === 'image' || item.media_url);
+    const failed = pending.items.length - prepared.length;
+    if (!prepared.length) {
+      setBusy('');
+      const firstFailure = resolution.results?.find((item) => item.status === 'failed')?.error;
+      setError(firstFailure || resolution.message || 'O Instagram não liberou o MP4. Confirme o login e tente novamente.');
+      return;
+    }
+
+    bulkDownloadApi.createJobs(prepared, pending.outputFormat, pending.quality)
+      .then((payload) => {
+        setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
+        setQueueOpen(true);
+        setNotice(`${payload.total} download(s) colocado(s) na fila${failed ? ` · ${failed} não puderam ser preparados` : ''}.`);
+      })
+      .catch((queueError) => setError(queueError.message))
+      .finally(() => setBusy(''));
+  }, [extensionStatus?.lastMediaResolve]);
 
   useEffect(() => {
     if (!activeCount) return undefined;
@@ -382,16 +437,55 @@ function BulkDownload() {
     ));
   };
 
-  const queueSelected = async () => {
-    const chosen = items.filter((item) => selected.has(item.url));
+  const queueItems = async (chosen, busyKey) => {
     if (!chosen.length) {
       setError('Selecione pelo menos um conteúdo.');
       return;
     }
-    setBusy('queue');
+    const normalized = chosen.map((item) => ({
+      ...item,
+      media_url: item.media_url || (item.media_type === 'image' ? item.thumbnail || '' : '')
+    }));
+    const unresolved = normalized.filter((item) => item.media_type !== 'image' && !item.media_url);
+    if (unresolved.length > 10) {
+      setError('Selecione até 10 vídeos por vez para preparar os MP4s pelo Instagram.');
+      return;
+    }
+    setBusy(busyKey);
     setError('');
+    setNotice('');
+
+    if (unresolved.length) {
+      if (!extensionReady || !versionAtLeast(extensionStatus?.version, MEDIA_EXTENSION_VERSION)) {
+        setBusy('');
+        setError(`Atualize a extensão HF Bulk Explorer para a versão ${MEDIA_EXTENSION_VERSION} e mantenha o Instagram conectado.`);
+        setExtensionOpen(true);
+        return;
+      }
+      const requestId = globalThis.crypto?.randomUUID?.() || `media-${Date.now()}`;
+      mediaResolveRef.current = {
+        requestId,
+        items: normalized,
+        outputFormat,
+        quality
+      };
+      window.postMessage({
+        source: 'HF_NEW_CONTROL_HUB',
+        type: 'HF_BULK_RESOLVE_MEDIA',
+        payload: { requestId, items: unresolved.map((item) => ({ url: item.url })) }
+      }, window.location.origin);
+      mediaResolveTimeoutRef.current = window.setTimeout(() => {
+        if (mediaResolveRef.current?.requestId !== requestId) return;
+        mediaResolveRef.current = null;
+        setBusy('');
+        setError('A extensão não conseguiu preparar o MP4 a tempo. Confirme o login do Instagram e tente novamente.');
+      }, 4 * 60 * 1000);
+      setNotice(`Preparando ${unresolved.length} MP4(s) pelo Instagram conectado...`);
+      return;
+    }
+
     try {
-      const payload = await bulkDownloadApi.createJobs(chosen, outputFormat, quality);
+      const payload = await bulkDownloadApi.createJobs(normalized, outputFormat, quality);
       setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
       setNotice(`${payload.total} download(s) colocado(s) na fila.`);
       setQueueOpen(true);
@@ -402,19 +496,12 @@ function BulkDownload() {
     }
   };
 
+  const queueSelected = async () => {
+    await queueItems(items.filter((item) => selected.has(item.url)), 'queue');
+  };
+
   const queueSingle = async (item) => {
-    setBusy(`save:${item.url}`);
-    setError('');
-    try {
-      const payload = await bulkDownloadApi.createJobs([item], outputFormat, quality);
-      setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
-      setNotice('Vídeo colocado na fila para salvar.');
-      setQueueOpen(true);
-    } catch (queueError) {
-      setError(queueError.message);
-    } finally {
-      setBusy('');
-    }
+    await queueItems([item], `save:${item.url}`);
   };
 
   const removeResult = (url) => {
@@ -561,7 +648,7 @@ function BulkDownload() {
             </div>
             {!extensionReady && (
               <div className="bulk-extension-steps">
-                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href={`/downloads/hf-bulk-explorer.zip?v=${CAROUSEL_EXTENSION_VERSION}`} download><Download size={15} /> Baixar extensão</a></div>
+                <div><b>1</b><span><strong>Instale a extensão</strong><small>Baixe o ZIP e carregue a extensão no Chrome.</small></span><a className="bulk-button ghost" href={`/downloads/hf-bulk-explorer.zip?v=${MEDIA_EXTENSION_VERSION}`} download><Download size={15} /> Baixar extensão</a></div>
                 <div><b>2</b><span><strong>Faça login no Instagram</strong><small>Abra o Instagram no Chrome e mantenha essa aba aberta.</small></span><button type="button" className="bulk-button ghost" onClick={openInstagram}><ExternalLink size={15} /> Abrir Instagram</button></div>
                 <div><b>3</b><span><strong>Volte ao HF</strong><small>Depois do login, clique em verificar novamente.</small></span><button type="button" className="bulk-button secondary" onClick={checkExtension}><RefreshCw size={15} /> Verificar conexão</button></div>
               </div>
