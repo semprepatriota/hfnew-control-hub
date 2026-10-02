@@ -95,6 +95,7 @@ function BulkDownload() {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [jobs, setJobs] = useState([]);
+  const [selectedJobs, setSelectedJobs] = useState(() => new Set());
   const [outputFormat, setOutputFormat] = useState('video');
   const [quality, setQuality] = useState('1080');
   const [busy, setBusy] = useState('');
@@ -113,6 +114,9 @@ function BulkDownload() {
 
   const activeCount = useMemo(() => jobs.filter((job) => ACTIVE_STATUSES.has(job.status)).length, [jobs]);
   const completedCount = useMemo(() => jobs.filter((job) => job.status === 'completed').length, [jobs]);
+  const deletableJobs = useMemo(() => jobs.filter((job) => !ACTIVE_STATUSES.has(job.status)), [jobs]);
+  const allDeletableJobsSelected = Boolean(deletableJobs.length)
+    && deletableJobs.every((job) => selectedJobs.has(job.id));
   const extensionDetected = Boolean(extensionStatus?.installed);
   const instagramFresh = useMemo(() => {
     const checkedAt = extensionStatus?.instagram?.checkedAt;
@@ -194,6 +198,14 @@ function BulkDownload() {
     const interval = window.setInterval(() => loadJobs(true), 2200);
     return () => window.clearInterval(interval);
   }, [activeCount, loadJobs]);
+
+  useEffect(() => {
+    const available = new Set(deletableJobs.map((job) => job.id));
+    setSelectedJobs((current) => {
+      const next = new Set([...current].filter((jobId) => available.has(jobId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [deletableJobs]);
 
   useEffect(() => {
     const interval = window.setInterval(() => loadInbox(true), 10000);
@@ -439,16 +451,56 @@ function BulkDownload() {
     try {
       await bulkDownloadApi.remove(jobId);
       setJobs((current) => current.filter((job) => job.id !== jobId));
+      setSelectedJobs((current) => {
+        const next = new Set(current);
+        next.delete(jobId);
+        return next;
+      });
     } catch (removeError) {
       setError(removeError.message);
+    }
+  };
+
+  const toggleJobSelection = (jobId) => {
+    setSelectedJobs((current) => {
+      const next = new Set(current);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  };
+
+  const toggleAllJobs = () => {
+    setSelectedJobs(allDeletableJobsSelected ? new Set() : new Set(deletableJobs.map((job) => job.id)));
+  };
+
+  const removeSelectedJobs = async () => {
+    const jobIds = [...selectedJobs];
+    if (!jobIds.length) return;
+    if (!window.confirm(`Excluir ${jobIds.length} item(ns) da fila e os arquivos salvos?`)) return;
+    setBusy('deleteJobs');
+    setError('');
+    try {
+      const payload = await bulkDownloadApi.removeMany(jobIds);
+      const deleted = new Set(payload.deleted || []);
+      setJobs((current) => current.filter((job) => !deleted.has(job.id)));
+      setSelectedJobs(new Set(payload.blocked || []));
+      const blockedMessage = payload.blocked?.length
+        ? ` ${payload.blocked.length} item(ns) ainda estão em andamento e foram mantidos.`
+        : '';
+      setNotice(`${payload.deleted_count || 0} item(ns) excluído(s).${blockedMessage}`);
+    } catch (removeError) {
+      setError(removeError.message);
+    } finally {
+      setBusy('');
     }
   };
 
   const saveFile = async (job) => {
     setError('');
     try {
-      await saveBulkDownloadFile(job);
-      setNotice(`Arquivo salvo: ${job.filename}`);
+      const saved = await saveBulkDownloadFile(job);
+      setNotice(`Arquivo salvo: ${saved?.filename || job.filename}`);
     } catch (downloadError) {
       if (downloadError?.name !== 'AbortError') setError(downloadError.message);
     }
@@ -683,9 +735,32 @@ function BulkDownload() {
         </button>
         {queueOpen && (
           <div className="bulk-job-list">
+            {!!jobs.length && (
+              <div className="bulk-job-toolbar">
+                <button type="button" className="bulk-button ghost" onClick={toggleAllJobs} disabled={!deletableJobs.length}>
+                  {allDeletableJobsSelected ? <CheckSquare2 size={16} /> : <Square size={16} />}
+                  {allDeletableJobsSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+                <span>{selectedJobs.size} selecionado(s)</span>
+                <button type="button" className="bulk-button danger" onClick={removeSelectedJobs} disabled={!selectedJobs.size || busy === 'deleteJobs'}>
+                  {busy === 'deleteJobs' ? <Loader2 className="spin" size={16} /> : <Trash2 size={16} />}
+                  Excluir selecionados
+                </button>
+              </div>
+            )}
             {!jobs.length && <div className="bulk-empty compact"><PackageCheck size={24} />Nenhum download iniciado.</div>}
             {jobs.map((job) => (
-              <div className={`bulk-job ${job.status}`} key={job.id}>
+              <div className={`bulk-job ${job.status} ${selectedJobs.has(job.id) ? 'selected' : ''}`} key={job.id}>
+                <button
+                  type="button"
+                  className="bulk-job-select"
+                  onClick={() => toggleJobSelection(job.id)}
+                  disabled={ACTIVE_STATUSES.has(job.status)}
+                  title={ACTIVE_STATUSES.has(job.status) ? 'Aguarde o download terminar' : 'Selecionar item'}
+                  aria-label={selectedJobs.has(job.id) ? 'Desmarcar item' : 'Selecionar item'}
+                >
+                  {selectedJobs.has(job.id) ? <CheckSquare2 size={18} /> : <Square size={18} />}
+                </button>
                 <div className="bulk-job-icon">
                   {job.status === 'downloading' || job.status === 'queued' ? <Loader2 className="spin" size={18} /> : job.status === 'completed' ? <Check size={18} /> : <AlertCircle size={18} />}
                 </div>

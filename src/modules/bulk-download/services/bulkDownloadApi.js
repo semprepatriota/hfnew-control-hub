@@ -75,6 +75,10 @@ export const bulkDownloadApi = {
   jobs: () => request('/api/bulk-download/jobs'),
   retry: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' }),
   remove: (jobId) => request(`/api/bulk-download/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }),
+  removeMany: (jobIds) => request('/api/bulk-download/jobs/delete-batch', {
+    method: 'POST',
+    body: JSON.stringify({ job_ids: jobIds })
+  }),
   extensionInbox: () => request('/api/bulk-download/extension/inbox'),
   clearExtensionInbox: () => request('/api/bulk-download/extension/inbox', { method: 'DELETE' })
 };
@@ -96,7 +100,14 @@ export async function saveBulkDownloadFile(job) {
   let fileHandle = null;
 
   if (typeof window.showSaveFilePicker === 'function') {
-    fileHandle = await window.showSaveFilePicker({ suggestedName });
+    try {
+      fileHandle = await window.showSaveFilePicker({ suggestedName, startIn: 'downloads' });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      // Some managed browsers expose the API but reject it outside a trusted gesture.
+      // Falling back to the regular browser download keeps the completed file accessible.
+      fileHandle = null;
+    }
   }
 
   let response;
@@ -117,26 +128,41 @@ export async function saveBulkDownloadFile(job) {
   if (fileHandle) {
     const writable = await fileHandle.createWritable();
     try {
-      if (response.body?.pipeTo) {
-        await response.body.pipeTo(writable);
+      let written = 0;
+      if (response.body?.getReader) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value?.byteLength) continue;
+          written += value.byteLength;
+          await writable.write(value);
+        }
       } else {
-        await writable.write(await response.blob());
-        await writable.close();
+        const blob = await response.blob();
+        if (!blob.size) throw new Error('O servidor retornou um arquivo vazio.');
+        written = blob.size;
+        await writable.write(blob);
       }
+      if (!written) throw new Error('O servidor retornou um arquivo vazio.');
+      await writable.close();
+      return { filename: suggestedName, size: written, picker: true };
     } catch (error) {
       await writable.abort?.().catch(() => null);
       throw error;
     }
-    return;
   }
 
   const blob = await response.blob();
+  if (!blob.size) throw new Error('O servidor retornou um arquivo vazio.');
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = objectUrl;
-  anchor.download = filenameFromHeaders(response, suggestedName);
+  const filename = filenameFromHeaders(response, suggestedName);
+  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
+  return { filename, size: blob.size, picker: false };
 }
