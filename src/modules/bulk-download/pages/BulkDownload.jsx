@@ -229,7 +229,7 @@ function BulkDownload() {
     );
     const prepared = pending.items
       .map((item) => ({ ...item, ...(resolvedByUrl.get(item.url) || {}) }))
-      .filter((item) => item.media_type === 'image' || item.media_url);
+      .filter((item) => !pending.resolveUrls.has(item.url) || resolvedByUrl.has(item.url));
     const failed = pending.items.length - prepared.length;
     if (!prepared.length) {
       setBusy('');
@@ -446,7 +446,9 @@ function BulkDownload() {
       ...item,
       media_url: item.media_url || (item.media_type === 'image' ? item.thumbnail || '' : '')
     }));
-    const unresolved = normalized.filter((item) => item.media_type !== 'image' && !item.media_url);
+    const canResolve = extensionReady && versionAtLeast(extensionStatus?.version, MEDIA_EXTENSION_VERSION);
+    const unresolved = normalized.filter((item) => item.media_type === 'video'
+      && isInstagramUrl(item.url) && (canResolve || !item.media_url));
     if (unresolved.length > 10) {
       setError('Selecione até 10 vídeos por vez para preparar os MP4s pelo Instagram.');
       return;
@@ -456,7 +458,7 @@ function BulkDownload() {
     setNotice('');
 
     if (unresolved.length) {
-      if (!extensionReady || !versionAtLeast(extensionStatus?.version, MEDIA_EXTENSION_VERSION)) {
+      if (!canResolve) {
         setBusy('');
         setError(`Atualize a extensão HF Bulk Explorer para a versão ${MEDIA_EXTENSION_VERSION} e mantenha o Instagram conectado.`);
         setExtensionOpen(true);
@@ -466,6 +468,7 @@ function BulkDownload() {
       mediaResolveRef.current = {
         requestId,
         items: normalized,
+        resolveUrls: new Set(unresolved.map((item) => item.url)),
         outputFormat,
         quality
       };

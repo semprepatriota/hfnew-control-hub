@@ -43,19 +43,6 @@ async function extractInstagramMedia() {
   const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
   const publicUrl = (value) => /^https:\/\//i.test(String(value || '')) ? String(value) : '';
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const videos = Array.from(document.querySelectorAll('video'));
-    for (const video of videos) {
-      const mediaUrl = [video.currentSrc, video.src, video.querySelector('source')?.src]
-        .map(publicUrl).find(Boolean);
-      if (!mediaUrl) continue;
-      return {
-        media_url: mediaUrl,
-        preview_url: mediaUrl,
-        thumbnail: publicUrl(video.poster),
-        duration: Number.isFinite(video.duration) ? Math.round(video.duration) : 0,
-        title: (document.title || 'Reel do Instagram').slice(0, 500)
-      };
-    }
     const metaUrl = publicUrl(
       document.querySelector('meta[property="og:video:secure_url"]')?.content
       || document.querySelector('meta[property="og:video"]')?.content
@@ -66,6 +53,23 @@ async function extractInstagramMedia() {
         preview_url: metaUrl,
         thumbnail: publicUrl(document.querySelector('meta[property="og:image"]')?.content),
         duration: 0,
+        title: (document.title || 'Reel do Instagram').slice(0, 500)
+      };
+    }
+    const videos = Array.from(new Set([
+      ...document.querySelectorAll('main video'),
+      ...document.querySelectorAll('article video'),
+      ...document.querySelectorAll('video')
+    ]));
+    for (const video of videos) {
+      const mediaUrl = [video.currentSrc, video.src, video.querySelector('source')?.src]
+        .map(publicUrl).find(Boolean);
+      if (!mediaUrl) continue;
+      return {
+        media_url: mediaUrl,
+        preview_url: mediaUrl,
+        thumbnail: publicUrl(video.poster),
+        duration: Number.isFinite(video.duration) ? Math.round(video.duration) : 0,
         title: (document.title || 'Reel do Instagram').slice(0, 500)
       };
     }
