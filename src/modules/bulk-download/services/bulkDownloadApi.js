@@ -95,11 +95,11 @@ function filenameFromHeaders(response, fallback) {
   }
 }
 
-export async function saveBulkDownloadFile(job) {
+export async function saveBulkDownloadFile(job, { skipPicker = false } = {}) {
   const suggestedName = job.filename || `hf-download-${job.id}.mp4`;
   let fileHandle = null;
 
-  if (typeof window.showSaveFilePicker === 'function') {
+  if (!skipPicker && typeof window.showSaveFilePicker === 'function') {
     try {
       fileHandle = await window.showSaveFilePicker({ suggestedName, startIn: 'downloads' });
     } catch (error) {

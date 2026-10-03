@@ -160,7 +160,7 @@ test('five-item option exists in both interfaces and dashboard covers load lazil
 
 test('extension release includes every referenced icon and no broader host access', () => {
   const manifest = JSON.parse(source('manifest.json'));
-  assert.equal(manifest.version, '1.5.1');
+  assert.equal(manifest.version, '1.5.2');
   assert.equal(manifest.background.service_worker, 'background.js');
   assert.deepEqual(manifest.host_permissions, ['https://app.hfnew.com.br/*', 'https://www.instagram.com/*']);
   for (const icon of Object.values(manifest.icons)) assert.ok(existsSync(new URL(icon, extension)), icon);
@@ -186,6 +186,33 @@ test('media resolver keeps the selected Reel and ignores blob video sources', as
   vm.runInContext(`const extract = ${background.extractInstagramMedia.toString()};`, media);
   const result = await vm.runInContext('extract()', media);
   assert.equal(result.media_url, 'https://scontent.cdninstagram.com/cena.mp4');
+});
+
+test('media resolver acknowledges the request before opening Instagram', () => {
+  let listener;
+  let response;
+  let tabOpened = false;
+  const context = vm.createContext({
+    URL,
+    Date,
+    chrome: {
+      runtime: { onMessage: { addListener(callback) { listener = callback; } } },
+      storage: { local: { set: async () => undefined } },
+      tabs: { create() { tabOpened = true; return new Promise(() => {}); } },
+    },
+  });
+  vm.runInContext(source('background.js'), context);
+  listener({ type: 'HF_BULK_RESOLVE_MEDIA_BATCH', payload: {
+    requestId: 'request-1', items: [{ url: 'https://www.instagram.com/reel/ABC123/' }],
+  } }, { url: 'https://app.hfnew.com.br/bulk-download' }, (value) => { response = value; });
+  assert.equal(response?.accepted, true);
+  assert.equal(tabOpened, false);
+});
+
+test('individual Save downloads the finished job automatically', () => {
+  const page = readFileSync(new URL('../src/modules/bulk-download/pages/BulkDownload.jsx', import.meta.url), 'utf8');
+  assert.match(page, /queueItems\(\[item\], `save:\$\{item\.url\}`, true\)/);
+  assert.match(page, /job\.status === 'completed'[\s\S]*?saveBulkDownloadFile\(job, \{ skipPicker: true \}\)/);
 });
 
 test('only Instagram is available; TikTok is visibly coming soon', () => {

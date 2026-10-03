@@ -97,6 +97,7 @@ function BulkDownload() {
   const mediaResolveRef = useRef(null);
   const mediaResolveTimeoutRef = useRef(null);
   const lastMediaResolveDeliveryRef = useRef('');
+  const autoSaveJobsRef = useRef(new Set());
   const [links, setLinks] = useState('');
   const [profilePlatform, setProfilePlatform] = useState('instagram');
   const [profileName, setProfileName] = useState('');
@@ -240,6 +241,7 @@ function BulkDownload() {
 
     bulkDownloadApi.createJobs(prepared, pending.outputFormat, pending.quality)
       .then((payload) => {
+        if (pending.autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.add(job.id));
         setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
         setQueueOpen(true);
         setNotice(`${payload.total} download(s) colocado(s) na fila${failed ? ` · ${failed} não puderam ser preparados` : ''}.`);
@@ -253,6 +255,21 @@ function BulkDownload() {
     const interval = window.setInterval(() => loadJobs(true), 2200);
     return () => window.clearInterval(interval);
   }, [activeCount, loadJobs]);
+
+  useEffect(() => {
+    jobs.forEach((job) => {
+      if (!autoSaveJobsRef.current.has(job.id)) return;
+      if (job.status === 'completed') {
+        autoSaveJobsRef.current.delete(job.id);
+        saveBulkDownloadFile(job, { skipPicker: true })
+          .then((saved) => setNotice(`Vídeo salvo no computador: ${saved.filename}`))
+          .catch((downloadError) => setError(downloadError.message));
+      } else if (job.status === 'failed' || job.status === 'partial') {
+        autoSaveJobsRef.current.delete(job.id);
+        setError(job.error || 'O vídeo não foi baixado. Veja o erro em Fila e histórico.');
+      }
+    });
+  }, [jobs]);
 
   useEffect(() => {
     const available = new Set(deletableJobs.map((job) => job.id));
@@ -437,7 +454,7 @@ function BulkDownload() {
     ));
   };
 
-  const queueItems = async (chosen, busyKey) => {
+  const queueItems = async (chosen, busyKey, autoSave = false) => {
     if (!chosen.length) {
       setError('Selecione pelo menos um conteúdo.');
       return;
@@ -470,7 +487,8 @@ function BulkDownload() {
         items: normalized,
         resolveUrls: new Set(unresolved.map((item) => item.url)),
         outputFormat,
-        quality
+        quality,
+        autoSave
       };
       window.postMessage({
         source: 'HF_NEW_CONTROL_HUB',
@@ -489,6 +507,7 @@ function BulkDownload() {
 
     try {
       const payload = await bulkDownloadApi.createJobs(normalized, outputFormat, quality);
+      if (autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.add(job.id));
       setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
       setNotice(`${payload.total} download(s) colocado(s) na fila.`);
       setQueueOpen(true);
@@ -504,7 +523,7 @@ function BulkDownload() {
   };
 
   const queueSingle = async (item) => {
-    await queueItems([item], `save:${item.url}`);
+    await queueItems([item], `save:${item.url}`, true);
   };
 
   const removeResult = (url) => {

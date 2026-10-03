@@ -152,21 +152,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ accepted: false });
     return false;
   }
+  const requestId = String(message.payload?.requestId || '');
+  const items = message.payload?.items;
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(requestId) || !Array.isArray(items) || !items.length) {
+    sendResponse({ accepted: false, error: 'Solicitacao de videos invalida.' });
+    return false;
+  }
+  sendResponse({ accepted: true });
   resolveBatch(message.payload)
-    .then(() => sendResponse({ accepted: true }))
     .catch(async (error) => {
       await chrome.storage.local.set({
         [HF_LAST_RESOLVE_KEY]: {
-          requestId: String(message.payload?.requestId || ''),
+          requestId,
           status: 'error',
-          total: Array.isArray(message.payload?.items) ? message.payload.items.length : 0,
+          total: items.length,
           completed: 0,
           results: [],
           message: error?.message || 'Falha ao preparar os vídeos.',
           checkedAt: nowIso()
         }
       });
-      sendResponse({ accepted: false });
     });
-  return true;
+  return false;
 });

@@ -281,6 +281,9 @@ if (window.location.hostname === 'app.hfnew.com.br') {
             requestId: payload.requestId,
             items: payload.items.slice(0, 10).map((item) => ({ url: item?.url || '' }))
           }
+        }).then((response) => {
+          if (response?.accepted) return;
+          throw new Error(response?.error || 'A extensão não aceitou o pedido de vídeo.');
         }).catch((error) => chrome.storage.local.set({
           [HF_LAST_RESOLVE_KEY]: {
             requestId: payload.requestId,
