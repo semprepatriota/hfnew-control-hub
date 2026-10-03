@@ -12,7 +12,6 @@ import {
   Image as ImageIcon,
   Instagram,
   Layers,
-  Link2,
   Loader2,
   Eye,
   Heart,
@@ -69,10 +68,6 @@ function isPlayablePreview(value) {
   return /cdninstagram|fbcdn|tiktokcdn|muscdn|kwai|\.mp4(?:\?|$)/i.test(value || '');
 }
 
-function extractUrls(raw) {
-  return Array.from(new Set((raw.match(/https?:\/\/[^\s]+/gi) || []).map((url) => url.replace(/[),.;]+$/, ''))));
-}
-
 function mergeItems(current, incoming) {
   const merged = new Map(current.map((item) => [item.url, item]));
   incoming.forEach((item) => merged.set(item.url, { ...merged.get(item.url), ...item }));
@@ -89,6 +84,25 @@ function versionAtLeast(current, required) {
   return true;
 }
 
+function JobPreview({ job }) {
+  const [videoFailed, setVideoFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const thumbnail = job.thumbnail || job.posts?.[0]?.children?.[0]?.thumbnail || '';
+  const preview = job.preview_url || job.media_url || '';
+  const canPlay = job.media_type === 'video' && job.output_format !== 'audio'
+    && !videoFailed && isPlayablePreview(preview);
+
+  return (
+    <div className="bulk-job-preview">
+      {canPlay ? (
+        <video src={preview} poster={thumbnail || undefined} controls preload="none" onError={() => setVideoFailed(true)} aria-label={`Prévia de ${job.title}`} />
+      ) : thumbnail && !imageFailed ? (
+        <img src={thumbnail} alt={`Prévia de ${job.title}`} loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
+      ) : job.media_type === 'image' || job.media_type === 'carousel' ? <ImageIcon size={22} /> : <Video size={22} />}
+    </div>
+  );
+}
+
 function BulkDownload() {
   const profileAbortRef = useRef(null);
   const profileExtensionTimeoutRef = useRef(null);
@@ -99,7 +113,6 @@ function BulkDownload() {
   const lastMediaResolveDeliveryRef = useRef('');
   const autoSaveJobsRef = useRef(new Map());
   const queueInFlightRef = useRef(false);
-  const [links, setLinks] = useState('');
   const [profilePlatform, setProfilePlatform] = useState('instagram');
   const [profileName, setProfileName] = useState('');
   const [profileLimit, setProfileLimit] = useState(25);
@@ -309,37 +322,6 @@ function BulkDownload() {
       window.clearInterval(interval);
     };
   }, []);
-
-  const analyzeLinks = async () => {
-    const urls = extractUrls(links);
-    if (!urls.length) {
-      setError('Cole pelo menos um link completo, com https://.');
-      return;
-    }
-    if (urls.some((url) => !isInstagramUrl(url))) {
-      setError('No momento, use somente links do Instagram. TikTok em breve.');
-      return;
-    }
-    setBusy('inspect');
-    setError('');
-    setNotice('');
-    try {
-      const payload = await bulkDownloadApi.inspect(urls.slice(0, 50));
-      const incoming = payload.items || [];
-      setItems((current) => mergeItems(current, incoming));
-      setSelected((current) => {
-        const next = new Set(current);
-        incoming.forEach((item) => next.add(item.url));
-        return next;
-      });
-      const failed = payload.errors?.length || 0;
-      setNotice(`${incoming.length} conteúdo(s) encontrado(s)${failed ? ` · ${failed} link(s) não abriram` : ''}.`);
-    } catch (analyzeError) {
-      setError(analyzeError.message);
-    } finally {
-      setBusy('');
-    }
-  };
 
   const analyzeProfile = async () => {
     if (profilePlatform !== 'instagram') {
@@ -643,7 +625,6 @@ function BulkDownload() {
   const clearResults = async () => {
     setItems([]);
     setSelected(new Set());
-    setLinks('');
     setNotice('');
     await bulkDownloadApi.clearExtensionInbox().catch(() => null);
   };
@@ -654,7 +635,7 @@ function BulkDownload() {
         <div>
           <span className="bulk-eyebrow">FERRAMENTA DE MÍDIA</span>
           <h1>Baixar em Massa</h1>
-          <p>Links públicos, seleção organizada e fila isolada por usuário.</p>
+          <p>Busca por perfil, seleção organizada e fila isolada por usuário.</p>
         </div>
         <div className={`bulk-health ${health ? 'online' : ''}`}>
           <span />
@@ -759,43 +740,19 @@ function BulkDownload() {
         </div>
       </section>
 
-      <section className="bulk-source-panel">
-        <div className="bulk-section-heading">
-          <div>
-            <h2><Link2 size={18} /> Links para analisar</h2>
-            <p>Até 50 links públicos, um por linha.</p>
-          </div>
-          <div className="bulk-platforms">
-            {PROFILE_PLATFORMS.map(({ value, label, disabled }) => <span key={value} className={disabled ? 'coming-soon' : ''}>{label}</span>)}
-          </div>
-        </div>
-
-        <textarea
-          value={links}
-          onChange={(event) => setLinks(event.target.value)}
-          placeholder={'https://www.instagram.com/reel/...\nhttps://www.instagram.com/p/...'}
-          rows={5}
-        />
-
-        <div className="bulk-actions-row">
-          <button type="button" className="bulk-button primary" onClick={analyzeLinks} disabled={busy === 'inspect'}>
-            {busy === 'inspect' ? <Loader2 className="spin" size={17} /> : <Search size={17} />}
-            Analisar links
-          </button>
-          <button type="button" className="bulk-icon-button" onClick={clearResults} title="Limpar resultados" aria-label="Limpar resultados"><Trash2 size={17} /></button>
-        </div>
-      </section>
-
       <section className="bulk-results-section">
         <div className="bulk-section-heading results-heading">
           <div>
             <h2><FileArchive size={18} /> Conteúdos encontrados</h2>
             <p>{items.length} encontrado(s) · {selected.size} selecionado(s)</p>
           </div>
-          <button type="button" className="bulk-button ghost" onClick={toggleAll} disabled={!items.length}>
-            {items.length && selected.size === items.length ? <CheckSquare2 size={17} /> : <Square size={17} />}
-            {items.length && selected.size === items.length ? 'Desmarcar todos' : 'Selecionar todos'}
-          </button>
+          <div className="bulk-results-actions">
+            <button type="button" className="bulk-button ghost" onClick={toggleAll} disabled={!items.length}>
+              {items.length && selected.size === items.length ? <CheckSquare2 size={17} /> : <Square size={17} />}
+              {items.length && selected.size === items.length ? 'Desmarcar todos' : 'Selecionar todos'}
+            </button>
+            <button type="button" className="bulk-icon-button" onClick={clearResults} disabled={!items.length} title="Limpar resultados" aria-label="Limpar resultados"><Trash2 size={17} /></button>
+          </div>
         </div>
 
         {!items.length ? (
@@ -898,6 +855,7 @@ function BulkDownload() {
                 <div className="bulk-job-icon">
                   {job.status === 'downloading' || job.status === 'queued' ? <Loader2 className="spin" size={18} /> : job.status === 'completed' ? <Check size={18} /> : <AlertCircle size={18} />}
                 </div>
+                <JobPreview job={job} />
                 <div className="bulk-job-main">
                   <div className="bulk-job-title"><strong>{job.title}</strong><span>{PLATFORM_LABELS[job.platform] || job.platform} · {job.output_format}</span></div>
                   <div className="bulk-progress"><span style={{ width: `${job.progress || 0}%` }} /></div>
