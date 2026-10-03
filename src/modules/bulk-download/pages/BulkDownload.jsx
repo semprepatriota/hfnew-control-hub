@@ -97,7 +97,8 @@ function BulkDownload() {
   const mediaResolveRef = useRef(null);
   const mediaResolveTimeoutRef = useRef(null);
   const lastMediaResolveDeliveryRef = useRef('');
-  const autoSaveJobsRef = useRef(new Set());
+  const autoSaveJobsRef = useRef(new Map());
+  const queueInFlightRef = useRef(false);
   const [links, setLinks] = useState('');
   const [profilePlatform, setProfilePlatform] = useState('instagram');
   const [profileName, setProfileName] = useState('');
@@ -234,6 +235,7 @@ function BulkDownload() {
     const failed = pending.items.length - prepared.length;
     if (!prepared.length) {
       setBusy('');
+      queueInFlightRef.current = false;
       const firstFailure = resolution.results?.find((item) => item.status === 'failed')?.error;
       setError(firstFailure || resolution.message || 'O Instagram não liberou o MP4. Confirme o login e tente novamente.');
       return;
@@ -241,13 +243,16 @@ function BulkDownload() {
 
     bulkDownloadApi.createJobs(prepared, pending.outputFormat, pending.quality)
       .then((payload) => {
-        if (pending.autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.add(job.id));
+        if (pending.autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.set(job.id, pending.fileHandle));
         setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
         setQueueOpen(true);
         setNotice(`${payload.total} download(s) colocado(s) na fila${failed ? ` · ${failed} não puderam ser preparados` : ''}.`);
       })
       .catch((queueError) => setError(queueError.message))
-      .finally(() => setBusy(''));
+      .finally(() => {
+        queueInFlightRef.current = false;
+        setBusy('');
+      });
   }, [extensionStatus?.lastMediaResolve]);
 
   useEffect(() => {
@@ -260,9 +265,10 @@ function BulkDownload() {
     jobs.forEach((job) => {
       if (!autoSaveJobsRef.current.has(job.id)) return;
       if (job.status === 'completed') {
+        const fileHandle = autoSaveJobsRef.current.get(job.id);
         autoSaveJobsRef.current.delete(job.id);
-        saveBulkDownloadFile(job, { skipPicker: true })
-          .then((saved) => setNotice(`Vídeo salvo no computador: ${saved.filename}`))
+        saveBulkDownloadFile(job, { fileHandle, skipPicker: true })
+          .then((saved) => setNotice(`${saved.picker ? 'Arquivo salvo' : 'Download iniciado'}: ${saved.filename}`))
           .catch((downloadError) => setError(downloadError.message));
       } else if (job.status === 'failed' || job.status === 'partial') {
         autoSaveJobsRef.current.delete(job.id);
@@ -454,7 +460,8 @@ function BulkDownload() {
     ));
   };
 
-  const queueItems = async (chosen, busyKey, autoSave = false) => {
+  const queueItems = async (chosen, busyKey, { autoSave = false, fileHandle = null } = {}) => {
+    if (queueInFlightRef.current) return;
     if (!chosen.length) {
       setError('Selecione pelo menos um conteúdo.');
       return;
@@ -470,12 +477,14 @@ function BulkDownload() {
       setError('Selecione até 10 vídeos por vez para preparar os MP4s pelo Instagram.');
       return;
     }
+    queueInFlightRef.current = true;
     setBusy(busyKey);
     setError('');
     setNotice('');
 
     if (unresolved.length) {
       if (!canResolve) {
+        queueInFlightRef.current = false;
         setBusy('');
         setError(`Atualize a extensão HF Bulk Explorer para a versão ${MEDIA_EXTENSION_VERSION} e mantenha o Instagram conectado.`);
         setExtensionOpen(true);
@@ -488,7 +497,8 @@ function BulkDownload() {
         resolveUrls: new Set(unresolved.map((item) => item.url)),
         outputFormat,
         quality,
-        autoSave
+        autoSave,
+        fileHandle
       };
       window.postMessage({
         source: 'HF_NEW_CONTROL_HUB',
@@ -498,6 +508,7 @@ function BulkDownload() {
       mediaResolveTimeoutRef.current = window.setTimeout(() => {
         if (mediaResolveRef.current?.requestId !== requestId) return;
         mediaResolveRef.current = null;
+        queueInFlightRef.current = false;
         setBusy('');
         setError('A extensão não conseguiu preparar o MP4 a tempo. Confirme o login do Instagram e tente novamente.');
       }, 4 * 60 * 1000);
@@ -507,13 +518,14 @@ function BulkDownload() {
 
     try {
       const payload = await bulkDownloadApi.createJobs(normalized, outputFormat, quality);
-      if (autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.add(job.id));
+      if (autoSave) (payload.jobs || []).forEach((job) => autoSaveJobsRef.current.set(job.id, fileHandle));
       setJobs((current) => [...(payload.jobs || []).reverse(), ...current]);
       setNotice(`${payload.total} download(s) colocado(s) na fila.`);
       setQueueOpen(true);
     } catch (queueError) {
       setError(queueError.message);
     } finally {
+      queueInFlightRef.current = false;
       setBusy('');
     }
   };
@@ -523,7 +535,20 @@ function BulkDownload() {
   };
 
   const queueSingle = async (item) => {
-    await queueItems([item], `save:${item.url}`, true);
+    if (queueInFlightRef.current) return;
+    let fileHandle = null;
+    if (typeof window.showSaveFilePicker === 'function') {
+      const extension = outputFormat === 'audio' ? 'mp3' : item.media_type === 'image' ? 'jpg' : 'mp4';
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: `hf-video-${Date.now()}.${extension}`,
+          startIn: 'downloads'
+        });
+      } catch (pickerError) {
+        if (pickerError?.name === 'AbortError') return;
+      }
+    }
+    await queueItems([item], `save:${item.url}`, { autoSave: true, fileHandle });
   };
 
   const removeResult = (url) => {
@@ -609,7 +634,7 @@ function BulkDownload() {
     setError('');
     try {
       const saved = await saveBulkDownloadFile(job);
-      setNotice(`Arquivo salvo: ${saved?.filename || job.filename}`);
+      setNotice(`${saved.picker ? 'Arquivo salvo' : 'Download iniciado'}: ${saved.filename || job.filename}`);
     } catch (downloadError) {
       if (downloadError?.name !== 'AbortError') setError(downloadError.message);
     }
@@ -804,7 +829,7 @@ function BulkDownload() {
                     </div>
                     <div className="bulk-card-footer">
                       <a href={item.url} target="_blank" rel="noreferrer">Abrir origem <ExternalLink size={12} /></a>
-                      <button type="button" onClick={() => queueSingle(item)} disabled={busy === `save:${item.url}`}>
+                      <button type="button" onClick={() => queueSingle(item)} disabled={Boolean(busy)}>
                         {busy === `save:${item.url}` ? <Loader2 className="spin" size={13} /> : <Download size={13} />} Salvar
                       </button>
                     </div>
@@ -829,7 +854,7 @@ function BulkDownload() {
               <option value="480">Até 480p</option>
             </select>
           )}
-          <button type="button" className="bulk-button download" onClick={queueSelected} disabled={!selected.size || busy === 'queue'}>
+          <button type="button" className="bulk-button download" onClick={queueSelected} disabled={!selected.size || Boolean(busy)}>
             {busy === 'queue' ? <Loader2 className="spin" size={17} /> : <Download size={17} />}
             Baixar selecionados ({selected.size})
           </button>

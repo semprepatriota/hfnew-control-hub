@@ -95,9 +95,8 @@ function filenameFromHeaders(response, fallback) {
   }
 }
 
-export async function saveBulkDownloadFile(job, { skipPicker = false } = {}) {
+export async function saveBulkDownloadFile(job, { skipPicker = false, fileHandle = null } = {}) {
   const suggestedName = job.filename || `hf-download-${job.id}.mp4`;
-  let fileHandle = null;
 
   if (!skipPicker && typeof window.showSaveFilePicker === 'function') {
     try {
@@ -124,6 +123,11 @@ export async function saveBulkDownloadFile(job, { skipPicker = false } = {}) {
     if (response.status === 401) throw new Error('Sua sessao expirou. Entre novamente no HUB.');
     throw new Error(payload.detail || 'Nao foi possivel baixar o arquivo.');
   }
+  const contentType = response.headers.get('content-type') || '';
+  if (/^(?:text\/html|application\/json)\b/i.test(contentType)) {
+    await response.body?.cancel?.().catch(() => null);
+    throw new Error('O servidor retornou uma pagina em vez do arquivo. Nada foi salvo.');
+  }
 
   if (fileHandle) {
     const writable = await fileHandle.createWritable();
@@ -146,7 +150,7 @@ export async function saveBulkDownloadFile(job, { skipPicker = false } = {}) {
       }
       if (!written) throw new Error('O servidor retornou um arquivo vazio.');
       await writable.close();
-      return { filename: suggestedName, size: written, picker: true };
+      return { filename: fileHandle.name || suggestedName, size: written, picker: true };
     } catch (error) {
       await writable.abort?.().catch(() => null);
       throw error;

@@ -160,7 +160,7 @@ test('five-item option exists in both interfaces and dashboard covers load lazil
 
 test('extension release includes every referenced icon and no broader host access', () => {
   const manifest = JSON.parse(source('manifest.json'));
-  assert.equal(manifest.version, '1.5.2');
+  assert.equal(manifest.version, '1.5.3');
   assert.equal(manifest.background.service_worker, 'background.js');
   assert.deepEqual(manifest.host_permissions, ['https://app.hfnew.com.br/*', 'https://www.instagram.com/*']);
   for (const icon of Object.values(manifest.icons)) assert.ok(existsSync(new URL(icon, extension)), icon);
@@ -177,6 +177,7 @@ test('media resolver keeps the selected Reel and ignores blob video sources', as
   vm.runInContext(source('background.js'), background);
   assert.equal(background.normalizeInstagramMediaUrl('https://www.instagram.com/reel/ABC123/?utm_source=test'), 'https://www.instagram.com/reel/ABC123/');
   assert.equal(background.normalizeInstagramMediaUrl('https://instagram.com.evil.invalid/reel/ABC123/'), '');
+  assert.equal(background.normalizeInstagramMediaUrl('https://www.instagram.com:8443/reel/ABC123/'), '');
   const document = {
     title: 'Cena escolhida',
     querySelectorAll: () => [{ currentSrc: 'blob:https://www.instagram.com/video', src: 'https://scontent.cdninstagram.com/cena.mp4', duration: 9, poster: '', querySelector: () => null }],
@@ -195,6 +196,8 @@ test('media resolver acknowledges the request before opening Instagram', () => {
   const context = vm.createContext({
     URL,
     Date,
+    setInterval() { return 1; },
+    clearInterval() {},
     chrome: {
       runtime: { onMessage: { addListener(callback) { listener = callback; } } },
       storage: { local: { set: async () => undefined } },
@@ -209,10 +212,135 @@ test('media resolver acknowledges the request before opening Instagram', () => {
   assert.equal(tabOpened, false);
 });
 
-test('individual Save downloads the finished job automatically', () => {
+test('media resolver rejects a sender with a lookalike app hostname', () => {
+  let listener;
+  const context = vm.createContext({
+    URL,
+    chrome: { runtime: { onMessage: { addListener(callback) { listener = callback; } } } },
+  });
+  vm.runInContext(source('background.js'), context);
+  let response;
+  listener({ type: 'HF_BULK_RESOLVE_MEDIA_BATCH', payload: {
+    requestId: 'request-1', items: [{ url: 'https://www.instagram.com/reel/ABC123/' }],
+  } }, { url: 'https://app.hfnew.com.br.evil.invalid/' }, (value) => { response = value; });
+  assert.equal(response?.accepted, false);
+});
+
+test('media resolver closes its temporary tab after preparing the selected Reel', async () => {
+  const updates = [];
+  const removed = [];
+  let heartbeatCleared = false;
+  const context = vm.createContext({
+    URL,
+    Date,
+    setInterval() { return 1; },
+    clearInterval() { heartbeatCleared = true; },
+    chrome: {
+      runtime: { onMessage: { addListener() {} } },
+      storage: { local: {
+        set: async (value) => { updates.push(value.hfBulkLastMediaResolve); },
+        get: async () => ({}),
+      } },
+      tabs: {
+        create: async () => ({ id: 7 }),
+        get: async () => ({ status: 'complete', url: 'https://www.instagram.com/reel/ABC123/' }),
+        remove: async (id) => { removed.push(id); },
+      },
+      scripting: { executeScript: async () => [{ result: {
+        media_url: 'https://scontent.cdninstagram.com/ABC123.mp4',
+      } }] },
+    },
+  });
+  vm.runInContext(source('background.js'), context);
+  await context.resolveBatch({ requestId: 'request-2', items: [{ url: 'https://www.instagram.com/reel/ABC123/' }] });
+  assert.equal(updates.at(-1).status, 'success');
+  assert.equal(updates.at(-1).results[0].media_url, 'https://scontent.cdninstagram.com/ABC123.mp4');
+  assert.deepEqual(removed, [7]);
+  assert.equal(heartbeatCleared, true);
+});
+
+test('extension returns the resolved Reel to the same HUB request', async () => {
+  const stored = {};
+  const posted = [];
+  let receiveAppMessage;
+  let storageChanged;
+  const window = {
+    location: { hostname: 'app.hfnew.com.br', origin: 'https://app.hfnew.com.br' },
+    addEventListener(_type, callback) { receiveAppMessage = callback; },
+    postMessage(message) { posted.push(message); },
+  };
+  const context = vm.createContext({
+    URL,
+    Date,
+    window,
+    chrome: {
+      runtime: { getManifest: () => ({ version: '1.5.3' }), sendMessage: async () => ({ accepted: true }) },
+      storage: {
+        local: {
+          get: async (keys) => Object.fromEntries(keys.filter((key) => key in stored).map((key) => [key, stored[key]])),
+          set: async (values) => {
+            Object.assign(stored, values);
+            storageChanged(Object.fromEntries(Object.keys(values).map((key) => [key, {}])), 'local');
+          },
+        },
+        onChanged: { addListener(callback) { storageChanged = callback; } },
+      },
+    },
+  });
+  vm.runInContext(source('content-status.js'), context);
+  receiveAppMessage({ source: window, data: {
+    source: 'HF_NEW_CONTROL_HUB', type: 'HF_BULK_RESOLVE_MEDIA',
+    payload: { requestId: 'request-3', items: [{ url: 'https://www.instagram.com/reel/ABC123/' }] },
+  } });
+  stored.hfBulkLastMediaResolve = {
+    requestId: 'request-3', status: 'success', checkedAt: new Date().toISOString(),
+    results: [{ url: 'https://www.instagram.com/reel/ABC123/', status: 'resolved', media_url: 'https://scontent.cdninstagram.com/ABC123.mp4' }],
+  };
+  storageChanged({ hfBulkLastMediaResolve: {} }, 'local');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.ok(posted.some((message) => message.payload?.lastMediaResolve?.requestId === 'request-3'));
+  assert.ok(posted.some((message) => message.payload?.lastMediaResolve?.results?.[0]?.media_url === 'https://scontent.cdninstagram.com/ABC123.mp4'));
+});
+
+test('individual Save chooses a destination and downloads the finished job automatically', () => {
   const page = readFileSync(new URL('../src/modules/bulk-download/pages/BulkDownload.jsx', import.meta.url), 'utf8');
-  assert.match(page, /queueItems\(\[item\], `save:\$\{item\.url\}`, true\)/);
-  assert.match(page, /job\.status === 'completed'[\s\S]*?saveBulkDownloadFile\(job, \{ skipPicker: true \}\)/);
+  assert.match(page, /fileHandle = await window\.showSaveFilePicker/);
+  assert.match(page, /queueItems\(\[item\], `save:\$\{item\.url\}`, \{ autoSave: true, fileHandle \}\)/);
+  assert.match(page, /job\.status === 'completed'[\s\S]*?saveBulkDownloadFile\(job, \{ fileHandle, skipPicker: true \}\)/);
+  assert.match(page, /if \(queueInFlightRef\.current\) return;/);
+});
+
+test('selected destination receives streamed bytes, without a second page or Blob', async () => {
+  const service = readFileSync(new URL('../src/modules/bulk-download/services/bulkDownloadApi.js', import.meta.url), 'utf8')
+    .replace(/^import .*;\r?\n/m, '').replace(/^export /gm, '');
+  const writes = [];
+  let closed = false;
+  const context = vm.createContext({
+    apiUrl: (path) => path,
+    window: { localStorage: { getItem: () => 'test-token' } },
+    fetch: async () => ({
+      ok: true,
+      headers: { get: () => 'video/mp4' },
+      body: { getReader: () => {
+        let done = false;
+        return { read: async () => {
+          if (done) return { done: true };
+          done = true;
+          return { done: false, value: new Uint8Array([0, 1, 2, 3]) };
+        } };
+      } },
+    }),
+    document: { createElement() { throw new Error('unexpected browser download'); } },
+  });
+  vm.runInContext(service, context);
+  const fileHandle = { name: 'meu-video.mp4', createWritable: async () => ({
+    write: async (value) => { writes.push(...value); },
+    close: async () => { closed = true; },
+  }) };
+  const result = await context.saveBulkDownloadFile({ id: 'abc', filename: 'server.mp4' }, { fileHandle, skipPicker: true });
+  assert.deepEqual(writes, [0, 1, 2, 3]);
+  assert.equal(closed, true);
+  assert.equal(result.filename, 'meu-video.mp4');
 });
 
 test('only Instagram is available; TikTok is visibly coming soon', () => {

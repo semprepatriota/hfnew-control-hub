@@ -11,7 +11,7 @@ function normalizeInstagramMediaUrl(rawUrl) {
   try {
     const url = new URL(String(rawUrl || '').trim());
     const host = url.hostname.toLowerCase().replace(/^www\./, '');
-    if (url.protocol !== 'https:' || host !== 'instagram.com') return '';
+    if (url.protocol !== 'https:' || host !== 'instagram.com' || url.username || url.password || url.port) return '';
     if (!/^\/(?:[A-Za-z0-9._]+\/)?(?:reel|p|tv)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)) return '';
     url.search = '';
     url.hash = '';
@@ -87,6 +87,10 @@ async function resolveOne(item) {
     tabId = tab.id;
     if (!Number.isInteger(tabId)) throw new Error('Não foi possível abrir o Reel em segundo plano.');
     await waitForTab(tabId);
+    const loadedTab = await chrome.tabs.get(tabId);
+    if (!normalizeInstagramMediaUrl(loadedTab.url)) {
+      throw new Error('O Instagram redirecionou o Reel. Confirme o login e tente novamente.');
+    }
     const execution = await chrome.scripting.executeScript({
       target: { tabId },
       func: extractInstagramMedia
@@ -109,6 +113,9 @@ async function resolveBatch(payload) {
   }
   if (HF_ACTIVE_RESOLVES.has(requestId)) return;
   HF_ACTIVE_RESOLVES.add(requestId);
+  const heartbeat = setInterval(() => {
+    chrome.storage.local.get(HF_LAST_RESOLVE_KEY).catch(() => null);
+  }, 20000);
   const results = new Array(items.length);
   let cursor = 0;
   let completed = 0;
@@ -142,13 +149,16 @@ async function resolveBatch(payload) {
       : 'O Instagram não liberou nenhum MP4. Confirme que a conta continua conectada.';
     await publish(status, message);
   } finally {
+    clearInterval(heartbeat);
     HF_ACTIVE_RESOLVES.delete(requestId);
   }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== 'HF_BULK_RESOLVE_MEDIA_BATCH') return false;
-  if (!sender.url?.startsWith('https://app.hfnew.com.br/')) {
+  let senderOrigin = '';
+  try { senderOrigin = new URL(sender.url).origin; } catch { /* Invalid sender URL. */ }
+  if (senderOrigin !== 'https://app.hfnew.com.br') {
     sendResponse({ accepted: false });
     return false;
   }
