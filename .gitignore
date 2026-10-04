@@ -6,6 +6,7 @@ dist
 .DS_Store
 *.log
 .vite
+public/new-today-media/
 *.pem
 *.key
 *.p12
