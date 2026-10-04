@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
-import { CheckCircle2, Download, FileImage, FileVideo2, Loader2, RotateCcw, ScanText, Upload, Video } from 'lucide-react';
+import { CheckCircle2, Download, FileImage, FileVideo2, Loader2, RotateCcw, ScanSearch, ScanText, Upload, Video } from 'lucide-react';
 import { NewTodayComposition } from '../remotion/NewTodayComposition';
 import { durationForMedia, NEW_TODAY_FPS } from '../remotion/timeline';
-import { createNewTodayRender, downloadNewTodayRender, loadNewTodayRender, readNewTodayRender } from '../services/newTodayApi';
-import { readMediaText } from '../services/readMediaText';
+import { analyzeNewTodayMaterial, createNewTodayRender, downloadNewTodayRender, loadNewTodayRender, readNewTodayRender } from '../services/newTodayApi';
+import { materialSamples, readMediaText } from '../services/readMediaText';
 import './new-today.css';
 
 const MAX_VIDEO_SECONDS = 180;
@@ -32,6 +32,7 @@ export default function NewToday() {
   const pickerRef = useRef(null);
   const playerRef = useRef(null);
   const currentMediaRef = useRef('');
+  const analysisRunRef = useRef(0);
   const [file, setFile] = useState(null);
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState('image');
@@ -44,6 +45,8 @@ export default function NewToday() {
   const [positionX, setPositionX] = useState(50);
   const [positionY, setPositionY] = useState(50);
   const [reading, setReading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const [rendering, setRendering] = useState(false);
   const [renderJob, setRenderJob] = useState(null);
   const [renderedUrl, setRenderedUrl] = useState('');
@@ -96,6 +99,9 @@ export default function NewToday() {
   async function chooseFile(event) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
+    analysisRunRef.current += 1;
+    setAnalysis(null);
+    setAnalyzing(false);
     setError('');
     if (!['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'].includes(nextFile.type)) {
       setError('Selecione JPG, PNG, WebP, MP4 ou WebM.');
@@ -131,6 +137,34 @@ export default function NewToday() {
     void extractText(nextFile, nextType, nextSeconds);
   }
 
+  async function analyzeMaterial() {
+    if (!file || reading || analyzing) return;
+    const run = ++analysisRunRef.current;
+    setAnalyzing(true);
+    setAnalysis(null);
+    setError('');
+    try {
+      const imageSamples = await materialSamples(file, mediaType, seconds);
+      const result = await analyzeNewTodayMaterial({
+        extracted_text: extracted.slice(0, 8000),
+        source_hint: source.trim(),
+        image_samples: imageSamples,
+      });
+      if (run === analysisRunRef.current) setAnalysis(result);
+    } catch (cause) {
+      if (run === analysisRunRef.current) setError(`Análise do material: ${cause.message}`);
+    } finally {
+      if (run === analysisRunRef.current) setAnalyzing(false);
+    }
+  }
+
+  function applyAnalysis() {
+    if (!analysis) return;
+    if (analysis.headline) setHeadline(analysis.headline);
+    if (analysis.source && !source.trim()) setSource(analysis.source);
+    setConfirmed(false);
+  }
+
   async function startRender() {
     if (!file || !headline.trim() || !source.trim() || !confirmed) {
       setError('Confira a manchete e a fonte da notícia e confirme antes de renderizar.');
@@ -164,16 +198,30 @@ export default function NewToday() {
             <span>{file?.name || 'Inserir imagem ou vídeo'}</span>
           </button>
           {file && <p className="new-today-meta">{mediaType === 'video' ? `${seconds.toFixed(1)} s de vídeo` : 'Imagem'} · saída 1080 × 1920</p>}
+          <button type="button" className="new-today-analyze-button" onClick={analyzeMaterial} disabled={!file || reading || analyzing || rendering}>
+            {reading || analyzing ? <Loader2 size={17} className="new-today-spin" /> : <ScanSearch size={17} />}
+            {reading ? 'Lendo texto' : analyzing ? 'Analisando material' : 'Analisar material'}
+          </button>
+          {analysis && <section className="new-today-analysis" aria-label="Resultado da análise">
+            <h3>Análise do material</h3>
+            <dl>
+              <div><dt>Manchete sugerida</dt><dd>{analysis.headline || 'Não identificada'}</dd></div>
+              <div><dt>Fonte</dt><dd>{analysis.source || 'Não identificada'}{analysis.source_status === 'informed' && ' · informada por você'}</dd></div>
+            </dl>
+            {analysis.evidence?.length > 0 && <div className="new-today-evidence"><strong>Trechos encontrados</strong><ul>{analysis.evidence.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul></div>}
+            {analysis.warning && <p className="new-today-analysis-warning">{analysis.warning}</p>}
+            <button type="button" onClick={applyAnalysis} disabled={!analysis.headline && !analysis.source}>Usar sugestões</button>
+          </section>}
           <div className="new-today-fields">
             <label>Manchete<input value={headline} maxLength={180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
-            <label>Fonte<input value={source} maxLength={240} onChange={(event) => { setSource(event.target.value); setConfirmed(false); }} placeholder="Veículo, site ou link da reportagem" /></label>
+            <label>Fonte<input value={source} maxLength={240} onChange={(event) => { setSource(event.target.value); setAnalysis(null); setConfirmed(false); }} placeholder="Veículo, site ou link da reportagem" /></label>
             <label>Chamada final<input value={cta} maxLength={100} onChange={(event) => setCta(event.target.value)} /></label>
             <label>Nome na abertura<input value={brand} maxLength={36} onChange={(event) => setBrand(event.target.value)} /></label>
           </div>
           <details className="new-today-text-read">
             <summary><ScanText size={16} /> Texto identificado {reading && <Loader2 size={14} className="new-today-spin" />}</summary>
             <p>Confira o texto antes de usar qualquer informação na manchete.</p>
-            <textarea value={extracted} onChange={(event) => setExtracted(event.target.value)} placeholder="O texto da imagem ou dos quadros do vídeo aparece aqui." rows={8} />
+            <textarea value={extracted} onChange={(event) => { setExtracted(event.target.value); setAnalysis(null); }} placeholder="O texto da imagem ou dos quadros do vídeo aparece aqui." rows={8} />
             <button type="button" onClick={() => { setHeadline(extracted.split(/\r?\n/).find((line) => line.length > 15)?.slice(0, 180) || ''); setConfirmed(false); }} disabled={!extracted}>Usar primeira linha como manchete</button>
             {file && <button type="button" onClick={() => extractText(file, mediaType, seconds)} disabled={reading}><RotateCcw size={14} /> Ler novamente</button>}
           </details>

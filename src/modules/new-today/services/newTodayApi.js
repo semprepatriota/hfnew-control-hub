@@ -13,6 +13,15 @@ export async function createNewTodayRender(file, values) {
   return jsonResponse(await apiFetch(apiUrl('/api/new-today/renders'), { method: 'POST', body, timeoutMs: 0 }));
 }
 
+export async function analyzeNewTodayMaterial(values) {
+  return jsonResponse(await apiFetch(apiUrl('/api/new-today/analyze'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+    timeoutMs: 60000,
+  }));
+}
+
 export async function readNewTodayRender(id) {
   return jsonResponse(await apiFetch(apiUrl(`/api/new-today/renders/${encodeURIComponent(id)}`)));
 }
