@@ -7,7 +7,16 @@ import Dashboard from './components/Pages/Dashboard';
 import DashboardLogin from './components/Pages/DashboardLogin';
 import { apiUrl } from './config/api';
 import { normalizeRoutePath } from './utils/routePath';
+import { clearRetiredLeadsAndAgentsData } from './utils/retiredDataCleanup';
 import './App.css';
+
+if (typeof window !== 'undefined') {
+  try {
+    clearRetiredLeadsAndAgentsData(window.localStorage);
+  } catch {
+    // Private browsing may block localStorage; server-side data is cleared separately.
+  }
+}
 
 const Conexoes = lazy(() => import('./components/Pages/Conexoes'));
 const Billing = lazy(() => import('./components/Pages/Billing'));
@@ -23,9 +32,7 @@ const ResearchStudio = lazy(() => import('./modules/research-studio/pages/Resear
 const Vault = lazy(() => import('./components/Pages/Vault'));
 const Schedule = lazy(() => import('./components/Pages/Schedule'));
 const QuotaMonitor = lazy(() => import('./components/Pages/QuotaMonitor'));
-const Agents = lazy(() => import('./components/Pages/Agents'));
 const Leads = lazy(() => import('./components/Pages/Leads'));
-const WhatsAppHub = lazy(() => import('./modules/whatsapp/pages/WhatsAppHub'));
 const OAuthCallback = lazy(() => import('./components/Pages/OAuthCallback'));
 const PublicDashboard = lazy(() => import('./components/Pages/PublicDashboard'));
 const PublicPrivacy = lazy(() => import('./components/Pages/PublicPrivacy'));
@@ -493,9 +500,7 @@ function AppShell() {
           <Route path="/research-studio" element={<ModuleGate allowed={canUseModule('research_studio')} label="HF Research Studio"><ResearchStudio /></ModuleGate>} />
           <Route path="/agenda" element={<ModuleGate allowed={canUseModule('schedule')} label="Agenda"><Schedule /></ModuleGate>} />
           <Route path="/monitoramento-cota" element={<ModuleGate allowed={canUseModule('quota_monitor')} label="Monitoramento de Cota"><QuotaMonitor /></ModuleGate>} />
-          <Route path="/agentes" element={<ModuleGate allowed={canUseModule('agents')} label="Agentes"><Agents /></ModuleGate>} />
           <Route path="/leads" element={<ModuleGate allowed={canUseModule('leads')} label="Leads"><Leads /></ModuleGate>} />
-          <Route path="/whatsapp" element={<ModuleGate allowed={canUseModule('whatsapp')} label="WhatsApp Hub"><WhatsAppHub /></ModuleGate>} />
           <Route path="/instagram" element={<Navigate to="/painel" replace />} />
           <Route path="/facebook" element={<Navigate to="/painel" replace />} />
           <Route path="/vault" element={<ModuleGate allowed={canUseModule('vault')} label="The Vault"><Vault /></ModuleGate>} />

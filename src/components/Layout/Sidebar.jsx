@@ -12,9 +12,7 @@ import {
   Radar,
   DownloadCloud,
   Search,
-  Bot,
   Users,
-  MessageCircle,
   CreditCard,
   ShieldCheck,
   Heart,
@@ -151,28 +149,12 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       color: 'neon-blue'
     },
     {
-      id: 9,
-      module: 'agents',
-      label: 'Agentes',
-      path: '/agentes',
-      icon: Bot,
-      color: 'neon-green'
-    },
-    {
       id: 10,
       module: 'leads',
       label: 'Leads',
       path: '/leads',
       icon: Users,
       color: 'neon-gold'
-    },
-    {
-      id: 11,
-      module: 'whatsapp',
-      label: 'WHATSAPP HUB',
-      path: '/whatsapp',
-      icon: MessageCircle,
-      color: 'neon-green'
     },
     {
       id: 14,

@@ -29,10 +29,8 @@ const CATEGORY_LABELS = {
   forge_max: 'Forge Max',
   research_studio: 'Research Studio',
   bulk_download: 'Baixar em Massa',
-  agents: 'Agentes',
   leads: 'Leads',
   schedule: 'Agenda',
-  whatsapp: 'WhatsApp',
   vault: 'Vault',
   system: 'Sistema',
 };
