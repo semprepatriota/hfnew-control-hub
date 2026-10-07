@@ -17,6 +17,12 @@ new_today = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(new_today)
 
 
+def test_render_timing_keeps_short_intro_and_no_outro():
+    assert new_today._INTRO_FRAMES == 21
+    assert new_today._IMAGE_FRAMES == 213
+    assert "cta" not in new_today.RenderSettings.model_fields
+
+
 def sample_url():
     output = BytesIO()
     Image.new("RGB", (16, 16), "blue").save(output, "JPEG")

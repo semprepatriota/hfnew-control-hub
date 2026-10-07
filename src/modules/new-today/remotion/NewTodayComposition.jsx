@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig, Video } from 'remotion';
-import { contentFramesFor, NEW_TODAY_INTRO_FRAMES, NEW_TODAY_OUTRO_FRAMES } from './timeline';
+import { contentFramesFor, NEW_TODAY_INTRO_FRAMES } from './timeline';
 
 const WHITE = '#f9fbff';
 
@@ -32,8 +32,8 @@ function RadarBackground({ dim = false }) {
 
 function Intro({ brand }) {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 7, 37, 45], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const scale = interpolate(frame, [0, 22, 45], [0.92, 1, 1.05], { extrapolateRight: 'clamp' });
+  const opacity = interpolate(frame, [0, 4, 17, 21], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const scale = interpolate(frame, [0, 10, 21], [0.92, 1, 1.05], { extrapolateRight: 'clamp' });
   const name = String(brand || 'NEW TODAY').trim().split(/\s+/);
   const first = name.slice(0, -1).join(' ') || name[0];
   const last = name.length > 1 ? name.at(-1) : 'TODAY';
@@ -72,19 +72,6 @@ function Story({ mediaSrc, mediaType, headline, source, positionX = 50, position
   );
 }
 
-function Outro({ cta }) {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 12, 35, 45], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  return (
-    <AbsoluteFill>
-      <RadarBackground dim />
-      <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity }}>
-        <div style={{ maxWidth: 800, color: WHITE, fontFamily: 'Arial, sans-serif', fontSize: 67, fontWeight: 650, lineHeight: 1.2, textAlign: 'center', whiteSpace: 'pre-wrap' }}>{cta || 'Leia a notícia completa'}</div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-}
-
 export function NewTodayComposition(props) {
   const { durationInFrames } = useVideoConfig();
   const contentFrames = contentFramesFor(durationInFrames);
@@ -93,7 +80,6 @@ export function NewTodayComposition(props) {
       <RadarBackground />
       <Sequence from={0} durationInFrames={NEW_TODAY_INTRO_FRAMES}><Intro brand={props.brand} /></Sequence>
       <Sequence from={NEW_TODAY_INTRO_FRAMES} durationInFrames={contentFrames}><Story {...props} contentFrames={contentFrames} /></Sequence>
-      <Sequence from={durationInFrames - NEW_TODAY_OUTRO_FRAMES} durationInFrames={NEW_TODAY_OUTRO_FRAMES}><Outro cta={props.cta} /></Sequence>
     </AbsoluteFill>
   );
 }

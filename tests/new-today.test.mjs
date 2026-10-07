@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import { contentFramesFor, durationForMedia, NEW_TODAY_IMAGE_FRAMES, NEW_TODAY_MAX_MEDIA_FRAMES } from '../src/modules/new-today/remotion/timeline.js';
+import { contentFramesFor, durationForMedia, NEW_TODAY_IMAGE_FRAMES, NEW_TODAY_INTRO_FRAMES, NEW_TODAY_MAX_MEDIA_FRAMES } from '../src/modules/new-today/remotion/timeline.js';
 
 const sidebar = readFileSync(new URL('../src/components/Layout/Sidebar.jsx', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
@@ -12,9 +12,19 @@ test('NEW TODAY stays above Forge 70/30 and has its own route', () => {
 });
 
 test('image preset and videos up to three minutes have bounded frames', () => {
+  assert.equal(NEW_TODAY_INTRO_FRAMES, 21);
+  assert.equal(NEW_TODAY_IMAGE_FRAMES, 213);
   assert.equal(durationForMedia('image', 0), NEW_TODAY_IMAGE_FRAMES);
-  assert.equal(durationForMedia('video', 180), NEW_TODAY_MAX_MEDIA_FRAMES + 90);
+  assert.equal(durationForMedia('video', 180), NEW_TODAY_MAX_MEDIA_FRAMES + NEW_TODAY_INTRO_FRAMES);
   assert.equal(contentFramesFor(durationForMedia('video', 180)), NEW_TODAY_MAX_MEDIA_FRAMES);
+  assert.equal(contentFramesFor(NEW_TODAY_IMAGE_FRAMES), 192);
+});
+
+test('NEW TODAY ends on the story without the old closing screen', () => {
+  const composition = readFileSync(new URL('../src/modules/new-today/remotion/NewTodayComposition.jsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../src/modules/new-today/pages/NewToday.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(composition, /<Outro|Leia a notícia completa/);
+  assert.doesNotMatch(page, /Chamada final|Leia a notícia completa/);
 });
 
 test('news globe background stays available to the Remotion composition', () => {

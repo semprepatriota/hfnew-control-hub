@@ -41,7 +41,6 @@ export default function NewToday() {
   const [source, setSource] = useState('');
   const [extracted, setExtracted] = useState('');
   const [brand, setBrand] = useState('NEW TODAY');
-  const [cta, setCta] = useState('Leia a notícia completa');
   const [positionX, setPositionX] = useState(50);
   const [positionY, setPositionY] = useState(50);
   const [reading, setReading] = useState(false);
@@ -79,9 +78,9 @@ export default function NewToday() {
   }, [renderJob?.id, renderJob?.status]);
 
   const props = useMemo(() => ({
-    mediaSrc: mediaUrl, mediaType, headline, source, brand, cta, positionX, positionY,
+    mediaSrc: mediaUrl, mediaType, headline, source, brand, positionX, positionY,
     durationInFrames,
-  }), [mediaUrl, mediaType, headline, source, brand, cta, positionX, positionY, durationInFrames]);
+  }), [mediaUrl, mediaType, headline, source, brand, positionX, positionY, durationInFrames]);
 
   async function extractText(nextFile, nextType, nextSeconds) {
     setReading(true);
@@ -174,7 +173,7 @@ export default function NewToday() {
     setError('');
     try {
       const result = await createNewTodayRender(file, {
-        mediaType, mediaSeconds: seconds, headline: headline.trim(), source: source.trim(), brand: brand.trim(), cta: cta.trim(),
+        mediaType, mediaSeconds: seconds, headline: headline.trim(), source: source.trim(), brand: brand.trim(),
         positionX, positionY, durationInFrames,
       });
       setRenderJob(result);
@@ -215,7 +214,6 @@ export default function NewToday() {
           <div className="new-today-fields">
             <label>Manchete<input value={headline} maxLength={180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
             <label>Fonte<input value={source} maxLength={240} onChange={(event) => { setSource(event.target.value); setAnalysis(null); setConfirmed(false); }} placeholder="Veículo, site ou link da reportagem" /></label>
-            <label>Chamada final<input value={cta} maxLength={100} onChange={(event) => setCta(event.target.value)} /></label>
             <label>Nome na abertura<input value={brand} maxLength={36} onChange={(event) => setBrand(event.target.value)} /></label>
           </div>
           <details className="new-today-text-read">

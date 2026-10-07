@@ -38,8 +38,8 @@ _RUNTIME_ID = uuid.uuid4().hex
 _MAX_UPLOAD = 300 * 1024**2
 _MAX_DURATION = 180.0
 _MAX_MEDIA_FRAMES = 5400
-_INTRO_FRAMES = 45
-_OUTRO_FRAMES = 45
+_INTRO_FRAMES = 21
+_IMAGE_FRAMES = 213
 _ALLOWED = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "video/mp4": ".mp4", "video/webm": ".webm"}
 
 
@@ -48,7 +48,6 @@ class RenderSettings(BaseModel):
     headline: str = Field(min_length=4, max_length=180)
     source: str = Field(min_length=2, max_length=240)
     brand: str = Field(default="NEW TODAY", min_length=2, max_length=36)
-    cta: str = Field(default="Leia a notícia completa", min_length=2, max_length=100)
     positionX: int = Field(default=50, ge=0, le=100)
     positionY: int = Field(default=50, ge=0, le=100)
 
@@ -281,7 +280,6 @@ def _render(context: dict, job_id: str, source_path: Path, settings: RenderSetti
             "headline": settings.headline,
             "source": settings.source,
             "brand": settings.brand,
-            "cta": settings.cta,
             "positionX": settings.positionX,
             "positionY": settings.positionY,
             "durationInFrames": duration_frames,
@@ -361,9 +359,9 @@ async def create_render(
                     image.verify()
             except (UnidentifiedImageError, OSError) as exc:
                 raise HTTPException(status_code=422, detail="Imagem inválida") from exc
-            duration_frames = 282
+            duration_frames = _IMAGE_FRAMES
         else:
-            duration_frames = min(_MAX_MEDIA_FRAMES, round(_video_duration(source_path) * 30)) + _INTRO_FRAMES + _OUTRO_FRAMES
+            duration_frames = min(_MAX_MEDIA_FRAMES, round(_video_duration(source_path) * 30)) + _INTRO_FRAMES
         job = {"id": job_id, "status": "queued", "error": "", "filename": "", "runtime_id": _RUNTIME_ID,
                "duration_frames": duration_frames, "source": values.source, "size_bytes": 0}
         _write_job(folder / "job.json", job)
