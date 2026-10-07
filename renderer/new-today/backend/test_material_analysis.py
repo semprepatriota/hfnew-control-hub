@@ -33,6 +33,9 @@ def test_atlas_templates_validate_and_preserve_classic_default():
     assert classic.brand == "NEW ATLAS"
     brief = new_today.RenderSettings.model_validate({**base, "template": "brief", "summary": "Resumo confirmado"})
     assert brief.summary == "Resumo confirmado"
+    for template in ("alert", "breaking", "field"):
+        settings = new_today.RenderSettings.model_validate({**base, "template": template, "summary": "Resumo confirmado"})
+        assert settings.template == template
     with pytest.raises(ValidationError):
         new_today.RenderSettings.model_validate({**base, "template": "unknown"})
 

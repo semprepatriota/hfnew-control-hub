@@ -151,9 +151,71 @@ function BriefStory(props) {
   );
 }
 
+const NEWS_FONT = 'Arial, sans-serif';
+
+function NewsText({ headline, summary, source, showHeadline = true, titleColor = '#fff', bodyColor = '#e7edf6', sourceColor = '#abbccf', titleSize = 54, bodySize = 34, style = {} }) {
+  const title = String(headline || 'Manchete da notícia').trim();
+  const body = String(summary || '').trim();
+  const adjustedTitle = title.length > 65 ? titleSize * 0.76 : title.length > 42 ? titleSize * 0.88 : titleSize;
+  const adjustedBody = body.length > 100 ? bodySize * 0.85 : body.length > 75 ? bodySize * 0.92 : bodySize;
+  return <div style={{ fontFamily: NEWS_FONT, minWidth: 0, overflow: 'hidden', ...style }}>
+    {showHeadline && <div style={{ color: titleColor, fontSize: adjustedTitle, fontWeight: 900, lineHeight: 1.1, overflowWrap: 'anywhere' }}>{title}</div>}
+    {body && <div style={{ color: bodyColor, marginTop: showHeadline ? 21 : 0, fontSize: adjustedBody, fontWeight: 500, lineHeight: 1.22, overflowWrap: 'anywhere' }}>{body}</div>}
+    {source && <div style={{ color: sourceColor, marginTop: 20, fontSize: 23, fontWeight: 700, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>FONTE: {source}</div>}
+  </div>;
+}
+
+function AlertStory(props) {
+  const frame = useCurrentFrame();
+  const enter = interpolate(frame, [0, 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return <AbsoluteFill style={{ background: '#03254c', fontFamily: NEWS_FONT }}>
+    <Img src={staticFile('new-today-globe.png')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.13 }} />
+    <div style={{ position: 'absolute', top: 30, left: 20, width: 250, height: 190, opacity: 0.9, backgroundImage: 'radial-gradient(#fff 5px, transparent 6px)', backgroundSize: '31px 31px' }} />
+    <div style={{ position: 'absolute', top: 104, left: 188, width: 715, height: 116, transform: 'skewX(-17deg)', background: '#c80820', boxShadow: '14px 10px 0 #143a63' }} />
+    <div style={{ position: 'absolute', top: 121, left: 220, width: 620, color: WHITE, fontSize: 65, fontWeight: 900, textAlign: 'center' }}>ALERTA</div>
+    <div style={{ position: 'absolute', top: 300, left: 94, width: 892, height: 1080, overflow: 'hidden', background: '#061524', opacity: enter }}><AtlasMedia {...props} frame={frame} /></div>
+    <div style={{ position: 'absolute', top: 1450, left: 48, width: 984, height: 135, background: WHITE, display: 'flex', alignItems: 'center', boxShadow: '0 8px 0 #ab0922' }}>
+      <div style={{ width: 190, height: 135, background: '#d20720', transform: 'skewX(-17deg)', marginLeft: -10, flexShrink: 0 }} />
+      <div style={{ position: 'absolute', left: 164, top: 24, width: 18, height: 86, transform: 'skewX(-17deg)', background: '#d20720' }} />
+      <span style={{ marginLeft: 25, width: 765, maxHeight: 122, color: '#162345', fontSize: String(props.headline || '').length > 55 ? 34 : 40, fontWeight: 900, lineHeight: 1.07, overflow: 'hidden', overflowWrap: 'anywhere' }}>{props.headline || 'Manchete da notícia'}</span>
+    </div>
+    <NewsText showHeadline={false} summary={props.summary} source={props.source} bodySize={32} style={{ position: 'absolute', top: 1640, left: 90, width: 900, maxHeight: 245 }} />
+  </AbsoluteFill>;
+}
+
+function BreakingStory(props) {
+  const frame = useCurrentFrame();
+  return <AbsoluteFill style={{ background: WHITE, fontFamily: NEWS_FONT }}>
+    <div style={{ position: 'absolute', top: 0, left: 0, width: 1080, height: 1440, overflow: 'hidden', background: '#101b2b' }}><AtlasMedia {...props} frame={frame} /></div>
+    <div style={{ position: 'absolute', top: 55, left: 44, padding: '11px 25px', color: '#fff', background: '#c9081b', fontSize: 30, fontWeight: 850 }}>NEW ATLAS</div>
+    <div style={{ position: 'absolute', top: 1378, left: 0, width: 600, height: 95, transform: 'skewX(-13deg)', transformOrigin: 'bottom left', background: '#c50018' }} />
+    <div style={{ position: 'absolute', top: 1396, left: 22, color: WHITE, fontSize: 55, fontWeight: 900 }}>ÚLTIMAS NOTÍCIAS</div>
+    <div style={{ position: 'absolute', top: 1508, left: 36, width: 1008, height: 325, overflow: 'hidden' }}>
+      <NewsText headline={props.headline} summary={props.summary} source={props.source} titleColor="#172044" bodyColor="#25304b" sourceColor="#64718d" titleSize={49} bodySize={29} />
+    </div>
+    <BreakingTicker top={1850} frame={frame} />
+  </AbsoluteFill>;
+}
+
+function FieldStory(props) {
+  const frame = useCurrentFrame();
+  return <AbsoluteFill style={{ background: '#071329', fontFamily: NEWS_FONT }}>
+    <AbsoluteFill><AtlasMedia {...props} frame={frame} /></AbsoluteFill>
+    <AbsoluteFill style={{ background: 'linear-gradient(to bottom, transparent 34%, rgba(1, 6, 28, 0.35) 49%, #020b2a 76%, #020b2a 100%)' }} />
+    <div style={{ position: 'absolute', top: 52, left: 70, color: WHITE, fontSize: 41, fontWeight: 700, textShadow: '0 2px 8px #101827' }}>NEW ATLAS</div>
+    <div style={{ position: 'absolute', top: 1160, left: 75, width: 925, minHeight: 550, paddingLeft: 35, borderLeft: '12px solid #d20721', overflow: 'hidden' }}>
+      <NewsText headline={props.headline} summary={props.summary} source={props.source} titleSize={72} bodySize={37} />
+    </div>
+    <BreakingTicker top={1848} frame={frame} />
+  </AbsoluteFill>;
+}
+
 function TemplateStory(props) {
   if (props.template === 'bulletin') return <BulletinStory {...props} />;
   if (props.template === 'brief') return <BriefStory {...props} />;
+  if (props.template === 'alert') return <AlertStory {...props} />;
+  if (props.template === 'breaking') return <BreakingStory {...props} />;
+  if (props.template === 'field') return <FieldStory {...props} />;
   return <Story {...props} />;
 }
 

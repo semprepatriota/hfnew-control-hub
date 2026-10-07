@@ -45,7 +45,7 @@ _ALLOWED = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "v
 
 class RenderSettings(BaseModel):
     mediaType: Literal["image", "video"]
-    template: Literal["classic", "bulletin", "brief"] = "classic"
+    template: Literal["classic", "bulletin", "brief", "alert", "breaking", "field"] = "classic"
     headline: str = Field(min_length=4, max_length=180)
     source: str = Field(min_length=2, max_length=240)
     brand: str = Field(default="NEW ATLAS", min_length=2, max_length=36)
@@ -319,8 +319,8 @@ async def create_render(
         values = RenderSettings.model_validate_json(settings)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail="Confira manchete, fonte e ajustes do vídeo") from exc
-    if values.template == "brief" and (not values.summary.strip() or len(values.headline.strip()) > 80 or len(values.summary.strip()) > 120):
-        raise HTTPException(status_code=422, detail="No modelo Resumo, informe manchete de ate 80 caracteres e resumo de ate 120")
+    if values.template in {"brief", "alert", "breaking", "field"} and (not values.summary.strip() or len(values.headline.strip()) > 80 or len(values.summary.strip()) > 120):
+        raise HTTPException(status_code=422, detail="Neste modelo, informe manchete de ate 80 caracteres e resumo de ate 120")
     suffix = _ALLOWED.get(media.content_type or "")
     if not suffix or (values.mediaType == "video") != (suffix in {".mp4", ".webm"}):
         raise HTTPException(status_code=415, detail="Envie JPG, PNG, WebP, MP4 ou WebM")

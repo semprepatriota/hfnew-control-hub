@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
 import { CheckCircle2, Download, FileImage, FileVideo2, Loader2, RotateCcw, ScanSearch, ScanText, Upload, Video } from 'lucide-react';
 import { NewTodayComposition } from '../remotion/NewTodayComposition';
-import { durationForMedia, NEW_ATLAS_TEMPLATES, NEW_TODAY_FPS } from '../remotion/timeline';
+import { durationForMedia, NEW_ATLAS_SUMMARY_TEMPLATES, NEW_ATLAS_TEMPLATES, NEW_TODAY_FPS } from '../remotion/timeline';
 import { analyzeNewTodayMaterial, createNewTodayRender, downloadNewTodayRender, loadNewTodayRender, readNewTodayRender } from '../services/newTodayApi';
 import { materialSamples, readMediaText } from '../services/readMediaText';
 import './new-today.css';
 
 const MAX_VIDEO_SECONDS = 180;
 const MAX_FILE_BYTES = 300 * 1024 ** 2;
-const TEMPLATE_LABELS = { classic: 'Clássico', bulletin: 'Boletim', brief: 'Resumo' };
+const TEMPLATE_LABELS = { classic: 'Clássico', bulletin: 'Boletim', brief: 'Resumo', alert: 'Alerta azul', breaking: 'Faixa vermelha', field: 'Campo escuro' };
 
 function fileDuration(file) {
   return new Promise((resolve, reject) => {
@@ -175,8 +175,8 @@ export default function NewToday() {
       setError('Confira a manchete e a fonte da notícia e confirme antes de renderizar.');
       return;
     }
-    if (template === 'brief' && (!summary.trim() || headline.trim().length > 80 || summary.trim().length > 120)) {
-      setError('No modelo Resumo, confira o texto: a manchete aceita até 80 caracteres e o resumo até 120.');
+    if (NEW_ATLAS_SUMMARY_TEMPLATES.includes(template) && (!summary.trim() || headline.trim().length > 80 || summary.trim().length > 120)) {
+      setError('Neste modelo, confira o texto: a manchete aceita até 80 caracteres e o resumo até 120.');
       return;
     }
     setRendering(true);
@@ -208,7 +208,7 @@ export default function NewToday() {
                 <span className="new-atlas-template-ticker" />
                 <span className="new-atlas-template-media" />
                 <span className="new-atlas-template-mark" />
-                {option === 'brief' && <span className="new-atlas-template-copy" />}
+                {NEW_ATLAS_SUMMARY_TEMPLATES.includes(option) && <span className="new-atlas-template-copy" />}
               </span>
               <span>{TEMPLATE_LABELS[option]}</span>
             </button>)}
@@ -235,9 +235,9 @@ export default function NewToday() {
             <button type="button" onClick={applyAnalysis} disabled={!analysis.headline && !analysis.source}>Usar sugestões</button>
           </section>}
           <div className="new-today-fields">
-            <label>Manchete<input value={headline} maxLength={template === 'brief' ? 80 : 180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
+            <label>Manchete<input value={headline} maxLength={NEW_ATLAS_SUMMARY_TEMPLATES.includes(template) ? 80 : 180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
             <label>Fonte<input value={source} maxLength={240} onChange={(event) => { setSource(event.target.value); setAnalysis(null); setConfirmed(false); }} placeholder="Veículo, site ou link da reportagem" /></label>
-            {template === 'brief' && <label>Resumo<textarea value={summary} maxLength={120} rows={5} onChange={(event) => { setSummary(event.target.value); setConfirmed(false); }} placeholder="Texto confirmado a partir do material" /></label>}
+            {NEW_ATLAS_SUMMARY_TEMPLATES.includes(template) && <label>Resumo<textarea value={summary} maxLength={120} rows={5} onChange={(event) => { setSummary(event.target.value); setConfirmed(false); }} placeholder="Texto confirmado a partir do material" /></label>}
             {template === 'brief' && <label>Faixa inferior<input value={callout} maxLength={28} onChange={(event) => setCallout(event.target.value)} /></label>}
             <label>Nome na abertura<input value={brand} maxLength={36} onChange={(event) => setBrand(event.target.value)} /></label>
           </div>
