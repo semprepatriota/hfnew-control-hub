@@ -51,6 +51,15 @@ test('news globe background stays available to the Remotion composition', () => 
   assert.match(composition, /rotate\(\$\{globeTurn\}deg\)/);
 });
 
+test('transparent animated NEW ATLAS logo stays over all three templates', () => {
+  const logo = new URL('../public/new-atlas-logo-alpha.webm', import.meta.url);
+  const composition = readFileSync(new URL('../src/modules/new-today/remotion/NewTodayComposition.jsx', import.meta.url), 'utf8');
+  assert.ok(existsSync(logo));
+  assert.match(composition, /staticFile\('new-atlas-logo-alpha\.webm'\)/);
+  assert.match(composition, /<Video[^>]* loop muted/);
+  assert.match(composition, /<AnimatedAtlasLogo template=\{props\.template\} \/>/);
+});
+
 test('material analysis is requested only by its button and keeps editorial confirmation', () => {
   const page = readFileSync(new URL('../src/modules/new-today/pages/NewToday.jsx', import.meta.url), 'utf8');
   const api = readFileSync(new URL('../src/modules/new-today/services/newTodayApi.js', import.meta.url), 'utf8');

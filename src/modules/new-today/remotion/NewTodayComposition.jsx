@@ -157,6 +157,16 @@ function TemplateStory(props) {
   return <Story {...props} />;
 }
 
+function AnimatedAtlasLogo({ template }) {
+  const classic = template !== 'bulletin' && template !== 'brief';
+  const size = classic ? 136 : 156;
+  return (
+    <div style={{ position: 'absolute', top: template === 'bulletin' ? 104 : classic ? 4 : 26, right: 42, width: size, height: size, pointerEvents: 'none' }}>
+      <Video src={staticFile('new-atlas-logo-alpha.webm')} loop muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+    </div>
+  );
+}
+
 export function NewTodayComposition(props) {
   const { durationInFrames } = useVideoConfig();
   const contentFrames = contentFramesFor(durationInFrames);
@@ -165,6 +175,7 @@ export function NewTodayComposition(props) {
       <RadarBackground />
       <Sequence from={0} durationInFrames={NEW_TODAY_INTRO_FRAMES}><Intro brand={props.brand} /></Sequence>
       <Sequence from={NEW_TODAY_INTRO_FRAMES} durationInFrames={contentFrames}><TemplateStory {...props} contentFrames={contentFrames} /></Sequence>
+      <AnimatedAtlasLogo template={props.template} />
     </AbsoluteFill>
   );
 }
