@@ -94,8 +94,8 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
     {
       id: 'new-today',
       module: 'new_today',
-      label: 'NEW TODAY',
-      path: '/new-today',
+      label: 'NEW ATLAS',
+      path: '/new-atlas',
       icon: Clapperboard,
       color: 'neon-blue',
       ownerOnly: true,

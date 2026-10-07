@@ -12,7 +12,7 @@ const Root = () => (
     fps={NEW_TODAY_FPS}
     durationInFrames={NEW_TODAY_IMAGE_FRAMES}
     calculateMetadata={({ props }) => ({ durationInFrames: props.durationInFrames || NEW_TODAY_IMAGE_FRAMES })}
-    defaultProps={{ mediaSrc: '', mediaType: 'image', headline: '', brand: 'NEW TODAY', positionX: 50, positionY: 50 }}
+    defaultProps={{ mediaSrc: '', mediaType: 'image', headline: '', brand: 'NEW ATLAS', template: 'classic', summary: '', callout: 'ATÉ O FIM!!!', positionX: 50, positionY: 50 }}
   />
 );
 

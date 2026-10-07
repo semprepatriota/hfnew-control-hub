@@ -5,6 +5,21 @@
 .new-today-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 455px); gap: 22px; max-width: 1420px; margin: 0 auto; }
 .new-today-editor, .new-today-preview { min-width: 0; }
 .new-today-editor h2, .new-today-preview h2 { margin: 0 0 12px; font-size: 17px; }
+.new-atlas-templates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+.new-atlas-template { min-width: 0; padding: 7px; color: #dceaf2; background: #15212b; border: 1px solid #3b5363; border-radius: 5px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.new-atlas-template.is-selected { border-color: #54bdea; background: #18364b; box-shadow: inset 0 0 0 1px #54bdea; }
+.new-atlas-template:focus-visible { outline: 2px solid #7cd6fa; outline-offset: 2px; }
+.new-atlas-template-thumb { position: relative; display: block; width: min(100%, 72px); aspect-ratio: 9 / 16; margin: 0 auto 7px; overflow: hidden; background: #073b65 url('/new-today-globe.png') center / cover; }
+.new-atlas-template-ticker { position: absolute; left: 0; right: 0; top: 8%; height: 5%; background: #ae0010; }
+.new-atlas-template-media { position: absolute; left: 6%; right: 6%; top: 16%; height: 56%; background: #15222a; border: 1px solid #dbe8ed; }
+.new-atlas-template-mark { position: absolute; left: 16%; right: 16%; bottom: 10%; height: 8%; background: #b60012; transform: skewX(-12deg); }
+.new-atlas-template-thumb.is-classic .new-atlas-template-ticker { display: none; }
+.new-atlas-template-thumb.is-classic .new-atlas-template-media { top: 11%; height: 59%; border: 3px solid #eaf2f4; }
+.new-atlas-template-thumb.is-classic .new-atlas-template-mark { left: 9%; right: 9%; bottom: 11%; height: 11%; background: #f5f9fc; }
+.new-atlas-template-thumb.is-brief .new-atlas-template-ticker { top: 15%; }
+.new-atlas-template-thumb.is-brief .new-atlas-template-media { left: 0; right: 0; top: 20%; height: 34%; border: 0; }
+.new-atlas-template-thumb.is-brief .new-atlas-template-mark { left: 8%; right: 26%; bottom: 31%; }
+.new-atlas-template-copy { position: absolute; left: 10%; right: 10%; bottom: 12%; height: 14%; border-left: 2px solid #db0019; background: repeating-linear-gradient(to bottom, #dfeefa 0 2px, transparent 2px 6px); opacity: .85; }
 .new-today-upload { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px; padding: 12px 16px; color: #ecf5ff; background: #162430; border: 1px dashed #4e95bd; border-radius: 5px; cursor: pointer; text-align: left; }
 .new-today-upload span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .new-today-analyze-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; padding: 0 15px; border: 1px solid #55bfe9; border-radius: 4px; color: #f4fbff; background: #17648a; font-weight: 750; cursor: pointer; }
@@ -21,8 +36,9 @@
 .new-today-analysis > button:disabled { opacity: .5; cursor: not-allowed; }
 .new-today-fields { display: grid; gap: 12px; margin: 20px 0; }
 .new-today-fields label, .new-today-crop label { display: grid; gap: 6px; color: #c5d1dc; font-size: 12px; font-weight: 650; }
-.new-today-fields input, .new-today-text-read textarea { width: 100%; min-height: 41px; padding: 9px 11px; box-sizing: border-box; color: #f7fafc; background: #111b24; border: 1px solid #354451; border-radius: 4px; font: inherit; }
-.new-today-fields input:focus, .new-today-text-read textarea:focus { outline: 2px solid #40a9df; }
+.new-today-fields input, .new-today-fields textarea, .new-today-text-read textarea { width: 100%; min-height: 41px; padding: 9px 11px; box-sizing: border-box; color: #f7fafc; background: #111b24; border: 1px solid #354451; border-radius: 4px; font: inherit; }
+.new-today-fields input:focus, .new-today-fields textarea:focus, .new-today-text-read textarea:focus { outline: 2px solid #40a9df; }
+.new-today-fields textarea { resize: vertical; line-height: 1.4; }
 .new-today-text-read, .new-today-crop { padding: 10px 0; border-top: 1px solid #2b3642; }
 .new-today-text-read summary, .new-today-crop summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
 .new-today-text-read p { color: #a7b4c0; font-size: 12px; }

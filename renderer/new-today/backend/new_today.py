@@ -1,4 +1,4 @@
-"""Isolated upload and Remotion render queue for NEW TODAY."""
+"""Isolated upload and Remotion render queue for NEW ATLAS."""
 
 from __future__ import annotations
 
@@ -45,9 +45,12 @@ _ALLOWED = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "v
 
 class RenderSettings(BaseModel):
     mediaType: Literal["image", "video"]
+    template: Literal["classic", "bulletin", "brief"] = "classic"
     headline: str = Field(min_length=4, max_length=180)
     source: str = Field(min_length=2, max_length=240)
-    brand: str = Field(default="NEW TODAY", min_length=2, max_length=36)
+    brand: str = Field(default="NEW ATLAS", min_length=2, max_length=36)
+    summary: str = Field(default="", max_length=240)
+    callout: str = Field(default="ATÉ O FIM!!!", max_length=28)
     positionX: int = Field(default=50, ge=0, le=100)
     positionY: int = Field(default=50, ge=0, le=100)
 
@@ -61,7 +64,7 @@ class MaterialAnalysisRequest(BaseModel):
 def _owner_context(authorization: Optional[str]) -> dict:
     context = require_current_user(authorization)
     if context.get("role") != "owner":
-        raise HTTPException(status_code=403, detail="NEW TODAY ainda está restrito ao proprietário")
+        raise HTTPException(status_code=403, detail="NEW ATLAS ainda está restrito ao proprietário")
     return context
 
 
@@ -186,7 +189,7 @@ async def analyze_material(payload: MaterialAnalysisRequest, authorization: Opti
     if not config.get("enabled") or not config.get("api_key"):
         raise HTTPException(status_code=503, detail="Configure a chave central do ChatGPT no Painel de APIs")
     if not _ANALYZE_LOCK.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="Já existe uma análise do NEW TODAY em andamento")
+        raise HTTPException(status_code=429, detail="Já existe uma análise do NEW ATLAS em andamento")
     try:
         return await run_in_threadpool(_request_material_analysis, text, source_hint, samples, config)
     finally:
@@ -250,13 +253,13 @@ def _video_duration(path: Path) -> float:
 def _renderer_root() -> Path:
     configured = os.getenv("HFNEW_NEW_TODAY_RENDERER_DIR", "/opt/hfnew-new-today/current").strip()
     if not configured:
-        raise RuntimeError("Renderer NEW TODAY não configurado")
+        raise RuntimeError("Renderer NEW ATLAS não configurado")
     root = Path(configured).resolve()
     cli = root / "node_modules/.bin" / ("remotion.cmd" if os.name == "nt" else "remotion")
     if not (root / "src/modules/new-today/remotion/index.jsx").is_file() or not cli.exists():
-        raise RuntimeError("Renderer NEW TODAY não instalado")
+        raise RuntimeError("Renderer NEW ATLAS não instalado")
     if os.name != "nt" and not shutil.which("systemd-run"):
-        raise RuntimeError("Isolamento do render NEW TODAY indisponível")
+        raise RuntimeError("Isolamento do render NEW ATLAS indisponível")
     return root
 
 
@@ -280,6 +283,9 @@ def _render(context: dict, job_id: str, source_path: Path, settings: RenderSetti
             "headline": settings.headline,
             "source": settings.source,
             "brand": settings.brand,
+            "template": settings.template,
+            "summary": settings.summary,
+            "callout": settings.callout,
             "positionX": settings.positionX,
             "positionY": settings.positionY,
             "durationInFrames": duration_frames,
@@ -313,6 +319,8 @@ async def create_render(
         values = RenderSettings.model_validate_json(settings)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail="Confira manchete, fonte e ajustes do vídeo") from exc
+    if values.template == "brief" and (not values.summary.strip() or len(values.headline.strip()) > 80 or len(values.summary.strip()) > 120):
+        raise HTTPException(status_code=422, detail="No modelo Resumo, informe manchete de ate 80 caracteres e resumo de ate 120")
     suffix = _ALLOWED.get(media.content_type or "")
     if not suffix or (values.mediaType == "video") != (suffix in {".mp4", ".webm"}):
         raise HTTPException(status_code=415, detail="Envie JPG, PNG, WebP, MP4 ou WebM")
@@ -325,7 +333,7 @@ async def create_render(
         raise HTTPException(status_code=507, detail="Espaço insuficiente para renderizar com segurança")
     with _LOCK:
         if _UPLOADS:
-            raise HTTPException(status_code=429, detail="Aguarde o envio NEW TODAY em andamento")
+            raise HTTPException(status_code=429, detail="Aguarde o envio NEW ATLAS em andamento")
         active = 0
         for previous in root.glob("*/job.json"):
             try:
@@ -335,7 +343,7 @@ async def create_render(
             except (OSError, ValueError):
                 continue
         if active:
-            raise HTTPException(status_code=429, detail="Aguarde o render NEW TODAY em andamento")
+            raise HTTPException(status_code=429, detail="Aguarde o render NEW ATLAS em andamento")
         _UPLOADS.add(_RUNTIME_ID)
     job_id = uuid.uuid4().hex
     folder = root / job_id
@@ -390,4 +398,4 @@ def get_render_file(job_id: str, authorization: Optional[str] = Header(default=N
     path = _job_file(context, job_id).parent / "output.mp4"
     if not path.is_file() or path.stat().st_size <= 0:
         raise HTTPException(status_code=404, detail="MP4 não encontrado")
-    return FileResponse(path, media_type="video/mp4", filename=f"new-today-{job_id[:8]}.mp4", headers={"Cache-Control": "private, no-store"})
+    return FileResponse(path, media_type="video/mp4", filename=f"new-atlas-{job_id[:8]}.mp4", headers={"Cache-Control": "private, no-store"})

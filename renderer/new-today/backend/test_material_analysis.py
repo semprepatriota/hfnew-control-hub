@@ -2,6 +2,7 @@ import asyncio
 import base64
 import importlib.util
 import json
+import sys
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,11 +10,13 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 from PIL import Image
+from pydantic import ValidationError
 
 
 source = Path(__file__).with_name("new_today.py")
 spec = importlib.util.spec_from_file_location("new_today_under_test", source)
 new_today = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = new_today
 spec.loader.exec_module(new_today)
 
 
@@ -21,6 +24,28 @@ def test_render_timing_keeps_short_intro_and_no_outro():
     assert new_today._INTRO_FRAMES == 21
     assert new_today._IMAGE_FRAMES == 213
     assert "cta" not in new_today.RenderSettings.model_fields
+
+
+def test_atlas_templates_validate_and_preserve_classic_default():
+    base = {"mediaType": "image", "headline": "Manchete verificada", "source": "Fonte oficial"}
+    classic = new_today.RenderSettings.model_validate(base)
+    assert classic.template == "classic"
+    assert classic.brand == "NEW ATLAS"
+    brief = new_today.RenderSettings.model_validate({**base, "template": "brief", "summary": "Resumo confirmado"})
+    assert brief.summary == "Resumo confirmado"
+    with pytest.raises(ValidationError):
+        new_today.RenderSettings.model_validate({**base, "template": "unknown"})
+
+
+def test_brief_rejects_text_that_cannot_fit(monkeypatch):
+    monkeypatch.setattr(new_today, "_owner_context", lambda auth: {"role": "owner"})
+    settings = new_today.RenderSettings(
+        mediaType="image", headline="Manchete " * 10, source="Fonte oficial",
+        template="brief", summary="Resumo confirmado",
+    )
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(new_today.create_render(None, settings.model_dump_json(), None))
+    assert error.value.status_code == 422
 
 
 def sample_url():

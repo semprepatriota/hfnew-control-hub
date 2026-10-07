@@ -40,7 +40,7 @@ export async function loadNewTodayRender(id) {
 export function downloadNewTodayRender(url, filename) {
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename || 'new-today.mp4';
+  link.download = filename || 'new-atlas.mp4';
   document.body.appendChild(link);
   link.click();
   link.remove();

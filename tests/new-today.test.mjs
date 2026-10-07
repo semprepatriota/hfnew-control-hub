@@ -1,14 +1,27 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import { contentFramesFor, durationForMedia, NEW_TODAY_IMAGE_FRAMES, NEW_TODAY_INTRO_FRAMES, NEW_TODAY_MAX_MEDIA_FRAMES } from '../src/modules/new-today/remotion/timeline.js';
+import { contentFramesFor, durationForMedia, NEW_ATLAS_TEMPLATES, NEW_TODAY_IMAGE_FRAMES, NEW_TODAY_INTRO_FRAMES, NEW_TODAY_MAX_MEDIA_FRAMES } from '../src/modules/new-today/remotion/timeline.js';
 
 const sidebar = readFileSync(new URL('../src/components/Layout/Sidebar.jsx', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
 
-test('NEW TODAY stays above Forge 70/30 and has its own route', () => {
+test('NEW ATLAS stays above Forge 70/30 and keeps its old route as a redirect', () => {
   assert.ok(sidebar.indexOf("id: 'new-today'") < sidebar.indexOf("module: 'forge_7030'"));
-  assert.match(app, /Route path="\/new-today"/);
+  assert.match(sidebar, /label: 'NEW ATLAS'/);
+  assert.match(app, /Route path="\/new-atlas"/);
+  assert.match(app, /Route path="\/new-today" element=\{<Navigate to="\/new-atlas" replace \/>\}/);
+});
+
+test('all three templates reach preview and render while preserving the original', () => {
+  assert.deepEqual(NEW_ATLAS_TEMPLATES, ['classic', 'bulletin', 'brief']);
+  const page = readFileSync(new URL('../src/modules/new-today/pages/NewToday.jsx', import.meta.url), 'utf8');
+  const composition = readFileSync(new URL('../src/modules/new-today/remotion/NewTodayComposition.jsx', import.meta.url), 'utf8');
+  assert.match(page, /setTemplate\(option\)/);
+  assert.match(page, /template, summary: summary\.trim\(\), callout: callout\.trim\(\)/);
+  assert.match(composition, /props\.template === 'bulletin'/);
+  assert.match(composition, /props\.template === 'brief'/);
+  assert.match(composition, /return <Story \{\.\.\.props\} \/>/);
 });
 
 test('image preset and videos up to three minutes have bounded frames', () => {

@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@remotion/player';
 import { CheckCircle2, Download, FileImage, FileVideo2, Loader2, RotateCcw, ScanSearch, ScanText, Upload, Video } from 'lucide-react';
 import { NewTodayComposition } from '../remotion/NewTodayComposition';
-import { durationForMedia, NEW_TODAY_FPS } from '../remotion/timeline';
+import { durationForMedia, NEW_ATLAS_TEMPLATES, NEW_TODAY_FPS } from '../remotion/timeline';
 import { analyzeNewTodayMaterial, createNewTodayRender, downloadNewTodayRender, loadNewTodayRender, readNewTodayRender } from '../services/newTodayApi';
 import { materialSamples, readMediaText } from '../services/readMediaText';
 import './new-today.css';
 
 const MAX_VIDEO_SECONDS = 180;
 const MAX_FILE_BYTES = 300 * 1024 ** 2;
+const TEMPLATE_LABELS = { classic: 'Clássico', bulletin: 'Boletim', brief: 'Resumo' };
 
 function fileDuration(file) {
   return new Promise((resolve, reject) => {
@@ -40,7 +41,10 @@ export default function NewToday() {
   const [headline, setHeadline] = useState('');
   const [source, setSource] = useState('');
   const [extracted, setExtracted] = useState('');
-  const [brand, setBrand] = useState('NEW TODAY');
+  const [brand, setBrand] = useState('NEW ATLAS');
+  const [template, setTemplate] = useState('classic');
+  const [summary, setSummary] = useState('');
+  const [callout, setCallout] = useState('ATÉ O FIM!!!');
   const [positionX, setPositionX] = useState(50);
   const [positionY, setPositionY] = useState(50);
   const [reading, setReading] = useState(false);
@@ -78,15 +82,16 @@ export default function NewToday() {
   }, [renderJob?.id, renderJob?.status]);
 
   const props = useMemo(() => ({
-    mediaSrc: mediaUrl, mediaType, headline, source, brand, positionX, positionY,
+    mediaSrc: mediaUrl, mediaType, headline, source, brand, template, summary, callout, positionX, positionY,
     durationInFrames,
-  }), [mediaUrl, mediaType, headline, source, brand, positionX, positionY, durationInFrames]);
+  }), [mediaUrl, mediaType, headline, source, brand, template, summary, callout, positionX, positionY, durationInFrames]);
 
   async function extractText(nextFile, nextType, nextSeconds) {
     setReading(true);
     try {
       const text = await readMediaText(nextFile, nextType, nextSeconds);
       setExtracted(text);
+      setSummary((current) => current || text.replace(/\s+/g, ' ').trim().slice(0, 120));
       if (!text) setError('Não encontrei texto legível. Informe a manchete e a fonte antes de renderizar.');
     } catch (cause) {
       setError(`Leitura automática indisponível: ${cause.message}`);
@@ -130,6 +135,7 @@ export default function NewToday() {
     setExtracted('');
     setHeadline('');
     setSource('');
+    setSummary('');
     setConfirmed(false);
     setRenderJob(null);
     setRenderedUrl('');
@@ -169,11 +175,16 @@ export default function NewToday() {
       setError('Confira a manchete e a fonte da notícia e confirme antes de renderizar.');
       return;
     }
+    if (template === 'brief' && (!summary.trim() || headline.trim().length > 80 || summary.trim().length > 120)) {
+      setError('No modelo Resumo, confira o texto: a manchete aceita até 80 caracteres e o resumo até 120.');
+      return;
+    }
     setRendering(true);
     setError('');
     try {
       const result = await createNewTodayRender(file, {
         mediaType, mediaSeconds: seconds, headline: headline.trim(), source: source.trim(), brand: brand.trim(),
+        template, summary: summary.trim(), callout: callout.trim(),
         positionX, positionY, durationInFrames,
       });
       setRenderJob(result);
@@ -186,10 +197,22 @@ export default function NewToday() {
 
   return (
     <div className="new-today-page">
-      <header className="new-today-header"><h1>NEW TODAY</h1><span>Editor de notícia</span></header>
+      <header className="new-today-header"><h1>NEW ATLAS</h1><span>Editor de notícia</span></header>
       {error && <div className="new-today-error" role="alert">{error}</div>}
       <div className="new-today-layout">
         <section className="new-today-editor" aria-label="Mídia e notícia">
+          <h2>Modelo</h2>
+          <div className="new-atlas-templates" role="group" aria-label="Modelo do vídeo">
+            {NEW_ATLAS_TEMPLATES.map((option) => <button key={option} type="button" className={`new-atlas-template ${template === option ? 'is-selected' : ''}`} aria-pressed={template === option} onClick={() => { setTemplate(option); setConfirmed(false); setRenderJob(null); setRenderedUrl(''); }}>
+              <span className={`new-atlas-template-thumb is-${option}`} aria-hidden="true">
+                <span className="new-atlas-template-ticker" />
+                <span className="new-atlas-template-media" />
+                <span className="new-atlas-template-mark" />
+                {option === 'brief' && <span className="new-atlas-template-copy" />}
+              </span>
+              <span>{TEMPLATE_LABELS[option]}</span>
+            </button>)}
+          </div>
           <h2>Mídia</h2>
           <input ref={pickerRef} type="file" accept="image/*,video/*" onChange={chooseFile} hidden />
           <button type="button" className="new-today-upload" onClick={() => pickerRef.current?.click()}>
@@ -212,8 +235,10 @@ export default function NewToday() {
             <button type="button" onClick={applyAnalysis} disabled={!analysis.headline && !analysis.source}>Usar sugestões</button>
           </section>}
           <div className="new-today-fields">
-            <label>Manchete<input value={headline} maxLength={180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
+            <label>Manchete<input value={headline} maxLength={template === 'brief' ? 80 : 180} onChange={(event) => { setHeadline(event.target.value); setConfirmed(false); }} placeholder="Título da notícia" /></label>
             <label>Fonte<input value={source} maxLength={240} onChange={(event) => { setSource(event.target.value); setAnalysis(null); setConfirmed(false); }} placeholder="Veículo, site ou link da reportagem" /></label>
+            {template === 'brief' && <label>Resumo<textarea value={summary} maxLength={120} rows={5} onChange={(event) => { setSummary(event.target.value); setConfirmed(false); }} placeholder="Texto confirmado a partir do material" /></label>}
+            {template === 'brief' && <label>Faixa inferior<input value={callout} maxLength={28} onChange={(event) => setCallout(event.target.value)} /></label>}
             <label>Nome na abertura<input value={brand} maxLength={36} onChange={(event) => setBrand(event.target.value)} /></label>
           </div>
           <details className="new-today-text-read">
@@ -240,7 +265,7 @@ export default function NewToday() {
           <div className="new-today-player">
             <Player ref={playerRef} component={NewTodayComposition} inputProps={props} compositionWidth={1080} compositionHeight={1920} fps={NEW_TODAY_FPS} durationInFrames={durationInFrames} controls autoPlay={false} style={{ width: '100%', aspectRatio: '9 / 16' }} />
           </div>
-          {renderJob?.status === 'completed' && <div className="new-today-final"><div className="new-today-ready"><CheckCircle2 size={18} /> MP4 pronto <button type="button" disabled={!renderedUrl} onClick={() => downloadNewTodayRender(renderedUrl, renderJob.filename)}><Download size={16} /> Baixar MP4</button></div>{renderedUrl ? <video src={renderedUrl} controls playsInline preload="metadata" aria-label="Vídeo final renderizado" /> : <p>Carregando vídeo final...</p>}</div>}
+          {renderJob?.status === 'completed' && <div className="new-today-final"><div className="new-today-ready"><CheckCircle2 size={18} /> MP4 pronto <button type="button" disabled={!renderedUrl} onClick={() => downloadNewTodayRender(renderedUrl, `new-atlas-${renderJob.id.slice(0, 8)}.mp4`)}><Download size={16} /> Baixar MP4</button></div>{renderedUrl ? <video src={renderedUrl} controls playsInline preload="metadata" aria-label="Vídeo final renderizado" /> : <p>Carregando vídeo final...</p>}</div>}
         </section>
       </div>
     </div>
