@@ -92,15 +92,6 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       color: 'neon-blue'
     },
     {
-      id: 'new-today',
-      module: 'new_today',
-      label: 'NEW ATLAS',
-      path: '/new-atlas',
-      icon: Clapperboard,
-      color: 'neon-blue',
-      ownerOnly: true,
-    },
-    {
       id: 4,
       module: 'forge_7030',
       label: 'The Forge 70/30',
