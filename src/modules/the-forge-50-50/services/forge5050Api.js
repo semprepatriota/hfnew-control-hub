@@ -32,6 +32,10 @@ export const uploadForge5050Logo = (id, file) => {
   return apiFetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/logo`), { method: 'POST', body: form, timeoutMs: 10 * 60 * 1000 }).then(parse);
 };
 
+export const useForge5050HistoryLogo = (id) => apiFetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/logo/history`), {
+  method: 'POST',
+}).then(parse);
+
 export const deleteForge5050Logo = (id) => apiFetch(apiUrl(`/api/forge5050/projects/${encodeURIComponent(id)}/logo`), {
   method: 'DELETE',
 }).then(parse);
