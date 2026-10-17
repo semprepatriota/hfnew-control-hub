@@ -10,6 +10,7 @@ import {
 import { counterUrl, mediaUrl } from "./api";
 import { buildTimeline } from "./timeline.mjs";
 import { headlineImage, headlineStyle } from './headline.mjs';
+import { isAnimatedLogo, logoStyle } from './logo.mjs';
 
 function Fill({ style, children }) {
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", ...style }}>{children}</div>;
@@ -83,42 +84,9 @@ export default function Top10Composition({ project, config }) {
           )}
         </Sequence>
       ))}
-      {logo && config.logo_enabled && (
-        <Img
-          src={mediaUrl(logo.url)}
-          style={{
-            position: "absolute",
-            width: Math.round(1080 * config.logo_size),
-            left: Math.min(
-              Math.max(
-                0,
-                Math.round(
-                  config.logo_x * 1080 -
-                    Math.round(1080 * config.logo_size) / 2,
-                ),
-              ),
-              1080 - Math.round(1080 * config.logo_size),
-            ),
-            top: Math.min(
-              Math.max(
-                0,
-                Math.round(
-                  config.logo_y * 1920 -
-                    Math.round(
-                      (1080 * config.logo_size * logo.height) / logo.width,
-                    ) /
-                      2,
-                ),
-              ),
-              1920 -
-                Math.round(
-                  (1080 * config.logo_size * logo.height) / logo.width,
-                ),
-            ),
-            opacity: config.logo_opacity,
-          }}
-        />
-      )}
+      {logo && config.logo_enabled && (isAnimatedLogo(logo)
+        ? <Video key={logo.id} src={mediaUrl(logo.url)} muted loop volume={0} style={logoStyle(logo, config)} />
+        : <Img src={mediaUrl(logo.url)} style={logoStyle(logo, config)} />)}
       {music && config.music_volume > 0 && (
         <Audio
           src={mediaUrl(music.url)}

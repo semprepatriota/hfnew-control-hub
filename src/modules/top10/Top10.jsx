@@ -38,6 +38,7 @@ import Top10Composition from "./Top10Composition";
 import SceneHeadlineEditor from './SceneHeadlineEditor';
 import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle, needsHeadlineRefresh } from './headline.mjs';
 import "./top10.css";
+import officialLogoUrl from './assets/falcao-zoeira.mp4';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const running = (job) =>
@@ -415,6 +416,15 @@ export default function Top10() {
       await refresh();
     });
   };
+  const useOfficialLogo = () => perform('Adicionando logo animada', async () => {
+    await saveCurrent();
+    const response = await fetch(officialLogoUrl);
+    if (!response.ok) throw new Error('Nao foi possivel carregar a logo animada');
+    const file = new File([await response.blob()], 'falcao-zoeira.mp4', { type: 'video/mp4' });
+    apply(await api.uploadAsset(project.id, 'logo', null, file));
+    localStorage.removeItem(draftKey(project.id));
+    await refresh();
+  });
   const seek = (item, play = false) => {
     if (!item) return;
     player.current?.pause();
@@ -1136,7 +1146,7 @@ export default function Top10() {
                   <input
                     hidden
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
                     disabled={busy}
                     onChange={(event) => {
                       upload("logo", event.target.files);
@@ -1144,6 +1154,9 @@ export default function Top10() {
                     }}
                   />
                 </label>
+                <button className="t10-button" disabled={busy} onClick={useOfficialLogo}>
+                  <Film size={15} /> Logo Falcão Zoeira
+                </button>
                 {logo && (
                   <button
                     className="t10-icon danger"

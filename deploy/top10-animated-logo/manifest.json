@@ -1,0 +1,14 @@
+{
+  "routes/top10.py": {
+    "before": "4723ef0c780b29c482a55a404fd4a225b94818b364d1afbc7603b5d1c6f835e2",
+    "after": "436f5ce93b274d35cbd1495d3da4e78e8c5524097c8e218fd189cb18f064113a"
+  },
+  "services/top10_service.py": {
+    "before": "bf3750fb23887994f4ca06de77f35da6bb08b19710b9ef527180241154039805",
+    "after": "415ad635da989f0a9f2301055b002158fa6d9b7577dca25d2a93be20b8a5916a"
+  },
+  "services/top10_logo_service.py": {
+    "before": null,
+    "after": "fb829b0e9cc0fcef5461e12e8353a95cc1925ec438405aac3c275cc1d2eb9f6b"
+  }
+}
