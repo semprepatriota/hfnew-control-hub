@@ -8,9 +8,11 @@ export function uploadPercent(uploadedBytes, totalBytes) {
   return Math.max(0, Math.min(100, Math.round(((Number(uploadedBytes) || 0) / total) * 100)));
 }
 
-export function snapTimelineTime(value, duration, scenes, enabled, zoom) {
+export function snapTimelineTime(value, duration, scenes, enabled, zoom, fps = 25) {
   const normalized = clampTimelineValue(value, 0, duration);
-  if (!enabled) return Math.round(normalized * 25) / 25;
+  const rate=Number(fps);
+  const snapped=Number.isFinite(rate) && rate>0 ? Math.min(duration,Math.round(normalized*rate)/rate) : Math.round(normalized*1e6)/1e6;
+  if (!enabled) return snapped;
   const boundaries = [
     0,
     duration,
@@ -22,5 +24,11 @@ export function snapTimelineTime(value, duration, scenes, enabled, zoom) {
   const snapTolerance = Math.min(0.75, Math.max(0.12, 8 / Math.max(1, Number(zoom) || 1)));
   return Math.abs(nearest - normalized) <= snapTolerance
     ? nearest
-    : Math.round(normalized * 25) / 25;
+    : snapped;
+}
+
+export function previewRangeEnd(start, end, fps) {
+  const rate=Number.isFinite(Number(fps)) && Number(fps)>0 ? Number(fps) : 30;
+  const lastFrame=Math.max(0,Math.round(end*rate)-1);
+  return Math.max(start,Math.min(end-1e-6,(lastFrame+.5)/rate));
 }

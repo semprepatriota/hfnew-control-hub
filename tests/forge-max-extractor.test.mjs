@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   clampTimelineValue,
   snapTimelineTime,
+  previewRangeEnd,
   uploadPercent,
 } from '../src/modules/forge-max/services/forgeMaxTimeline.js';
 
@@ -43,4 +44,21 @@ test('Forge Max scene locator keeps one sensitivity-based detector', () => {
   assert.doesNotMatch(extractorSource, />Fades</);
   assert.match(apiSource, /JSON\.stringify\(\{ threshold \}\)/);
   assert.doesNotMatch(apiSource, /threshold, mode/);
+});
+
+test('Forge Max uses the real frame rate instead of imposing 25 fps on every video',()=>{
+  assert.equal(snapTimelineTime(1.067,5,[],false,8,30),32/30);
+  assert.equal(snapTimelineTime(1.067,5,[],false,8,60),64/60);
+  assert.equal(snapTimelineTime(1.067733,5,[],false,8,30000/1001),32/(30000/1001));
+  assert.equal(snapTimelineTime(1.123456,5,[],false,8,0),1.123456);
+});
+
+test('range preview freezes inside its last frame, never on the next scene boundary',()=>{
+  for (const fps of [25,30,60,30000/1001]) {
+    const end=32/fps;
+    const stop=previewRangeEnd(0,end,fps);
+    assert.ok(stop>31/fps && stop<end);
+  }
+  assert.ok(previewRangeEnd(0,1.067,30)<32/30);
+  assert.doesNotMatch(extractorSource,/player\.currentTime = range\.end/);
 });

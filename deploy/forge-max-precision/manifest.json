@@ -1,0 +1,14 @@
+{
+  "baseline_sha256": "1d43e3aeaab798c071b0b504c6153483a36cd1f1bd958549bdd43b06b92ee1f2",
+  "detector_sha256": "dcbae0cc24b56297bb0ab890dcb8b48b1e9da6f5aaa259e75a56133c952827c0",
+  "real_test": {
+    "source_sha256": "ba1424b87b94604acdc36e51216c715fb0c1acc06c363f0671ad91a6c877cd58",
+    "remote_source": "/root/ALLIANCE-DARK/storage/forge_max_extractor/videos/extractor_7c13ba1e07624191/source/original.mp4",
+    "scene_count": 29
+  },
+  "files": {
+    "services/forge_max/extractor_service.py": "4fbac6015dab052e53131d41c81b69c241548cf35528da0dd000410c306f0704",
+    "services/forge_max/scene_detector.py": "6d30991c82acea83ec66cc5a0f57498370e7f50a3dc735a098e12c4bc2bbaf27",
+    "tests/test_forge_max_cut_precision.py": "ffcecaf52e7fe4d1b0e4527c5308779fcf377cb91fee39915a89c23018285cdb"
+  }
+}

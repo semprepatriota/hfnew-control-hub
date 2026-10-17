@@ -40,7 +40,7 @@ import {
   uploadForgeMaxVideo,
 } from '../services/forgeMaxApi';
 import { saveZIP } from '../services/forgeMaxDownload';
-import { clampTimelineValue, snapTimelineTime, uploadPercent } from '../services/forgeMaxTimeline';
+import { clampTimelineValue, snapTimelineTime, previewRangeEnd, uploadPercent } from '../services/forgeMaxTimeline';
 import './forge-max-extractor.css';
 
 const POLL_INTERVAL_MS = 3000;
@@ -125,6 +125,7 @@ function ForgeMaxExtractor() {
   const [deleteProgress, setDeleteProgress] = useState(null);
 
   const duration = Number(activeVideo?.duration) || 0;
+  const frameRate = Number(activeVideo?.frame_rate) || 0;
   const videoWidth = Number(previewSize && previewSize.id === activeVideo?.id ? previewSize.width : activeVideo?.width) || 16;
   const videoHeight = Number(previewSize && previewSize.id === activeVideo?.id ? previewSize.height : activeVideo?.height) || 9;
   const portrait = videoHeight > videoWidth;
@@ -174,8 +175,8 @@ function ForgeMaxExtractor() {
   }
 
   const snapTime = useCallback((value) => {
-    return snapTimelineTime(value, duration, scenes, snapEnabled, zoom);
-  }, [duration, scenes, snapEnabled, zoom]);
+    return snapTimelineTime(value, duration, scenes, snapEnabled, zoom, frameRate);
+  }, [duration, scenes, snapEnabled, zoom, frameRate]);
 
   const refreshList = useCallback(async (preferredId = '') => {
     const payload = await listForgeMaxVideos();
@@ -248,7 +249,7 @@ function ForgeMaxExtractor() {
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
         const direction = event.key === 'ArrowLeft' ? -1 : 1;
-        const step = event.shiftKey ? 1 : 0.04;
+        const step = event.shiftKey ? 1 : 1/(frameRate || 30);
         seekTo(currentTime + (direction * step));
       } else if (event.key.toLowerCase() === 'i') {
         setSelectedSceneId('');
@@ -262,7 +263,24 @@ function ForgeMaxExtractor() {
     }
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [activeVideo, currentTime, duration, selectionEnd, selectionStart, snapTime]);
+  }, [activeVideo, currentTime, duration, selectionEnd, selectionStart, snapTime, frameRate]);
+
+  useEffect(() => {
+    const player=playerRef.current;
+    if (!playing || !player?.requestVideoFrameCallback) return;
+    let callback;
+    const inspect=(_now,metadata)=>{
+      const range=playbackRangeRef.current;
+      const stop=range && previewRangeEnd(range.start,range.end,frameRate);
+      if (range && metadata.mediaTime >= stop-.5/(frameRate || 30)-1e-6) {
+        player.pause();player.currentTime=stop;setCurrentTime(stop);
+        return;
+      }
+      callback=player.requestVideoFrameCallback(inspect);
+    };
+    callback=player.requestVideoFrameCallback(inspect);
+    return ()=>player.cancelVideoFrameCallback(callback);
+  },[playing,playbackUrl,frameRate]);
 
   useEffect(() => {
     function onPointerMove(event) {
@@ -429,10 +447,11 @@ function ForgeMaxExtractor() {
     const player = event.currentTarget;
     const next = player.currentTime;
     const range = playbackRangeRef.current;
-    if (range && next >= range.end - 0.035) {
+    const stop = range && previewRangeEnd(range.start,range.end,frameRate);
+    if (range && next >= stop) {
       player.pause();
-      player.currentTime = range.end;
-      setCurrentTime(range.end);
+      player.currentTime = stop;
+      setCurrentTime(stop);
       return;
     }
     setCurrentTime(next);
@@ -442,7 +461,7 @@ function ForgeMaxExtractor() {
     const player = playerRef.current;
     if (!player) return;
     const range = playbackRangeRef.current;
-    if (player.paused && range && (player.currentTime < range.start || player.currentTime >= range.end - 0.035)) {
+    if (player.paused && range && (player.currentTime < range.start || player.currentTime >= previewRangeEnd(range.start,range.end,frameRate)-1e-6)) {
       seekTo(range.start, true, range);
     } else if (player.paused) player.play().catch(() => {});
     else player.pause();
