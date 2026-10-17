@@ -6,6 +6,7 @@ const HF_PENDING_CAROUSEL_KEY = 'hfBulkPendingCarousel';
 const HF_LAST_CAROUSEL_KEY = 'hfBulkLastCarousel';
 const HF_LAST_RESOLVE_KEY = 'hfBulkLastMediaResolve';
 let carouselRunning = false;
+let profileScanRunning = false;
 let appCarouselRequestId = '';
 let appMediaResolveRequestId = '';
 
@@ -39,8 +40,10 @@ async function postStatusToApp() {
     HF_STATUS_KEY,
     HF_LAST_SCAN_KEY,
     HF_LAST_CAROUSEL_KEY,
-    HF_LAST_RESOLVE_KEY
+    HF_LAST_RESOLVE_KEY,
+    ...(appMediaResolveRequestId ? [`hfBulkMediaResolve:${appMediaResolveRequestId}`] : []),
   ]);
+  const mediaResolve = stored[`hfBulkMediaResolve:${appMediaResolveRequestId}`] || stored[HF_LAST_RESOLVE_KEY];
   window.postMessage({
     source: HF_MESSAGE_SOURCE,
     type: 'HF_BULK_EXTENSION_STATUS',
@@ -53,8 +56,8 @@ async function postStatusToApp() {
       lastCarousel: appCarouselRequestId && stored[HF_LAST_CAROUSEL_KEY]?.requestId === appCarouselRequestId
         ? stored[HF_LAST_CAROUSEL_KEY] : null,
       lastMediaResolve: appMediaResolveRequestId
-        && stored[HF_LAST_RESOLVE_KEY]?.requestId === appMediaResolveRequestId
-        ? stored[HF_LAST_RESOLVE_KEY] : null
+        && mediaResolve?.requestId === appMediaResolveRequestId
+        ? mediaResolve : null
     }
   }, window.location.origin);
 }
@@ -185,7 +188,9 @@ async function collectInstagramProfile(request) {
 }
 
 async function runPendingInstagramScan() {
+  if (profileScanRunning) return;
   const stored = await chrome.storage.local.get([HF_PENDING_SCAN_KEY]);
+  if (profileScanRunning) return;
   const request = stored[HF_PENDING_SCAN_KEY];
   if (!request || request.platform !== 'instagram') return;
   if (Date.now() - Number(request.requestedAt || 0) > 120000) {
@@ -195,6 +200,7 @@ async function runPendingInstagramScan() {
   const currentHandle = window.location.pathname.split('/').filter(Boolean)[0]?.toLowerCase();
   if (currentHandle !== String(request.username || '').replace(/^@/, '').toLowerCase()) return;
 
+  profileScanRunning = true;
   try {
     const result = await collectInstagramProfile(request);
     if (!result.items.length) throw new Error('Nenhum vídeo visível foi encontrado neste perfil.');
@@ -219,7 +225,9 @@ async function runPendingInstagramScan() {
       }
     });
   } finally {
-    await chrome.storage.local.remove(HF_PENDING_SCAN_KEY);
+    const current = (await chrome.storage.local.get(HF_PENDING_SCAN_KEY))[HF_PENDING_SCAN_KEY];
+    if (current?.requestId === request.requestId) await chrome.storage.local.remove(HF_PENDING_SCAN_KEY);
+    profileScanRunning = false;
   }
 }
 
@@ -257,6 +265,7 @@ if (window.location.hostname === 'www.instagram.com') {
   window.setTimeout(runPendingCarousel, 1800);
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes[HF_PENDING_CAROUSEL_KEY]) runPendingCarousel();
+    if (areaName === 'local' && changes[HF_PENDING_SCAN_KEY]?.newValue) runPendingInstagramScan();
   });
   window.setInterval(updateInstagramStatus, 15000);
 }
@@ -322,6 +331,7 @@ if (window.location.hostname === 'app.hfnew.com.br') {
       || changes[HF_LAST_SCAN_KEY]
       || changes[HF_LAST_CAROUSEL_KEY]
       || changes[HF_LAST_RESOLVE_KEY]
+      || (appMediaResolveRequestId && changes[`hfBulkMediaResolve:${appMediaResolveRequestId}`])
     )) postStatusToApp();
   });
 }

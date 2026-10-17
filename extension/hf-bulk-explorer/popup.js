@@ -71,19 +71,11 @@ async function collectVisibleMedia(limit = 25) {
       ? parseCount(text) : 0;
   };
 
-  const platform = host.includes('instagram') ? 'instagram'
-    : host.includes('tiktok') ? 'tiktok'
-        : host.includes('facebook') ? 'facebook'
-          : host.includes('pinterest') ? 'pinterest'
-            : host.includes('kwai') ? 'kwai' : '';
+  const platform = ['instagram.com', 'www.instagram.com'].includes(host) ? 'instagram' : '';
 
   const supported = (url) => {
     const path = url.pathname;
     if (platform === 'instagram') return /^\/(?:[A-Za-z0-9._]+\/)?(p|reel|tv)\//.test(path);
-    if (platform === 'tiktok') return path.includes('/video/');
-    if (platform === 'facebook') return path.includes('/reel/') || path.includes('/videos/');
-    if (platform === 'pinterest') return path.includes('/pin/');
-    if (platform === 'kwai') return path.includes('/photo/') || path.includes('/video/');
     return false;
   };
 
@@ -122,15 +114,18 @@ async function collectVisibleMedia(limit = 25) {
     try { current = new URL(pageUrl); } catch { current = null; }
     if (current && supported(current)) {
       const image = document.querySelector('main img, article img');
+      const video = document.querySelector('main video, article video');
+      const direct = video?.currentSrc || video?.src || '';
+      const videoUrl = /^https:\/\//i.test(direct) ? direct : '';
       collected.set(current.href.split('?')[0], {
         url: current.href.split('?')[0],
-        media_url: platform === 'instagram' && current.pathname.includes('/p/') ? (image?.currentSrc || '') : '',
+        media_url: video ? videoUrl : platform === 'instagram' && current.pathname.includes('/p/') ? (image?.currentSrc || '') : '',
         title: document.title || 'Conteúdo encontrado',
         thumbnail: image?.currentSrc || '',
-        preview_url: '',
+        preview_url: videoUrl,
         platform,
-        media_type: current.pathname.includes('/p/') ? 'image' : 'video',
-        duration: 0,
+        media_type: video || !current.pathname.includes('/p/') ? 'video' : 'image',
+        duration: Number.isFinite(video?.duration) ? Math.round(video.duration) : 0,
         view_count: 0,
         like_count: 0,
         published_at: document.querySelector('time[datetime]')?.getAttribute('datetime') || ''
