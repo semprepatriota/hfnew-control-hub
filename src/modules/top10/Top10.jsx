@@ -35,6 +35,8 @@ import {
   timeLabel,
 } from "./timeline.mjs";
 import Top10Composition from "./Top10Composition";
+import SceneHeadlineEditor from './SceneHeadlineEditor';
+import { emptyHeadline, headlineImage, headlineStyle } from './headline.mjs';
 import "./top10.css";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -108,6 +110,7 @@ export default function Top10() {
   const trimPlayer = useRef(null);
   const uploadInput = useRef(null);
   const replacementSlot = useRef(null);
+  const headlineBusy = useRef(false);
   const current = useRef(null);
   const draftRef = useRef(null);
   const dirty = useRef(false);
@@ -209,7 +212,7 @@ export default function Top10() {
   const update = (key, value) => {
     change((next) => ({ ...next, config: { ...next.config, [key]: value } }));
     if (key === "model") {
-      const destination = buildTimeline(current.current, draftRef.current.config)[selected * 2 + 1].from;
+      const destination = buildTimeline(current.current, draftRef.current.config).find(item => item.kind === 'scene' && item.slot === selected)?.from || 0;
       player.current?.pause();
       player.current?.seekTo(destination);
       setFrame(destination);
@@ -220,6 +223,36 @@ export default function Top10() {
       next.config.scenes[selected][key] = value;
       return next;
     });
+  const updateHeadline = (slot, patch) => change(next => {
+    const h = { ...emptyHeadline(), ...next.config.scenes[slot].headline, ...patch };
+    h.x = Math.min(h.x, 1-h.width);
+    h.y = Math.min(h.y, 1-h.height);
+    next.config.scenes[slot].headline = h;
+    return next;
+  });
+  const generateHeadline = async (slot) => {
+    if (headlineBusy.current || busy) return;
+    headlineBusy.current = true;
+    try {
+      await perform(`Analisando cena ${10-slot}`, async () => {
+        const saved = await saveCurrent();
+        const version = generation.current;
+        const entry = saved.config.scenes[slot];
+        const result = await api.generateSceneHeadline(saved.id, slot, {
+          revision: saved.revision, asset_id: entry.asset_id,
+          request_id: crypto.randomUUID().replaceAll('-', ''),
+        });
+        if (!mounted.current) return;
+        if (current.current?.id !== saved.id || generation.current !== version) throw new Error('A cena mudou durante a analise. O texto nao foi substituido.');
+        const firstAnalysis = !entry.headline?.original_text;
+        updateHeadline(slot, { text: result.translation && result.translation.length <= 400 ? result.translation : result.headline,
+          hook_cta: result.headline, original_text: result.original_text, translation: result.translation,
+          ...(firstAnalysis && result.text_found ? result.box : {}) });
+        await saveCurrent();
+        setNotice(`Cena ${10-slot}: leitura de 3 quadros concluida. Confira a traducao e ative a headline se desejar.`);
+      });
+    } finally { headlineBusy.current = false; }
+  };
   useEffect(() => {
     let active = true;
     mounted.current = true;
@@ -916,11 +949,10 @@ export default function Top10() {
                       aria-label={`Selecionar cena ${10 - slot}`}
                     >
                       {media?.thumbnail_url ? (
-                        <img
-                          src={api.mediaUrl(media.thumbnail_url)}
-                          loading="lazy"
-                          alt={media.name}
-                        />
+                        <span className="t10-scene-poster">
+                          <img src={api.mediaUrl(media.thumbnail_url)} loading="lazy" alt={media.name} style={{position:'absolute', width:`${entry.zoom*100}%`, height:`${entry.zoom*100}%`,left:`${(1-entry.zoom)*entry.x*100}%`,top:`${(1-entry.zoom)*entry.y*100}%`,objectFit:'cover',objectPosition:`${entry.x*100}% ${entry.y*100}%`}}/>
+                          {headlineImage(project, slot, entry) && <img src={api.mediaUrl(headlineImage(project, slot, entry).url)} alt="" style={headlineStyle(entry.headline)}/>}
+                        </span>
                       ) : (
                         <Film size={28} />
                       )}
@@ -974,6 +1006,8 @@ export default function Top10() {
                         <Scissors size={13} /> Ajustar
                       </button>
                     </div>
+                    {media && <SceneHeadlineEditor value={entry.headline} rank={10-slot} disabled={busy}
+                      onChange={patch=>updateHeadline(slot,patch)} onGenerate={()=>generateHeadline(slot)}/>}
                   </article>
                 );
               })}

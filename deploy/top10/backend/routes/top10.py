@@ -31,6 +31,20 @@ class ForgeMaxImport(BaseModel):
     title: str = Field(default='TOP 10 - Forge Max', min_length=1, max_length=120)
 
 
+class SceneHeadlineRequest(BaseModel):
+    revision: int = Field(ge=1)
+    asset_id: str = Field(min_length=1, max_length=80)
+    request_id: str = Field(pattern=r'^[a-f0-9]{32}$')
+
+
+@router.post('/projects/{project_id}/scenes/{slot}/generate-headline')
+def scene_headline(project_id: str, slot: int, body: SceneHeadlineRequest):
+    if not 0 <= slot < 10:
+        raise HTTPException(400, 'Cena invalida')
+    from services.top10_headline_service import generate_headline
+    return generate_headline(project_id, slot, body.revision, body.asset_id, body.request_id)
+
+
 @router.post('/imports/forge-max')
 def import_forge_max(body: ForgeMaxImport):
     from services.top10_forge_max_bridge import import_clips

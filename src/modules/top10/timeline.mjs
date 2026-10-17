@@ -1,7 +1,8 @@
 import catalog from './counter-catalog.json' with { type: 'json' };
+import { emptyHeadline } from './headline.mjs';
 export const FPS = 30;
 export const MODELS = Object.entries(catalog.models).map(([id, model]) => ({ id, ...model }));
-export const emptyScene = () => ({ asset_id: '', start: 0, end: 0, x: 0.5, y: 0.5, zoom: 1, volume: 1 });
+export const emptyScene = () => ({ asset_id: '', start: 0, end: 0, x: 0.5, y: 0.5, zoom: 1, volume: 1, headline: emptyHeadline() });
 export function buildTimeline(project, config) {
   let cursor = 0;
   return Array.from({ length: 10 }, (_, slot) => {

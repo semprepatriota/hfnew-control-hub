@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, model_validator
 from config import settings
 from services.forge.ffmpeg_service import probe_media
 from services.render_coordinator import render_slot
+from services.top10_headline_service import HeadlineConfig, prepare_headlines
 from utils.user_context import get_current_user_context, reset_current_user, set_current_user
 from utils.workspace_storage import workspace_module_root, workspace_storage_scope, write_json_atomic
 
@@ -54,6 +55,7 @@ class SceneConfig(BaseModel):
     y: float = Field(default=0.5, ge=0, le=1)
     zoom: float = Field(default=1, ge=1, le=3)
     volume: float = Field(default=1, ge=0, le=1)
+    headline: HeadlineConfig = Field(default_factory=HeadlineConfig)
 
     @model_validator(mode="after")
     def align_frames(self):
@@ -185,6 +187,8 @@ def resolve_media(project_id: str, filename: str, scope: str, expires: int, sig:
 
 def public_project(data: dict) -> dict:
     result = {**data, "assets": {}}
+    result['scene_headlines'] = {slot: {**entry, 'url': media_url(data['id'], entry['filename'])}
+                                 for slot, entry in data.get('scene_headlines', {}).items()}
     for key, asset in data.get("assets", {}).items():
         result["assets"][key] = {**asset, "url": media_url(data["id"], asset["filename"])}
         if asset.get("thumbnail"):
@@ -255,6 +259,7 @@ def save_project(project_id: str, title: str, config: Top10Config, revision: int
                     raise HTTPException(400, "O inicio deve vir antes do fim e respeitar a duracao da cena")
         data.update(title=title.strip() or "TOP 10", config=config.model_dump())
         _title_image(data)
+        prepare_headlines(data)
         return public_project(_write(data))
 
 
@@ -479,6 +484,7 @@ def _worker(data: dict, job_id: str, context: dict):
 
 def render_project(data: dict, job_path: Path) -> dict:
     config = Top10Config(**data["config"])
+    prepare_headlines(data)
     root = project_root(data["id"])
     items = timeline(data)
     filename = f"top10_{uuid.uuid4().hex[:16]}.mp4"
@@ -505,7 +511,16 @@ def render_project(data: dict, job_path: Path) -> dict:
             sw, sh = round(WIDTH * zoom / 2) * 2, round(HEIGHT * zoom / 2) * 2
             filters = [f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}:(in_w-{WIDTH})*{x}:(in_h-{HEIGHT})*{y},setsar=1,fps={FPS},tpad=stop_mode=clone:stop_duration=0.1[v]"]
             label = "v"
-            if asset and data.get("title_image") and config.title_enabled:
+            headline = data.get('scene_headlines', {}).get(str(item.get('slot')))
+            if asset and headline:
+                caption = scene.headline
+                hx = round(WIDTH * min(caption.x, 1 - caption.width))
+                hy = round(HEIGHT * min(caption.y, 1 - caption.height))
+                command += ['-threads', '1', '-loop', '1', '-i', str(root / 'files' / headline['filename'])]
+                filters.append(f'[{label}][{next_input}:v]overlay={hx}:{hy}:format=auto[captioned]')
+                next_input += 1
+                label = 'captioned'
+            elif asset and data.get("title_image") and config.title_enabled:
                 command += ["-threads", "1", "-loop", "1", "-i", str(root / "files" / data["title_image"])]
                 filters.append(f"[{label}][{next_input}:v]overlay=0:{round(HEIGHT*config.title_y)}:format=auto[title]")
                 next_input += 1
@@ -526,7 +541,7 @@ def render_project(data: dict, job_path: Path) -> dict:
             command += ["-filter_complex", ";".join(filters), "-map", f"[{label}]", "-map", "[a]", "-frames:v", str(item["frames"]), "-t", f"{seconds:.6f}", "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", "-level:v", "4.2", "-c:a", "pcm_s16le", "-ar", "48000", "-ac", "2", "-video_track_timescale", "15360", str(target)]
             _run(command, job_path)
             segments.append(target)
-            _update_job(job_path, progress=round((n + 1) / len(items) * 88), stage=f"Trecho {n+1}/20")
+            _update_job(job_path, progress=round((n + 1) / len(items) * 88), stage=f"Trecho {n+1}/{len(items)}")
         concat = temp / "segments.txt"
         concat.write_text("".join(f"file '{path.name}'\nduration {item['frames']/FPS:.6f}\n" for path, item in zip(segments, items)), encoding="utf-8")
         joined = temp / "joined.mp4"

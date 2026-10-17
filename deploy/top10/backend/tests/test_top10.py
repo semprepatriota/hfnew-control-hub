@@ -117,6 +117,76 @@ class Top10Tests(unittest.TestCase):
         self.assertEqual(packets[0], packets[1])
         self.assertEqual(packets[0], packets[2])
 
+    def test_optional_headlines_default_off_and_shared_preview_image(self):
+        from services.top10_headline_service import HeadlineConfig, prepare_headlines
+        data = studio.read_project(self.project['id'])
+        self.assertFalse(studio.SceneConfig().headline.enabled)
+        data['assets']['a'] = {'kind': 'video', 'duration': 1, 'filename': 'fixture.mp4'}
+        data['config']['scenes'][0].update(asset_id='a', end=1)
+        prepare_headlines(data)
+        self.assertEqual(data['scene_headlines'], {})
+        h = HeadlineConfig(enabled=True, text='O plano parecia perfeito', width=.8, height=.15, background='#ff0000')
+        data['config']['scenes'][0]['headline'] = h.model_dump()
+        prepare_headlines(data)
+        self.assertEqual(set(data['scene_headlines']), {'0'})
+        image = data['scene_headlines']['0']
+        with Image.open(self.root / 'files' / image['filename']) as png:
+            self.assertEqual(png.size, (864, 288))
+            self.assertEqual(png.getpixel((0,0)), (255,0,0,255))
+        self.assertIn('url', studio.public_project(data)['scene_headlines']['0'])
+        h.cover_original = False
+        data['config']['scenes'][0]['headline'] = h.model_dump()
+        prepare_headlines(data)
+        with Image.open(self.root / 'files' / data['scene_headlines']['0']['filename']) as png:
+            self.assertEqual(png.getpixel((0,0))[3], 0)
+
+    def test_manual_comedy_translation_generation_is_cached_and_workspace_scoped(self):
+        from services import top10_headline_service as captions
+        source = self.root / 'files/source.mp4'
+        shutil.copy2(studio.counter_path('pink3d', 3), source)
+        data = studio.read_project(self.project['id'])
+        data['assets']['a'] = {'kind':'video', 'filename':source.name, 'duration':29/30}
+        data['config']['scenes'][0].update(asset_id='a', end=29/30)
+        data = studio._write(data)
+        result = {'headline':'O plano deu errado. Quem faria igual?', 'original_text':'Trust me', 'translation':'Confia em mim', 'box':{'x':.05,'y':.1,'width':.9,'height':.1}, 'text_found':True}
+        with patch.object(captions, '_provider_answer', return_value=result) as provider:
+            request_id = 'd' * 32
+            first = captions.generate_headline(data['id'], 0, data['revision'], 'a', request_id)
+            second = captions.generate_headline(data['id'], 0, data['revision'], 'a', request_id)
+            self.assertEqual(first, second)
+            self.assertEqual(provider.call_count, 1)
+            self.assertEqual(len(provider.call_args.args[0]), 3)
+            self.assertTrue(all(frame.startswith(b'\xff\xd8') for frame in provider.call_args.args[0]))
+            with self.assertRaises(HTTPException) as stale:
+                captions.generate_headline(data['id'], 0, data['revision']+1, 'a', 'e'*32)
+            self.assertEqual(stale.exception.status_code, 409)
+        other = set_current_user({**self.context, 'storage_scope':'different_caption_owner'})
+        try:
+            with self.assertRaises(HTTPException) as denied:
+                captions.generate_headline(data['id'], 0, data['revision'], 'a', 'e'*32)
+            self.assertEqual(denied.exception.status_code, 404)
+        finally:
+            reset_current_user(other)
+
+    def test_comedy_provider_uses_separate_prompt_and_never_returns_generic_fallback(self):
+        from services import top10_headline_service as captions
+        payload = {'original_text':'Trust me', 'translation':'Confia em mim', 'headline':'O plano deu errado. Quem faria igual?', 'text_found':True, 'box':{'x':.05,'y':.1,'width':.9,'height':.1}}
+        from unittest.mock import Mock
+        response = Mock(status_code=200)
+        response.json.return_value = {'choices':[{'message':{'content':json.dumps(payload)}}]}
+        with patch.object(captions, 'get_central_chatgpt_config', return_value={'api_key':'test-only-not-a-real-key','model':'test-vision'}), patch.object(captions.requests,'post',return_value=response) as post:
+            result = captions._provider_answer([b'jpeg']*3, '')
+            self.assertEqual(result['translation'], 'Confia em mim')
+            request = post.call_args.kwargs['json']
+            self.assertIn('comedy', request['messages'][0]['content'])
+            self.assertIn('untrusted', request['messages'][0]['content'])
+            self.assertEqual(request['model'], 'test-vision')
+            self.assertEqual(len(request['messages'][1]['content']), 4)
+            response.status_code = 429
+            with self.assertRaises(HTTPException) as limited:
+                captions._provider_answer([b'jpeg']*3, '')
+            self.assertEqual(limited.exception.status_code, 429)
+
     def forge_max_fixture(self):
         self.context.update(platform_role='workspace_admin', access={'modules': {'forge_max': True, 'top10': True}})
         video_id, clip_id = 'extractor_' + 'a' * 16, 'extract_' + 'b' * 16
@@ -226,6 +296,7 @@ class Top10Tests(unittest.TestCase):
         for scene in data["config"]["scenes"][:scene_count]:
             scene.update(asset_id="source", start=0.2, end=0.6)
         data["config"].update(model=os.getenv("TOP10_TEST_MODEL", "pink3d"), title_enabled=True, title="TOP 10 TEST", title_size=60, logo_enabled=True, logo_x=0.85, logo_y=0.9, music_volume=0.1)
+        data['config']['scenes'][0]['headline'] = {'enabled':True, 'text':'O plano parecia perfeito', 'x':0, 'y':.35, 'width':1, 'height':.1}
         music = self.root / "files" / "music.wav"
         subprocess.run([settings.FFMPEG_BIN, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=0.5:sample_rate=48000", str(music)], check=True, timeout=30)
         logo = self.root / "files" / "logo.png"
@@ -250,6 +321,13 @@ class Top10Tests(unittest.TestCase):
             self.assertGreater(r, 180)
             self.assertLess(g, 50)
             self.assertLess(b, 50)
+            self.assertLess(max(image.convert('RGB').getpixel((10, 700))), 40)
+        # The exact caption PNG appears only on its scene, never on the next scene or the counters.
+        for item in [studio.timeline(data)[0], studio.timeline(data)[3]]:
+            check = Path(self.temp.name) / ('frame_' + str(item['from']) + '.png')
+            subprocess.run([settings.FFMPEG_BIN,'-hide_banner','-loglevel','error','-ss',str(item['from']/studio.FPS+.1),'-i',str(output),'-frames:v','1','-y',str(check)],check=True,timeout=30)
+            with Image.open(check) as image:
+                self.assertGreater(max(image.convert('RGB').getpixel((10,700))), 100)
         if os.getenv("TOP10_TEST_OUTPUT"):
             destination = Path(os.environ["TOP10_TEST_OUTPUT"])
             destination.mkdir(parents=True, exist_ok=True)

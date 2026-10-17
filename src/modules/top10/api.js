@@ -27,6 +27,9 @@ export const importForgeMax = (videoId, clipIds, title) => request("/imports/for
 });
 export const saveProject = (id, body) =>
   request(`/projects/${id}`, json("PUT", body));
+export const generateSceneHeadline = (id, slot, body) => request(`/projects/${id}/scenes/${slot}/generate-headline`, {
+  ...json('POST', body), timeoutMs: 150000, retries: 0,
+});
 export const deleteProject = (id) =>
   request(`/projects/${id}`, { method: "DELETE" });
 export const deleteAsset = (id, asset) =>

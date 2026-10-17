@@ -9,6 +9,7 @@ import {
 } from "remotion";
 import { counterUrl, mediaUrl } from "./api";
 import { buildTimeline } from "./timeline.mjs";
+import { headlineImage, headlineStyle } from './headline.mjs';
 
 function Fill({ style, children }) {
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", ...style }}>{children}</div>;
@@ -54,7 +55,8 @@ export default function Top10Composition({ project, config }) {
                   }}
                 />
               </Fill>
-              {config.title_enabled && project.title_image_url && (
+              {headlineImage(project, item.slot, item.scene) && <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />}
+              {!(item.scene.headline?.enabled && item.scene.headline.text?.trim()) && config.title_enabled && project.title_image_url && (
                 <Img
                   src={mediaUrl(project.title_image_url)}
                   style={{
