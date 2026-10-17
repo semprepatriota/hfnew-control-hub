@@ -6,6 +6,9 @@ $log = Join-Path $PSScriptRoot "deploy-top10-$stamp.log"
 if (!(Test-Path -LiteralPath $archive)) { throw 'O pacote TOP 10 nao foi encontrado.' }
 try { Start-Transcript -Path $log | Out-Null } catch { Write-Host "Log nao disponivel: $log" }
 try {
+    Write-Host 'Primeiro pressione ENTER para iniciar. A senha root sera pedida em seguida pelo SSH.'
+    $ready = Read-Host 'ENTER para conectar a VPS' -AsSecureString
+    if ($null -ne $ready) { $ready.Dispose() }
     Write-Host '1/3 Enviando TOP 10. Digite a senha root da VPS quando pedir.'
     $ErrorActionPreference = 'Continue'
     & scp.exe -O -o ConnectTimeout=30 -o ServerAliveInterval=15 $archive 'root@2.25.172.207:/root/hfnew-top10-backend.tar.gz'
