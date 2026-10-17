@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle } from '../src/modules/top10/headline.mjs';
+import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle, needsHeadlineRefresh } from '../src/modules/top10/headline.mjs';
 import { locateCaptionWords } from '../src/modules/top10/caption-locator.mjs';
 import { emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
 test('scene headlines are optional, independent and move with their scene', () => {
@@ -51,4 +51,18 @@ test('caption positioning requires matching real OCR words, not a guessed AI box
   assert.equal(locateCaptionWords(words,'Fluffel'),null);
   assert.equal(locateCaptionWords(words.map(w=>({...w,confidence:10})),'When your husband insists on helping'),null);
   assert.equal(locateCaptionWords([],'\ud83d\ude02\ud83d\ude02'),null);
+});
+
+test('compact headline image upgrade is needed once, without changing text or requesting AI', () => {
+  const headline = { ...emptyHeadline(), enabled: true, text: 'Quando seu marido insiste em ajudar' };
+  const config = { scenes: [{ asset_id: 'video', headline }] };
+  const project = { assets: { video: {} }, scene_headlines: { '0': { layout_version: 1 } } };
+  const original = structuredClone(config);
+  assert.equal(needsHeadlineRefresh(project, config), true);
+  project.scene_headlines['0'].layout_version = 2;
+  assert.equal(needsHeadlineRefresh(project, config), false);
+  assert.deepEqual(config, original);
+  delete project.scene_headlines['0'];
+  headline.enabled = false;
+  assert.equal(needsHeadlineRefresh(project, config), false);
 });

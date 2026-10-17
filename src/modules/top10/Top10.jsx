@@ -36,7 +36,7 @@ import {
 } from "./timeline.mjs";
 import Top10Composition from "./Top10Composition";
 import SceneHeadlineEditor from './SceneHeadlineEditor';
-import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle } from './headline.mjs';
+import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle, needsHeadlineRefresh } from './headline.mjs';
 import "./top10.css";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -153,13 +153,14 @@ export default function Top10() {
       /* A corrupted local draft must not prevent opening the saved project. */
     }
     draftRef.current = next;
-    dirty.current = restored;
+    const refreshHeadline = !running(data.job_state) && needsHeadlineRefresh(data, next.config);
+    dirty.current = restored || refreshHeadline;
     generation.current += 1;
     setProject(data);
     setDraft(next);
     setJob(data.job_state || null);
     setFrame(0);
-    setSaveState(restored ? "Ajustes recuperados" : "Salvo");
+    setSaveState(restored ? "Ajustes recuperados" : refreshHeadline ? "Atualizando faixa" : "Salvo");
     setEditVersion((value) => value + 1);
   }, []);
   const saveCurrent = useCallback(() => {
