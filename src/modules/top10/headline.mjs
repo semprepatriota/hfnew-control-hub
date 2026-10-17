@@ -1,4 +1,10 @@
-export const emptyHeadline = () => ({ enabled: false, text: '', original_text: '', translation: '', hook_cta: '', x: .05, y: .08, width: .9, height: .18, font_size: 64, color: '#ffffff', background: '#101018', opacity: 1, cover_original: true });
+export const emptyHeadline = () => ({ enabled: false, text: '', original_text: '', translation: '', hook_cta: '', x: 0, y: .08, width: 1, height: .13, font_size: 64, color: '#000000', background: '#ffffff', opacity: 1, cover_original: true });
+export function fixedHeadline(value, captionBox = null) {
+  const h = { ...emptyHeadline(), ...value };
+  const height = captionBox ? Math.min(.3, Math.max(.13, captionBox.height + .06)) : Math.min(.3, Math.max(.13, h.height));
+  const y = Math.min(1-height, Math.max(0, captionBox ? captionBox.y - .025 : h.y));
+  return { ...h, x:0, y, width:1, height, font_size:64, color:'#000000', background:'#ffffff', opacity:1, cover_original:true };
+}
 export function headlineImage(project, slot, scene) {
   const headline = { ...emptyHeadline(), ...scene?.headline };
   const image = project?.scene_headlines?.[String(slot)];

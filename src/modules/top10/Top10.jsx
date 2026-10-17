@@ -36,7 +36,7 @@ import {
 } from "./timeline.mjs";
 import Top10Composition from "./Top10Composition";
 import SceneHeadlineEditor from './SceneHeadlineEditor';
-import { emptyHeadline, headlineImage, headlineStyle } from './headline.mjs';
+import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle } from './headline.mjs';
 import "./top10.css";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -224,9 +224,7 @@ export default function Top10() {
       return next;
     });
   const updateHeadline = (slot, patch) => change(next => {
-    const h = { ...emptyHeadline(), ...next.config.scenes[slot].headline, ...patch };
-    h.x = Math.min(h.x, 1-h.width);
-    h.y = Math.min(h.y, 1-h.height);
+    const h = fixedHeadline({ ...next.config.scenes[slot].headline, ...patch });
     next.config.scenes[slot].headline = h;
     return next;
   });
@@ -242,14 +240,24 @@ export default function Top10() {
           revision: saved.revision, asset_id: entry.asset_id,
           request_id: crypto.randomUUID().replaceAll('-', ''),
         });
+        let captionBox = null;
+        let locationWarning = false;
+        if (result.text_found) {
+          try {
+            if (result.reference_frame_url) {
+              const { locateOriginalCaption } = await import('./caption-locator.mjs');
+              captionBox = await locateOriginalCaption(api.mediaUrl(result.reference_frame_url), result.original_text);
+            }
+          } catch { /* Keep the translation, but never apply an unverified cover. */ }
+          locationWarning = !captionBox;
+        }
         if (!mounted.current) return;
         if (current.current?.id !== saved.id || generation.current !== version) throw new Error('A cena mudou durante a analise. O texto nao foi substituido.');
-        const firstAnalysis = !entry.headline?.original_text;
-        updateHeadline(slot, { text: result.translation && result.translation.length <= 400 ? result.translation : result.headline,
+        updateHeadline(slot, { ...fixedHeadline(entry.headline, captionBox), text: result.translation && result.translation.length <= 400 ? result.translation : result.headline,
           hook_cta: result.headline, original_text: result.original_text, translation: result.translation,
-          ...(firstAnalysis && result.text_found ? result.box : {}) });
+          ...(locationWarning ? {enabled:false} : {}) });
         await saveCurrent();
-        setNotice(`Cena ${10-slot}: leitura de 3 quadros concluida. Confira a traducao e ative a headline se desejar.`);
+        setNotice(locationWarning ? `Cena ${10-slot}: traducao salva, mas a posicao da legenda nao foi confirmada. A cobertura ficou desativada para nao cobrir a cena no lugar errado.` : `Cena ${10-slot}: leitura de 3 quadros concluida. Confira o texto e ative a headline se desejar.`);
       });
     } finally { headlineBusy.current = false; }
   };

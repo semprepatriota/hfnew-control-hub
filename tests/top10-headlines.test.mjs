@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { emptyHeadline, headlineImage, headlineStyle } from '../src/modules/top10/headline.mjs';
+import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle } from '../src/modules/top10/headline.mjs';
+import { locateCaptionWords } from '../src/modules/top10/caption-locator.mjs';
 import { emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
 test('scene headlines are optional, independent and move with their scene', () => {
   const scenes = Array.from({length:10}, emptyScene);
@@ -29,4 +30,25 @@ test('generation is an explicit per-scene POST and cannot run from load or rende
   assert.equal((page.match(/api\.generateSceneHeadline\(/g)||[]).length,1);
   const api=readFileSync(new URL('../src/modules/top10/api.js',import.meta.url),'utf8');
   assert.match(api,/generate-headline/); assert.match(api,/retries: 0/);
+});
+
+test('fixed white and black format covers the original caption without manual sliders', () => {
+  const box = {x:.1,y:.18,width:.8,height:.07};
+  const h = fixedHeadline({...emptyHeadline(),enabled:true,text:'Quando seu marido insiste em ajudar',background:'#ff0000',font_size:120},box);
+  assert.equal(h.width,1); assert.equal(h.x,0);
+  assert.equal(h.font_size,64); assert.equal(h.background,'#ffffff'); assert.equal(h.color,'#000000');
+  assert.equal(h.opacity,1); assert.ok(h.y < box.y); assert.ok(h.y+h.height > box.y+box.height);
+  assert.equal(fixedHeadline(emptyHeadline(),box).enabled,false);
+  assert.ok(fixedHeadline(emptyHeadline(),{...box,y:.99}).y+.13<=1);
+  const component=readFileSync(new URL('../src/modules/top10/SceneHeadlineEditor.jsx',import.meta.url),'utf8');
+  assert.doesNotMatch(component,/type="(?:range|color)"/);
+});
+
+test('caption positioning requires matching real OCR words, not a guessed AI box or watermark', () => {
+  const words=['When','your','husband','insists','on','helping'].map((text,i)=>({text,confidence:96,bbox:{x0:50+i*60,y0:178,x1:100+i*60,y1:245}}));
+  const box=locateCaptionWords(words,'When your husband insists on helping');
+  assert.equal(box.y,178/960); assert.equal(box.height,67/960);
+  assert.equal(locateCaptionWords(words,'Fluffel'),null);
+  assert.equal(locateCaptionWords(words.map(w=>({...w,confidence:10})),'When your husband insists on helping'),null);
+  assert.equal(locateCaptionWords([],'\ud83d\ude02\ud83d\ude02'),null);
 });

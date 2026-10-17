@@ -170,7 +170,7 @@ class Top10Tests(unittest.TestCase):
 
     def test_comedy_provider_uses_separate_prompt_and_never_returns_generic_fallback(self):
         from services import top10_headline_service as captions
-        payload = {'original_text':'Trust me', 'translation':'Confia em mim', 'headline':'O plano deu errado. Quem faria igual?', 'text_found':True, 'box':{'x':.05,'y':.1,'width':.9,'height':.1}}
+        payload = {'original_text':'Trust me', 'translation':'Confia em mim', 'headline':'O plano deu errado. Quem faria igual?', 'text_found':True, 'caption_kind':'caption', 'box':{'x':.05,'y':.1,'width':.9,'height':.1}}
         from unittest.mock import Mock
         response = Mock(status_code=200)
         response.json.return_value = {'choices':[{'message':{'content':json.dumps(payload)}}]}
@@ -182,6 +182,12 @@ class Top10Tests(unittest.TestCase):
             self.assertIn('untrusted', request['messages'][0]['content'])
             self.assertEqual(request['model'], 'test-vision')
             self.assertEqual(len(request['messages'][1]['content']), 4)
+            for kind in ('watermark', 'caption'):
+                watermark = {**payload, 'original_text':'Fluffel', 'translation':'Fluffel', 'caption_kind':kind}
+                response.json.return_value = {'choices':[{'message':{'content':json.dumps(watermark)}}]}
+                filtered = captions._provider_answer([b'jpeg']*3, '')
+                self.assertFalse(filtered['text_found'])
+                self.assertEqual(filtered['translation'], '')
             response.status_code = 429
             with self.assertRaises(HTTPException) as limited:
                 captions._provider_answer([b'jpeg']*3, '')
