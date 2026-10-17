@@ -1,5 +1,6 @@
 import { apiFetch, apiUrl } from "../../config/api";
 import catalog from "./counter-catalog.json" with { type: "json" };
+import { saveTop10MP4 } from "./download";
 async function read(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok)
@@ -51,52 +52,15 @@ export const mediaUrl = (value) => (value ? apiUrl(value) : "");
 export const counterUrl = (model, rank) =>
   apiUrl(`/api/top10/counters/${model}/${rank}.mp4?v=${catalog.revision}`);
 
-export async function downloadMP4(render, onProgress) {
-  const url = mediaUrl(render.url);
-  // The picker must be opened synchronously inside the user's click.
-  const handlePromise = window.showSaveFilePicker?.({
-    suggestedName: render.filename,
-    types: [{ description: "Vídeo MP4", accept: { "video/mp4": [".mp4"] } }],
+export function downloadMP4(render, onProgress, projectId) {
+  return saveTop10MP4({
+    render: { ...render, url: mediaUrl(render?.url) },
+    onProgress,
+    // Keep long media transfers outside the central JSON timeout/retry policy.
+    request: (url, options) => fetch(url, { ...options, credentials: "omit", cache: "no-store" }),
+    refreshRender: projectId ? async () => {
+      const project = await loadProject(projectId);
+      return project.last_render ? { ...project.last_render, url: mediaUrl(project.last_render.url) } : null;
+    } : undefined,
   });
-  if (!handlePromise) {
-    const anchor = document.createElement("a");
-    anchor.href = `${url}${url.includes("?") ? "&" : "?"}download=true`;
-    anchor.download = render.filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    return "started";
-  }
-  let file, reader;
-  try {
-    const handle = await handlePromise;
-    const response = await apiFetch(url);
-    if (
-      !response.ok ||
-      !(response.headers.get("content-type") || "").startsWith("video/mp4")
-    )
-      throw new Error("Não foi possível baixar o MP4");
-    file = await handle.createWritable();
-    reader = response.body.getReader();
-    let size = 0;
-    const length = Number(response.headers.get("content-length"));
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      await file.write(value);
-      size += value.length;
-      onProgress?.(length > 0 ? Math.round((size / length) * 100) : 0);
-    }
-    if (!size || (length > 0 && size !== length))
-      throw new Error("Download incompleto. O arquivo parcial foi descartado.");
-    await file.close();
-    return "saved";
-  } catch (error) {
-    await file?.abort().catch(() => {});
-    await reader?.cancel().catch(() => {});
-    if (error.name === "AbortError") return "cancelled";
-    throw error;
-  } finally {
-    reader?.releaseLock();
-  }
 }

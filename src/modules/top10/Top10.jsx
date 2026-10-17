@@ -446,13 +446,16 @@ export default function Top10() {
   };
   const download = async () => {
     setError("");
+    setNotice("");
     setDownloadProgress(0);
     try {
       const result = await api.downloadMP4(
         project.last_render,
         setDownloadProgress,
+        project.id,
       );
       if (result === "saved") setNotice("MP4 salvo no computador");
+      if (result === "started") setNotice("Download enviado ao navegador. Confira a pasta Downloads ou a janela de salvamento.");
     } catch (caught) {
       setError(caught.message);
     } finally {
