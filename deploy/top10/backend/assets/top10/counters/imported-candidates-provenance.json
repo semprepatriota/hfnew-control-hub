@@ -1,0 +1,191 @@
+{
+  "models": {
+    "comic_pop": {
+      "10": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (5).mp4",
+        "source_sha256": "4c7d3c61e3ee6bc7932f0dd1bca4a68a4bc12631fd65c5f5342a7735bbf9a8b9",
+        "output_sha256": "62190d8bb5e4e83d6836b4d2b9e824e54ff25fcced1d86d7bbc64a905dea9c73",
+        "frames": 34
+      },
+      "9": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (6).mp4",
+        "source_sha256": "aab61c13b1bab90ebdea4d56da0fa708649cb6c7eacff7269d59c61329d30410",
+        "output_sha256": "c1d58c7c40895f2f8d016686e7a3013b1fb3922e3649e098fd8cfe2d03469b0e",
+        "frames": 34
+      },
+      "8": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (7).mp4",
+        "source_sha256": "c6a680117d3fab2fa0bf95ec01472dbf247259f63dbc3ccc0065715e7d3a01e9",
+        "output_sha256": "04ff8ead9d1155e963cf38cca5833e6451d2e424ff4dde5e205e4f0b233b40d4",
+        "frames": 34
+      },
+      "7": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (8).mp4",
+        "source_sha256": "f9a258390b3aa5b9df18297f33f87b164e6fd21cced78001bc1f6fd275d7e70b",
+        "output_sha256": "75c6a5360df5aadc964e33e01ccd32a595c39fe52321b54c990d958f4b7102c4",
+        "frames": 34
+      },
+      "6": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (9).mp4",
+        "source_sha256": "dbdd71bcd46ab589a35aa8740747fdb232735dfc3f78038da47969c3e1bd572f",
+        "output_sha256": "8200b74099834d96543fde65fd8fed5d97024f2ac7e79555e1fc89463f714b4f",
+        "frames": 34
+      },
+      "5": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (10).mp4",
+        "source_sha256": "6284d41d4a8376bfd21bc632aaf65e06ae1d5671c218afd99a9193eb78f10bad",
+        "output_sha256": "d4e4c53bd85628a639c4c69579fcdeba7ac5cabc027f6f2057e518a68a31433c",
+        "frames": 34
+      },
+      "4": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (12).mp4",
+        "source_sha256": "e202e43d47e92347e01d4f361ef2f52b58bb772cfcb4d9beb83e4f06d0c89cf0",
+        "output_sha256": "392bd8115851091c3e9e8720c77b29235348c72995b468dd4563b704996831cc",
+        "frames": 34
+      },
+      "3": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (13).mp4",
+        "source_sha256": "435584adef3d224483b9a5e877ea41c2394cd9caecdd542af8b579d207a9e6aa",
+        "output_sha256": "48b46652ecb337e598fc6fe9d2e43da3bcacfa16ed01c0fb124ff206c41cb86d",
+        "frames": 34
+      },
+      "2": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (14).mp4",
+        "source_sha256": "40c88429c204ef79c594d1d6bf4aded0476a66323d77b1433e5971badba93a86",
+        "output_sha256": "8ea1855c98bcb07d4cb6759621fc8bed3c6bb2a05f0fe4fc5a59c6b3d28217f0",
+        "frames": 34
+      },
+      "1": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (15).mp4",
+        "source_sha256": "3b4b79861e4ab6677da9619b7549628f6896193204ad6e49f0d421471c6b9565",
+        "output_sha256": "5bdd5a01b86779a7afff501b03593d1edc9a63e6196b5fdd7e724c905641eb03",
+        "frames": 34
+      }
+    },
+    "aqua_badge": {
+      "10": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (18).mp4",
+        "source_sha256": "a823e021e3be94bd415b69870f3aa8673cd43c3efe733e22c0b4142142f526c3",
+        "output_sha256": "4ac6e7c89f3cff3dca501f79fa7f9cc4fd18984c8e6f3746d74a79bec0da91b7",
+        "frames": 58
+      },
+      "9": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (19).mp4",
+        "source_sha256": "475ba288e668496e2e72ce5ae7fcc784f5b7f8d5826a3c9bf354c577e2df6988",
+        "output_sha256": "a6c6eb304f32675a733523379326edd2568618a531a02e088b9db2150c27ff49",
+        "frames": 58
+      },
+      "8": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (20).mp4",
+        "source_sha256": "d1a98cec84f0119e0eb0bf80083e8b7e0203b705a45a9cd08bf80127eb5ebd1d",
+        "output_sha256": "f569635f16fced59b5668a691c798023d1df657b3810dd3e85e3128b5a1e49fd",
+        "frames": 58
+      },
+      "7": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (24).mp4",
+        "source_sha256": "7e952bf06f74605d6d59d8a7d281245ae7f64b22ef04bf8b7527d197b845fca5",
+        "output_sha256": "70a44e75fcc1fd84c79bd19e73fc92efd4cf35c3084c55e7ab240596c1cd2ce6",
+        "frames": 58
+      },
+      "6": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (23).mp4",
+        "source_sha256": "b2d85272e8f1aa91c225908ad1e66923eeaada5f6b87a5efb6139daced8e0e4d",
+        "output_sha256": "2cf2a9e26acac7cda0057b4532f52fdd60cf9c0f0e3ca6b7fa472318de2b5a28",
+        "frames": 58
+      },
+      "5": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (25).mp4",
+        "source_sha256": "57eb6c32794bece5003ab55d3fbcd956cbf3e704079511604499eb732ca64937",
+        "output_sha256": "94e060983bf9ba663dc32c4c71a3646b0ad8fc9283d2b7970f57c92931f26b88",
+        "frames": 58
+      },
+      "4": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (26).mp4",
+        "source_sha256": "e6282d31d7956b6e14d9aea1bd82f4850d523d863d7f52928349836ec0e9728a",
+        "output_sha256": "2a2e43185c29b7ffdc7c025c404b3e3b38e2a6eb2447ddcced7b7fa074f84353",
+        "frames": 58
+      },
+      "3": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (28).mp4",
+        "source_sha256": "283a09f951c88d7b73e51a969993fead53c395245281a4071aa6fe094c6988e8",
+        "output_sha256": "39dd8e7816305226d4ae37e933370689c123a61ccea7f69b675b56c2e6332490",
+        "frames": 58
+      },
+      "2": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (27).mp4",
+        "source_sha256": "ca57cc5bd6b6d074c1da6a383f9e1ff211fc736f2c6659d93964159e94405b43",
+        "output_sha256": "8e38be82302fdf00195e344d9ed66fa55fb9db0379fc2df094140c7ccf9ffea9",
+        "frames": 58
+      },
+      "1": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (29).mp4",
+        "source_sha256": "c94c79b9c814b7d7492f96e1ce41b404fcb8c432c36c15367c8163543dc9dacb",
+        "output_sha256": "f5f429554f1139eb4d18d87c5aff9cb2604cf9394e02d490c7773caeb31a9325",
+        "frames": 58
+      }
+    },
+    "space_blue": {
+      "10": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (16).mp4",
+        "source_sha256": "2f637b15bf5e7cad28a4cebe113caf91366d1cf5478cf0f95d2dc8a86149cd3c",
+        "output_sha256": "1f736910ccc8e561d8ab9c315c2584c8b1be8b82f4e7e4c885f676e190b68469",
+        "frames": 48
+      },
+      "9": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (22).mp4",
+        "source_sha256": "ac3c1ec3d030891c0dad0ff48ab1e44d9bb2479e5ca81a453992491293a24f29",
+        "output_sha256": "68b237b1072a43accf3e30418e67d634d76ede5bfadc7770007b20201b703f4a",
+        "frames": 48
+      },
+      "8": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (30).mp4",
+        "source_sha256": "46bbe48a19dae0f8dd4c9cfd564fad10990ef22b34fdfa285261fd99378f90ff",
+        "output_sha256": "255768df7d08ea04658c3579e5e9eb931aeb14e1b230b8329b1dec88c453dc8e",
+        "frames": 48
+      },
+      "7": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (17).mp4",
+        "source_sha256": "023d65aec568f66ec5a9bc57324fb8b89b79801194226157e1ceaef8ad63894b",
+        "output_sha256": "e149d0344180b7ef79ea50b08c14b66c7b08babd39c3f89e98dfe475d7e7be9e",
+        "frames": 48
+      },
+      "6": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (32).mp4",
+        "source_sha256": "91fcbda6b0d40dc656feb0597f0f5a7d290ea235d8962e873b976003b363984d",
+        "output_sha256": "b9e8dc2ea529a0feceb7279466f2132f907f5de9ad777f518ca23fbac07f2833",
+        "frames": 48
+      },
+      "5": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (34).mp4",
+        "source_sha256": "fa053eacccfc0517e0e64aa2a1c4c54e00ca07f09ed6b47b08339348373fcd8e",
+        "output_sha256": "529826107d9517c3e36f8f99db3f4d77d31fc37e3c89bb8d37539a03f0454835",
+        "frames": 48
+      },
+      "4": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (21).mp4",
+        "source_sha256": "1184ad3a84777754d1c56d38eff78b95de9adcd99f580bd9393892d02ad8258a",
+        "output_sha256": "1828a415e86655db248b264597e3db843fa7155ed0ee74708e391d7424d67ddf",
+        "frames": 48
+      },
+      "3": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (35).mp4",
+        "source_sha256": "a72685f7646b34034c33f922210d324d5b3fdfbc091002c7bddf3dc9b261b47f",
+        "output_sha256": "e69c28f717f824be0d3cebf7e5b9a7c5622b84764c29a5a5ce096d6956790a44",
+        "frames": 48
+      },
+      "2": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (31).mp4",
+        "source_sha256": "69635ec56f028ec594b4fe6c95093aed97917d3c2766edf6f3c4509aa3b594f6",
+        "output_sha256": "aadd3f42a0c12c6c214e6d407a532b9cf115bc02d67be981985ca1fc59107833",
+        "frames": 48
+      },
+      "1": {
+        "source_file": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (33).mp4",
+        "source_sha256": "7e660d743301d0467122546e5c03c9be4c4aa106b80b45ccb3b83ca9be3344df",
+        "output_sha256": "71ed7e2d5baf5f18fdabd6fcf3c9a34697ff1150fff3503d7c868cccede2c509",
+        "frames": 47
+      }
+    }
+  },
+  "omitted_duplicate": "Dourado Simples Mensagem Motivacional Vídeo para Reels do Instagram (11).mp4"
+}

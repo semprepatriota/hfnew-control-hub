@@ -16,7 +16,6 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Literal
 from urllib.parse import urlencode
 
 from fastapi import HTTPException, Request, Response
@@ -65,7 +64,7 @@ class SceneConfig(BaseModel):
 
 
 class Top10Config(BaseModel):
-    model: Literal["pink3d", "film"] = "pink3d"
+    model: str = Field(default="pink3d", pattern=r'^[a-z][a-z0-9_]{0,31}$')
     scenes: list[SceneConfig] = Field(default_factory=lambda: [SceneConfig() for _ in range(10)], min_length=10, max_length=10)
     counter_volume: float = Field(default=0.6, ge=0, le=1)
     music_volume: float = Field(default=0.15, ge=0, le=1)
@@ -82,6 +81,8 @@ class Top10Config(BaseModel):
 
     @model_validator(mode="after")
     def validate_color(self):
+        if self.model not in MODELS:
+            raise ValueError("Modelo de contador nao instalado")
         if not re.fullmatch(r"#[0-9a-fA-F]{6}", self.title_color):
             raise ValueError("Cor do titulo invalida")
         return self

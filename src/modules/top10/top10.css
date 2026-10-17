@@ -234,7 +234,7 @@
 }
 .t10-models {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .t10-models > button {
@@ -253,7 +253,7 @@
   display: block;
   width: 100%;
   height: 110px;
-  object-fit: cover;
+  object-fit: contain;
 }
 .t10-models > button > span {
   display: flex;
@@ -262,6 +262,9 @@
   gap: 7px;
   padding: 8px;
   font-size: 12px;
+  min-height: 40px;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
 .t10-scene-tabs {
   display: grid;

@@ -39,7 +39,13 @@ def integrations(root):
     text = (root / "utils/request_auth.py").read_text(encoding="utf-8-sig")
     if not re.search(r"^import re$", text, re.M):
         text = insert(text, "from typing import Optional", "\nimport re", "import re", False)
-    text = insert(text, '    if normalized_path.startswith(LEGACY_PUBLIC_MEDIA_PREFIXES):', '    if re.fullmatch(r"/api/top10/(media/top10_[a-f0-9]{24}/[A-Za-z0-9_.-]+|counters/(pink3d|film)/[0-9]+\\.mp4)", normalized_path):\n        return normalized_method in {"GET", "HEAD"}\n', 'r"/api/top10/(media/')
+    old_counter_models = 'counters/(pink3d|film)/'
+    counter_models = 'counters/[a-z][a-z0-9_]{0,31}/'
+    if old_counter_models in text:
+        if text.count(old_counter_models) != 1:
+            raise RuntimeError('Integracao ambigua dos contadores TOP 10')
+        text = text.replace(old_counter_models, counter_models, 1)
+    text = insert(text, '    if normalized_path.startswith(LEGACY_PUBLIC_MEDIA_PREFIXES):', '    if re.fullmatch(r"/api/top10/(media/top10_[a-f0-9]{24}/[A-Za-z0-9_.-]+|counters/[a-z][a-z0-9_]{0,31}/[0-9]+\\.mp4)", normalized_path):\n        return normalized_method in {"GET", "HEAD"}\n', 'r"/api/top10/(media/')
     changes["utils/request_auth.py"] = text
     text = (root / "services/billing_store.py").read_text(encoding="utf-8-sig")
     text = insert(text, "    patterns = (\n", '        (r"^/api/top10/projects/[^/]+/exports$", "render_jobs"),\n', 'r"^/api/top10/projects/', False)
@@ -87,8 +93,14 @@ def install(root, package):
         path = (additions / relative).resolve()
         if not path.is_relative_to(additions.resolve()) or digest(path) != expected:
             raise RuntimeError(f"Pacote invalido: {relative}")
-    if len(list((additions / "assets/top10/counters").glob("*/*.mp4"))) != 20:
-        raise RuntimeError("O pacote precisa dos vinte contadores")
+    counter_root = additions / 'assets/top10/counters'
+    counter_models = json.loads((counter_root / 'manifest.json').read_text())['models']
+    if not counter_models or any(not re.fullmatch(r'[a-z][a-z0-9_]{0,31}', model) for model in counter_models):
+        raise RuntimeError('Catalogo de modelos TOP 10 invalido')
+    expected_counters = {f'{model}/{rank:02d}.mp4' for model in counter_models for rank in range(1,11)}
+    actual_counters = {path.relative_to(counter_root).as_posix() for path in counter_root.glob('*/*.mp4')}
+    if actual_counters != expected_counters:
+        raise RuntimeError('Cada modelo do pacote precisa ter os dez contadores de 10 a 1')
     memory = dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())
     available_kb = int(memory["MemAvailable"].split()[0])
     if available_kb < 512 * 1024:
@@ -140,8 +152,10 @@ def install(root, package):
             raise RuntimeError("TOP 10 nao registrado na API")
         if http("/api/top10/projects")[0] != 401:
             raise RuntimeError("Falha na protecao de autenticacao")
-        if http("/api/top10/counters/film/10.mp4", {"Range": "bytes=0-63"})[0] != 206:
-            raise RuntimeError("Falha na leitura parcial dos contadores")
+        models = json.loads((root / 'assets/top10/counters/manifest.json').read_text())['models']
+        for model in models:
+            if http(f"/api/top10/counters/{model}/10.mp4", {"Range": "bytes=0-63"})[0] != 206:
+                raise RuntimeError(f"Falha na leitura parcial do contador: {model}")
         print("API_HEALTH=OK\nAUTH_PROTECTION=OK\nCOUNTER_RANGE=OK\nFORGE_FILES=UNCHANGED\nTOP10_BACKEND=OK", flush=True)
         print(f"BACKUP={backup}", flush=True)
     except Exception:

@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 from fastapi import HTTPException
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 from starlette.requests import Request
 
 from config import settings
@@ -116,6 +116,54 @@ class Top10Tests(unittest.TestCase):
         self.assertGreater(len(packets[0]), 30)
         self.assertEqual(packets[0], packets[1])
         self.assertEqual(packets[0], packets[2])
+
+    def test_new_models_are_complete_validated_and_have_public_range_urls(self):
+        from pydantic import ValidationError
+        for model in ['pink3d','film','comic_pop','aqua_badge','space_blue']:
+            self.assertEqual(studio.Top10Config(model=model).model,model)
+            for rank in range(10,0,-1):
+                self.assertTrue(studio.counter_path(model,rank).is_file())
+                self.assertTrue(is_public_api_request(f'/api/top10/counters/{model}/{rank}.mp4','GET'))
+                self.assertFalse(is_public_api_request(f'/api/top10/counters/{model}/{rank}.mp4','DELETE'))
+        for model in ['unknown','../pink3d','pink3d/../film']:
+            with self.assertRaises(ValidationError): studio.Top10Config(model=model)
+            with self.assertRaises(HTTPException): studio.counter_path(model,10)
+        with self.assertRaises(HTTPException): studio.counter_path('comic_pop',0)
+        with self.assertRaises(HTTPException): studio.counter_path('space_blue',11)
+
+    def test_each_new_model_exports_the_correct_counter_with_audio(self):
+        if os.getenv('TOP10_SKIP_MEDIA_TEST')=='1': self.skipTest('Media test disabled explicitly')
+        source=self.root/'files'/'green.mp4'
+        subprocess.run([settings.FFMPEG_BIN,'-hide_banner','-loglevel','error','-y','-f','lavfi','-i','color=c=0x00ff00:s=320x240:r=30:d=0.3',
+            '-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=0.3','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac',str(source)],check=True,timeout=30)
+        for model in ['comic_pop','aqua_badge','space_blue']:
+            with self.subTest(model=model):
+                data=studio.read_project(self.project['id'])
+                data['assets']={'source':{'kind':'video','filename':source.name,'duration':.3,'has_audio':True}}
+                data['config']['model']=model
+                data['config']['scenes'][0].update(asset_id='source',end=.3)
+                frames=studio.MODELS[model]['frames_by_rank']['10']
+                job=studio._job_path(data['id'],'job_'+'c'*24)
+                write_json_atomic(job,{'status':'running','cancel_requested':False})
+                result=studio.render_project(data,job)
+                output=self.root/'renders'/result['filename']
+                checked=studio.probe_media(output)
+                self.assertEqual((checked.video_codec,checked.audio_codec),('h264','aac'))
+                self.assertAlmostEqual(result['duration'],frames/30+.3,places=2)
+                counter_frame=Path(self.temp.name)/f'{model}-counter.png'
+                original_frame=Path(self.temp.name)/f'{model}-original.png'
+                green_frame=Path(self.temp.name)/f'{model}-scene.png'
+                for path,seek,target in [(output,frames/60,counter_frame),(studio.counter_path(model,10),frames/60,original_frame),(output,frames/30+.1,green_frame)]:
+                    subprocess.run([settings.FFMPEG_BIN,'-hide_banner','-loglevel','error','-y','-ss',str(seek),'-i',str(path),'-frames:v','1',str(target)],check=True,timeout=30)
+                with Image.open(counter_frame) as rendered,Image.open(original_frame) as original:
+                    self.assertLess(max(ImageStat.Stat(ImageChops.difference(rendered.convert('RGB'),original.convert('RGB'))).mean),8)
+                with Image.open(green_frame) as image:
+                    r,g,b=image.convert('RGB').getpixel((540,960))
+                    self.assertGreater(g,200); self.assertLess(max(r,b),40)
+                if os.getenv('TOP10_TEST_OUTPUT'):
+                    destination=Path(os.environ['TOP10_TEST_OUTPUT']);destination.mkdir(parents=True,exist_ok=True)
+                    shutil.copy2(output,destination/f'model-preview-{model}.mp4')
+                    shutil.copy2(counter_frame,destination/f'model-preview-{model}.png')
 
     def test_optional_headlines_default_off_and_shared_preview_image(self):
         from services.top10_headline_service import HeadlineConfig, prepare_headlines
