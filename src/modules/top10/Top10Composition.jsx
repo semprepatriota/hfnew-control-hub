@@ -18,7 +18,7 @@ export default function Top10Composition({ project, config }) {
   const { fps } = useVideoConfig();
   const frame = useCurrentFrame();
   const items = buildTimeline(project, config);
-  const duration = items.at(-1).from + items.at(-1).frames;
+  const duration = items.length ? items.at(-1).from + items.at(-1).frames : 1;
   const logo = project.assets[project.logo];
   const music = project.assets[project.music];
   return (

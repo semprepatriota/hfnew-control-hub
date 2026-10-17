@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildTimeline, emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
+test('partial projects omit empty slots and their counters without renumbering', () => {
+  const project = { assets: { a: { duration: 1 } } };
+  const config = { model: 'pink3d', scenes: Array.from({ length: 10 }, (_, slot) => ({ ...emptyScene(), asset_id: slot < 8 ? 'a' : '', end: 1 })) };
+  const items = buildTimeline(project, config);
+  assert.equal(items.length, 16);
+  assert.deepEqual(items.filter(item => item.kind === 'counter').map(item => item.rank), [10,9,8,7,6,5,4,3]);
+  for (let i = 1; i < items.length; i++) assert.equal(items[i].from, items[i-1].from + items[i-1].frames);
+  config.scenes[1] = emptyScene();
+  const sparse = buildTimeline(project, config);
+  assert.deepEqual(sparse.filter(item => item.kind === 'scene').map(item => item.slot), [0,2,3,4,5,6,7]);
+  assert.equal(sparse.find(item => item.slot === 2 && item.kind === 'scene').rank, 8);
+  assert.deepEqual(buildTimeline(project, { ...config, scenes: Array.from({ length: 10 }, emptyScene) }), []);
+});
 test('TOP 10 contains twenty contiguous slots descending from ten to one', () => {
   const project = { assets: { a: { duration: 5 } } };
   const config = { model: 'pink3d', scenes: Array.from({ length: 10 }, () => ({ ...emptyScene(), asset_id: 'a', start: 1, end: 2.5 })) };

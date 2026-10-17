@@ -336,6 +336,8 @@ def timeline(data: dict) -> list[dict]:
     config = Top10Config(**data["config"])
     items, frame = [], 0
     for i, scene in enumerate(config.scenes):
+        if not scene.asset_id:
+            continue
         asset = data["assets"].get(scene.asset_id)
         if not asset:
             raise HTTPException(400, f"Adicione o video da cena {10-i}")
@@ -349,6 +351,8 @@ def timeline(data: dict) -> list[dict]:
         frame += count_frames
         items.append({"kind": "scene", "rank": 10-i, "slot": i, "frames": scene_frames, "from": frame})
         frame += scene_frames
+    if not items:
+        raise HTTPException(400, "Adicione pelo menos uma cena para exportar")
     if frame / FPS > MAX_OUTPUT_SECONDS:
         raise HTTPException(400, "A montagem completa aceita ate 10 minutos")
     return items

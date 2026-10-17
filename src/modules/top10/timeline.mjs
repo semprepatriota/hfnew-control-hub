@@ -7,11 +7,12 @@ export function buildTimeline(project, config) {
   return Array.from({ length: 10 }, (_, slot) => {
     const scene = config.scenes[slot];
     const asset = project.assets[scene.asset_id];
+    if (!asset) return [];
     const model = MODELS.find(({ id }) => id === config.model);
     const counterFrames = model?.frames_by_rank?.[10 - slot] || model?.frames || 30;
     const counter = { kind: 'counter', slot, rank: 10 - slot, from: cursor, frames: counterFrames };
     cursor += counterFrames;
-    const frames = asset ? Math.max(2, Math.round((Math.min(scene.end || asset.duration, asset.duration) - scene.start) * FPS)) : 90;
+    const frames = Math.max(2, Math.round((Math.min(scene.end || asset.duration, asset.duration) - scene.start) * FPS));
     const clip = { kind: 'scene', slot, rank: 10 - slot, from: cursor, frames, asset, scene };
     cursor += frames;
     return [counter, clip];

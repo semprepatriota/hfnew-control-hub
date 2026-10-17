@@ -1,8 +1,8 @@
 {
   "routes/top10.py": "f444f049a3e00f1fc91c32a1206a217168dbac5ccb81339830c8e967241aeeb9",
-  "services/top10_service.py": "043488f33d92210e7c81528d95dacf93065f27af0e305829e7a2c2e59471a565",
+  "services/top10_service.py": "26d2ee9451bd5c039d133602e5963484ab1aaa2f35ea87d9947025be6ea1bbc4",
   "services/top10_forge_max_bridge.py": "a60b8f1219981a8151ed6fe494b2f80818e25758bfd0ba9b7503fa684f015e48",
-  "tests/test_top10.py": "79b8a5da2f8f76aad0271fe8615e76719bce117c4d01b0bedf4ccfb27f7af987",
+  "tests/test_top10.py": "1ab9618d4dc937d9b99a331107de0b05c0e0a43e7115c1b8a16468579cb77836",
   "assets/top10/counters/film-provenance.json": "7a83b38f3a5d513aa9879c9cd9dc72eba8189f6dc9a5bb3ee223d6a05b2224d1",
   "assets/top10/counters/manifest.json": "fdd0e83701d5ebd4fe2f3854022d5746b2624c06e655c1430c4ebac833caca22",
   "assets/top10/counters/pink-seven-provenance.json": "e135a4e60ded15add3fe7fbef518e4e2ad1fed43ca9d09cc9aa1a7b6e5522557",

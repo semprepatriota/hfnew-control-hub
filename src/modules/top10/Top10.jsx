@@ -374,11 +374,17 @@ export default function Top10() {
     });
   };
   const seek = (item, play = false) => {
+    if (!item) return;
     player.current?.pause();
     setSelected(item.slot);
     player.current?.seekTo(item.from);
     setFrame(item.from);
     if (play) player.current?.play();
+  };
+  const sceneItem = (slot) => items.find((item) => item.kind === "scene" && item.slot === slot);
+  const selectScene = (slot, play = false) => {
+    setSelected(slot);
+    seek(sceneItem(slot), play);
   };
   const exportVideo = () =>
     perform("Preparando exportação", async () => {
@@ -394,7 +400,7 @@ export default function Top10() {
     if (key === "end" && safe <= scene.start + 0.067) return;
     updateScene(key, safe);
     player.current?.pause();
-    player.current?.seekTo(items[selected * 2 + 1].from);
+    player.current?.seekTo(sceneItem(selected)?.from || 0);
     if (trimPlayer.current) trimPlayer.current.currentTime = safe;
   };
   const download = async () => {
@@ -547,7 +553,7 @@ export default function Top10() {
                 </button>
                 <button
                   className="t10-button export"
-                  disabled={busy || filled !== 10}
+                  disabled={busy || filled === 0}
                   onClick={exportVideo}
                 >
                   {running(job) ? (
@@ -621,7 +627,7 @@ export default function Top10() {
                   {Array.from({ length: 10 }, (_, i) => (
                     <button
                       key={i}
-                      onClick={() => seek(items[i * 2 + 1])}
+                      onClick={() => selectScene(i)}
                       className={selected === i ? "selected" : ""}
                       aria-label={`Editar cena ${10 - i}`}
                     >
@@ -775,7 +781,7 @@ export default function Top10() {
                     />
                     <button
                       className="t10-button primary"
-                      onClick={() => seek(items[selected * 2 + 1], true)}
+                      onClick={() => selectScene(selected, true)}
                     >
                       <Play size={15} /> Assistir corte na montagem
                     </button>
@@ -795,11 +801,11 @@ export default function Top10() {
               </Panel>
             </aside>
           </div>
-          <Panel title="Timeline · 20 espaços">
+          <Panel title={`Timeline · ${items.length} blocos`}>
             <div className="t10-timeline">
-              {Array.from({ length: 10 }, (_, slot) => (
+              {items.filter((item) => item.kind === "counter").map(({ slot }) => (
                 <div className="t10-timeline-pair" key={slot}>
-                  {items.slice(slot * 2, slot * 2 + 2).map((item) => (
+                  {items.filter((item) => item.slot === slot).map((item) => (
                     <button
                       key={item.kind}
                       className={`${item.kind} ${frame >= item.from && frame < item.from + item.frames ? "active" : ""}`}
@@ -905,7 +911,7 @@ export default function Top10() {
                       className="t10-scene-cover"
                       onClick={() => {
                         setSelected(slot);
-                        if (media) seek(items[slot * 2 + 1]);
+                        if (media) selectScene(slot);
                       }}
                       aria-label={`Selecionar cena ${10 - slot}`}
                     >
@@ -964,7 +970,7 @@ export default function Top10() {
                       >
                         →
                       </button>
-                      <button onClick={() => seek(items[slot * 2 + 1])} disabled={busy}>
+                      <button onClick={() => selectScene(slot)} disabled={busy}>
                         <Scissors size={13} /> Ajustar
                       </button>
                     </div>

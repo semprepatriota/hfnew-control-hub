@@ -56,8 +56,26 @@ class Top10Tests(unittest.TestCase):
         cinema = studio.timeline(data)
         self.assertEqual([item["frames"] for item in cinema[::2]], [30, 25, 28, 26, 28, 30, 27, 28, 28, 29])
         data["config"]["scenes"][8]["asset_id"] = ""
+        partial = studio.timeline(data)
+        self.assertEqual(len(partial), 18)
+        self.assertNotIn(2, [item['rank'] for item in partial])
+        data["config"]["scenes"][8]["asset_id"] = "missing"
         with self.assertRaises(HTTPException):
             studio.timeline(data)
+
+    def test_partial_timeline_ends_at_three_and_rejects_empty_export(self):
+        data = studio.read_project(self.project['id'])
+        with self.assertRaises(HTTPException) as empty:
+            studio.timeline(data)
+        self.assertEqual(empty.exception.status_code, 400)
+        data['assets']['a'] = {'kind': 'video', 'duration': 1}
+        for scene in data['config']['scenes'][:8]:
+            scene.update(asset_id='a', end=1)
+        items = studio.timeline(data)
+        self.assertEqual([item['rank'] for item in items[::2]], list(range(10, 2, -1)))
+        self.assertEqual(len(items), 16)
+        for previous, current in zip(items, items[1:]):
+            self.assertEqual(current['from'], previous['from'] + previous['frames'])
 
     def test_revision_and_workspace_isolation(self):
         config = studio.Top10Config(**self.project["config"])
@@ -193,13 +211,19 @@ class Top10Tests(unittest.TestCase):
         self.assertEqual(studio.read_project(self.project["id"])["id"], self.project["id"])
 
     def test_complete_export_with_ten_scenes_music_title_and_logo(self):
+        self.assert_export(10)
+
+    def test_partial_export_ends_at_three_with_music_title_and_logo(self):
+        self.assert_export(8)
+
+    def assert_export(self, scene_count):
         if os.getenv("TOP10_SKIP_MEDIA_TEST") == "1":
             self.skipTest("Media test disabled explicitly")
         source = self.root / "files" / "source.mp4"
         subprocess.run([settings.FFMPEG_BIN, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=320x240:r=30:d=1", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(source)], check=True, timeout=30)
         data = studio.read_project(self.project["id"])
         data["assets"] = {"source": {"kind": "video", "filename": source.name, "duration": 1, "has_audio": True}}
-        for scene in data["config"]["scenes"]:
+        for scene in data["config"]["scenes"][:scene_count]:
             scene.update(asset_id="source", start=0.2, end=0.6)
         data["config"].update(model=os.getenv("TOP10_TEST_MODEL", "pink3d"), title_enabled=True, title="TOP 10 TEST", title_size=60, logo_enabled=True, logo_x=0.85, logo_y=0.9, music_volume=0.1)
         music = self.root / "files" / "music.wav"
