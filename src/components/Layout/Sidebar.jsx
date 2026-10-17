@@ -11,6 +11,7 @@ import {
   Activity,
   Radar,
   DownloadCloud,
+  ListOrdered,
   Search,
   Users,
   CreditCard,
@@ -90,6 +91,14 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       path: '/baixar-em-massa',
       icon: DownloadCloud,
       color: 'neon-blue'
+    },
+    {
+      id: 'top10',
+      module: 'top10',
+      label: 'TOP 10',
+      path: '/top-10',
+      icon: ListOrdered,
+      color: 'neon-gold'
     },
     {
       id: 4,

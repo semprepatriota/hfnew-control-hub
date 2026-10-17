@@ -1,0 +1,62 @@
+{
+  "10": {
+    "source_file": "cena_001_Reportagem_extra_da_344f22.mp4",
+    "source_sha256": "81196b902ee2deef1e52b5f47f5d012214165a2a54c5d2b9aa9cb3868065be58",
+    "output_sha256": "788a6ddff93ab41fe38034cb3a053cdc118505b18f63506aae657f550067b827",
+    "frames": 30
+  },
+  "9": {
+    "source_file": "9 (1).mp4",
+    "source_sha256": "ba3b6c4ef435aa73f46520d6f6345fa6f67bfe3d893dfe235bd42fef20085a4d",
+    "output_sha256": "b3ed87b18c683cb3c1bcffc59c62e2e28a974eaecb2f2642c5200c313f11ed61",
+    "frames": 25
+  },
+  "8": {
+    "source_file": "cena_003_Reportagem_extra_da_a1405f.mp4",
+    "source_sha256": "fca1e5ba1c6477609293514abfa9bf4c6b03165386f5899605e2fbfab36b91ac",
+    "output_sha256": "5c609284e279e5e7758424d50f2148226ddc1953511dce004ff7de888fda677e",
+    "frames": 28
+  },
+  "7": {
+    "source_file": "7.mp4",
+    "source_sha256": "9a1d78c9e99575163e4e6b50ec5cf06610b1fe5ddc6e143bd952be34c8140f22",
+    "output_sha256": "02693b715140d0f86a0e5f116b6c01d5f384975c79a0c3aeea3015ae57fca755",
+    "frames": 26
+  },
+  "6": {
+    "source_file": "6.mp4",
+    "source_sha256": "5185b588a8fbf68e1863b8bcf3ed9bccb3b9be47d1f62c6c05e257fdc7964d5f",
+    "output_sha256": "3d678edf50c9eb9efc99b9b05f1fc704a92595b39fd8feca72ef81274fd32c49",
+    "frames": 28
+  },
+  "5": {
+    "source_file": "5.mp4",
+    "source_sha256": "81745dbdd5f94a420fb598f89223e999b69490b7abccb44c67c53de04723d162",
+    "output_sha256": "368771789283ef70a68c5dc99e3ae513b9b1268ea92687bcdbf4e3f3442ce77b",
+    "frames": 30
+  },
+  "4": {
+    "source_file": "cena_007_Reportagem_extra_da_3247de.mp4",
+    "source_sha256": "3364d9c8a23f442cc5bba18f5ed01f7b4b7d3dacb670ddfd3bb169f260d9822c",
+    "output_sha256": "e81587649228a72df2e5acfd67f04a55f05646e77dd5accbea5ec257cf1e8593",
+    "frames": 27
+  },
+  "3": {
+    "source_file": "cena_008_Reportagem_extra_da_a24d08.mp4",
+    "source_sha256": "efc4b94eb3d5a2a94bd73e1cbdde516661bf1c4d06e7245322002d38fc003307",
+    "output_sha256": "efb24acaeb2be64de3db8f3cb9722f982dba05d1fd8e0013ba4a5e6d9144bac2",
+    "frames": 28
+  },
+  "2": {
+    "source_file": "cena_009_Reportagem_extra_da_3b4273.mp4",
+    "source_sha256": "90f136eccf783c6f80a92fd28d97fa59000fdd8d2be7e827c3c7b3821d019587",
+    "output_sha256": "a57fd22a7106fdc8de7f1b48f2654a1dd0bb3b462317dd065603cc4bae85e215",
+    "frames": 28
+  },
+  "1": {
+    "source_file": "cena_010_Reportagem_extra_da_de4e23.mp4",
+    "source_sha256": "dc124652d8043492670d7ec95a188eb73e4ed1d91def0fbb9bac1e0b942dc112",
+    "output_sha256": "a76445bd5037de46baa664484522f01e41b12f109c4192fd1752a3cfc2722a8f",
+    "frames": 29
+  }
+}

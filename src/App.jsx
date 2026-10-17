@@ -23,6 +23,7 @@ const Billing = lazy(() => import('./components/Pages/Billing'));
 const Admin = lazy(() => import('./components/Pages/Admin'));
 const Intel = lazy(() => import('./components/Pages/Intel'));
 const BulkDownload = lazy(() => import('./modules/bulk-download/pages/BulkDownload'));
+const Top10 = lazy(() => import('./modules/top10/Top10'));
 const Forge = lazy(() => import('./components/Pages/Forge'));
 const TheForge5050 = lazy(() => import('./modules/the-forge-50-50/pages/TheForge5050'));
 const ForgeEasyEditor = lazy(() => import('./modules/forge-easy-editor/pages/ForgeEasyEditor'));
@@ -490,6 +491,7 @@ function AppShell() {
           <Route path="/conexoes" element={<ModuleGate allowed={canUseModule('connections')} label="Conexões"><Conexoes currentUser={authStatus} /></ModuleGate>} />
           <Route path="/intel" element={<ModuleGate allowed={canUseModule('intelligence')} label="YouTube Radar"><Intel /></ModuleGate>} />
           <Route path="/baixar-em-massa" element={<ModuleGate allowed={canUseModule('bulk_download')} label="Baixar em Massa"><BulkDownload /></ModuleGate>} />
+          <Route path="/top-10" element={<ModuleGate allowed={canUseModule('top10')} label="TOP 10"><Top10 /></ModuleGate>} />
           <Route path="/forge" element={<ModuleGate allowed={canUseModule('forge_7030')} label="The Forge 70/30"><Forge /></ModuleGate>} />
           <Route path="/the-forge" element={<ModuleGate allowed={canUseModule('forge_5050')} label="The Forge 50/50"><TheForge5050 /></ModuleGate>} />
           <Route path="/the-forge-50-50" element={<ModuleGate allowed={canUseModule('forge_5050')} label="The Forge 50/50"><TheForge5050 /></ModuleGate>} />
