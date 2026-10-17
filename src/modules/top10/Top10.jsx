@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Player } from "@remotion/player";
+import { useSearchParams } from "react-router-dom";
 import {
   Check,
   ChevronDown,
@@ -89,6 +90,8 @@ function Slider({
 }
 
 export default function Top10() {
+  const [searchParams] = useSearchParams();
+  const requestedProject = searchParams.get("project") || "";
   const [projects, setProjects] = useState([]);
   const [project, setProject] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -218,17 +221,20 @@ export default function Top10() {
       return next;
     });
   useEffect(() => {
+    let active = true;
     mounted.current = true;
     refresh()
-      .then((data) => {
-        if (mounted.current && data.length) apply(data[0]);
+      .then(async (data) => {
+        const selected = requestedProject ? await api.loadProject(requestedProject) : data[0];
+        if (active && mounted.current && selected) apply(selected);
       })
-      .catch((caught) => setError(caught.message));
+      .catch((caught) => { if (active) setError(caught.message); });
     return () => {
+      active = false;
       mounted.current = false;
       saveCurrent().catch(() => {});
     };
-  }, [refresh, apply, saveCurrent]);
+  }, [refresh, apply, saveCurrent, requestedProject]);
   useEffect(() => {
     if (!dirty.current || running(job)) return;
     const timer = setTimeout(

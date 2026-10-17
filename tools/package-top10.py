@@ -9,7 +9,7 @@ import tarfile
 repo = Path(__file__).resolve().parent.parent
 source = Path(sys.argv[1]).resolve()
 release = repo / "deploy/top10"
-targets = ["routes/top10.py", "services/top10_service.py", "tests/test_top10.py"]
+targets = ["routes/top10.py", "services/top10_service.py", "services/top10_forge_max_bridge.py", "tests/test_top10.py"]
 targets += [str(path.relative_to(source)).replace("\\", "/") for path in (source / "assets/top10/counters").rglob("*") if path.is_file()]
 manifest = {}
 for relative in targets:

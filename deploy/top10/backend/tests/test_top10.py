@@ -21,6 +21,7 @@ from services.billing_store import meter_for_request
 from utils.request_auth import is_public_api_request
 from utils.user_context import reset_current_user, set_current_user
 from utils.workspace_storage import write_json_atomic
+from utils.workspace_storage import workspace_module_root
 
 
 class Top10Tests(unittest.TestCase):
@@ -84,6 +85,84 @@ class Top10Tests(unittest.TestCase):
                 self.assertEqual((video["width"], video["height"]), (1080, 1920))
                 self.assertEqual(video["pix_fmt"], "yuv420p")
                 self.assertTrue(any(stream["codec_type"] == "audio" for stream in probe["streams"]))
+
+    def test_recreated_counters_use_the_original_sound(self):
+        packets = []
+        for rank in [3, 2, 1]:
+            path = studio.counter_path('pink3d', rank)
+            probe = json.loads(subprocess.check_output([
+                settings.FFPROBE_BIN, '-v', 'error', '-select_streams', 'a:0', '-show_packets',
+                '-show_data_hash', 'sha256', '-show_entries', 'packet=data_hash', '-of', 'json', str(path)
+            ]))
+            packets.append([packet['data_hash'] for packet in probe['packets']])
+        self.assertGreater(len(packets[0]), 30)
+        self.assertEqual(packets[0], packets[1])
+        self.assertEqual(packets[0], packets[2])
+
+    def forge_max_fixture(self):
+        self.context.update(platform_role='workspace_admin', access={'modules': {'forge_max': True, 'top10': True}})
+        video_id, clip_id = 'extractor_' + 'a' * 16, 'extract_' + 'b' * 16
+        root = workspace_module_root('forge_max_extractor') / 'videos' / video_id
+        (root / 'clips').mkdir(parents=True)
+        (root / 'source').mkdir()
+        source = root / 'clips/cena.mp4'
+        shutil.copy2(studio.counter_path('pink3d', 3), source)
+        write_json_atomic(root / 'video.json', {
+            'id': video_id, 'source_path': str(root / 'source/original.mp4'),
+            'media_key': 'top10-test-media-key', 'status': 'ready', 'analysis_status': 'completed',
+            'proxy_ready': False, 'waveform_ready': False, 'duration': 1, 'created_at': '',
+            'clips': [{'id': clip_id, 'filename': source.name, 'path': str(source), 'status': 'ready', 'title': 'Cena escolhida', 'duration': 29/30}],
+        })
+        return video_id, clip_id, source
+
+    def test_forge_max_import_survives_deleting_the_extracted_original(self):
+        from services.top10_forge_max_bridge import import_clips
+        video_id, clip_id, source = self.forge_max_fixture()
+        imported = import_clips(video_id, [clip_id], 'Importado')
+        scene = imported['config']['scenes'][0]
+        asset = imported['assets'][scene['asset_id']]
+        self.assertEqual(asset['origin']['clip_id'], clip_id)
+        self.assertEqual(asset['name'], 'Cena escolhida')
+        self.assertEqual(len(imported['config']['scenes']), 10)
+        self.assertTrue(asset['thumbnail_url'])
+        target = studio.project_root(imported['id']) / 'files' / asset['filename']
+        source.unlink()
+        self.assertTrue(target.is_file())
+        self.assertGreater(target.stat().st_size, 0)
+
+    def test_forge_max_import_rejects_other_workspaces_and_duplicate_selections(self):
+        from services.top10_forge_max_bridge import import_clips
+        video_id, clip_id, _ = self.forge_max_fixture()
+        with self.assertRaises(HTTPException):
+            import_clips(video_id, [clip_id, clip_id], 'Duplicado')
+        other = set_current_user({**self.context, 'storage_scope': 'top10_import_other'})
+        try:
+            with self.assertRaises(HTTPException) as missing:
+                import_clips(video_id, [clip_id], 'Outro workspace')
+            self.assertEqual(missing.exception.status_code, 404)
+            self.assertEqual(studio.list_projects(), [])
+        finally:
+            reset_current_user(other)
+        self.context['access']['modules']['forge_max'] = False
+        with self.assertRaises(HTTPException) as denied:
+            import_clips(video_id, [clip_id], 'Sem acesso')
+        self.assertEqual(denied.exception.status_code, 403)
+
+    def test_forge_max_failed_import_removes_only_the_new_project(self):
+        from services.top10_forge_max_bridge import import_clips
+        video_id, clip_id, source = self.forge_max_fixture()
+        before = {p['id'] for p in studio.list_projects()}
+        run = subprocess.run
+        def fail_thumbnail(command, **kwargs):
+            if str(command[-1]).endswith('.jpg'):
+                self.assertEqual(len(studio.list_projects()), len(before) + 1)
+                raise RuntimeError('Thumbnail failure')
+            return run(command, **kwargs)
+        with patch('services.top10_forge_max_bridge.subprocess.run', side_effect=fail_thumbnail):
+            with self.assertRaises(RuntimeError):
+                import_clips(video_id, [clip_id], 'Falha')
+        self.assertTrue(source.exists())
+        self.assertEqual({p['id'] for p in studio.list_projects()}, before)
 
     def test_signed_media_and_range_do_not_expose_unsigned_files(self):
         path = self.root / "files" / "asset_test.mp4"

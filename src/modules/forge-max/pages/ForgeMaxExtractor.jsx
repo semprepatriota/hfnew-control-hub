@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { importForgeMax } from '../../top10/api';
 import {
   CheckCircle2,
+  ArrowRight,
   ChevronDown,
   ChevronUp,
   Clock3,
@@ -84,6 +87,7 @@ function statusLabel(video) {
 }
 
 function ForgeMaxExtractor() {
+  const navigate = useNavigate();
   const playerRef = useRef(null);
   const timelineTrackRef = useRef(null);
   const timelineViewportRef = useRef(null);
@@ -113,6 +117,7 @@ function ForgeMaxExtractor() {
   const [selectionEnd, setSelectionEnd] = useState(0);
   const [clipTitle, setClipTitle] = useState('Reportagem extraída');
   const [playing, setPlaying] = useState(false);
+  const [previewSize, setPreviewSize] = useState(null);
   const [selectedSceneId, setSelectedSceneId] = useState('');
   const [selectedClipIds, setSelectedClipIds] = useState([]);
   const [clipBusy, setClipBusy] = useState('');
@@ -120,6 +125,9 @@ function ForgeMaxExtractor() {
   const [deleteProgress, setDeleteProgress] = useState(null);
 
   const duration = Number(activeVideo?.duration) || 0;
+  const videoWidth = Number(previewSize && previewSize.id === activeVideo?.id ? previewSize.width : activeVideo?.width) || 16;
+  const videoHeight = Number(previewSize && previewSize.id === activeVideo?.id ? previewSize.height : activeVideo?.height) || 9;
+  const portrait = videoHeight > videoWidth;
   const scenes = activeVideo?.scenes || [];
   const clips = activeVideo?.clips || [];
   const selectableClips = clips.filter((clip) => clip.status !== 'extracting');
@@ -150,6 +158,20 @@ function ForgeMaxExtractor() {
     setMessage('');
     setError('');
   }, []);
+
+  async function sendClipsToTop10() {
+    if (clipOperationRef.current || !activeVideo) return;
+    clearNotice();
+    if (!selectedClipsReady) { setError('Selecione os trechos prontos que deseja enviar ao TOP 10.'); return; }
+    if (selectedClips.length > 10) { setError('O TOP 10 aceita ate dez cenas por projeto. Selecione no maximo dez trechos.'); return; }
+    clipOperationRef.current = 'top10';
+    setClipBusy('top10');
+    try {
+      const project = await importForgeMax(activeVideo.id, selectedClips.map((clip) => clip.id), `TOP 10 - ${activeVideo.original_name || 'Forge Max'}`.slice(0, 120));
+      navigate(`/top-10?project=${encodeURIComponent(project.id)}`);
+    } catch (caught) { setError(caught.message); }
+    finally { clipOperationRef.current = ''; setClipBusy(''); }
+  }
 
   const snapTime = useCallback((value) => {
     return snapTimelineTime(value, duration, scenes, snapEnabled, zoom);
@@ -619,7 +641,7 @@ function ForgeMaxExtractor() {
                 <span><Play size={17} /><strong>Prévia do vídeo</strong></span>
                 <button type="button" onClick={() => refreshActive().catch((caught) => setError(caught.message))} title="Atualizar status"><RefreshCw size={16} /></button>
               </div>
-              <div className="forge-max-extractor-player-shell">
+              <div className={`forge-max-extractor-player-shell ${portrait ? 'is-portrait' : ''}`} style={{ '--fmx-source-ratio': `${videoWidth} / ${videoHeight}` }}>
                 {activeVideo.status === 'preparing' && <div className="forge-max-extractor-processing"><Loader2 className="spin" size={28} /><strong>Preparando prévia leve · {activeVideo.prepare_progress || 0}%</strong><span>{activeVideo.prepare_task?.state === 'queued' ? `Fila: posição ${activeVideo.prepare_task.queue_position}` : 'O original permanece intacto.'}</span><button type="button" onClick={() => handleTaskAction('cancel', 'prepare')}>Cancelar</button></div>}
                 {['error', 'cancelled'].includes(activeVideo.status) && <div className="forge-max-extractor-processing error"><XCircle size={28} /><strong>{activeVideo.status_detail || 'Falha na prévia'}</strong><span>{activeVideo.error || 'Você pode tentar novamente.'}</span><button type="button" onClick={() => handleTaskAction('retry', 'prepare')}>Tentar novamente</button></div>}
                 {playbackUrl && (
@@ -632,7 +654,7 @@ function ForgeMaxExtractor() {
                     onTimeUpdate={handlePlayerTimeUpdate}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
-                    onLoadedMetadata={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
+                    onLoadedMetadata={(event) => { setCurrentTime(event.currentTarget.currentTime || 0); setPreviewSize({ id: activeVideo.id, width: event.currentTarget.videoWidth, height: event.currentTarget.videoHeight }); }}
                   />
                 )}
               </div>
@@ -746,6 +768,7 @@ function ForgeMaxExtractor() {
                   Selecionar todos
                 </label>
                 <span>{selectedClips.length} selecionado(s)</span>
+                <button type="button" className="forge-max-extractor-send-top10" onClick={sendClipsToTop10} disabled={!selectedClipsReady || selectedClips.length > 10 || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Criar um TOP 10 com os trechos selecionados (ate dez cenas)">{clipBusy === 'top10' ? <Loader2 className="spin" size={15} /> : <ArrowRight size={15} />}Enviar ao TOP 10</button>
                 <button type="button" title="Limpar seleção" onClick={() => setSelectedClipIds([])} disabled={!selectedClips.length || Boolean(clipBusy)}><XCircle size={15} />Limpar</button>
                 <button type="button" onClick={() => handleDownloadClips(selectedClips.map((clip) => clip.id))} disabled={!selectedClipsReady || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Baixar trechos selecionados em ZIP"><Download size={15} />Baixar selecionados</button>
                 <button type="button" className="danger" onClick={() => handleDeleteClips(selectedClips)} disabled={!selectedClips.length || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Excluir trechos selecionados"><Trash2 size={15} />Excluir selecionados</button>
@@ -758,7 +781,7 @@ function ForgeMaxExtractor() {
               <div className="forge-max-extractor-clips-grid">
                 {clips.map((clip) => (
                   <article key={clip.id} className="forge-max-extractor-clip-card">
-                    <div className="forge-max-extractor-clip-preview">
+                    <div className={`forge-max-extractor-clip-preview ${portrait ? 'is-portrait' : ''}`} style={{ '--fmx-source-ratio': `${videoWidth} / ${videoHeight}` }}>
                       {clip.status === 'ready' ? <video src={forgeMaxMediaUrl(clip.preview_url)} controls preload="metadata" /> : <div>{clip.status === 'extracting' ? <Loader2 className="spin" size={25} /> : <XCircle size={25} />}<span>{clip.status === 'error' ? 'Falha na extração' : clip.status === 'cancelled' ? 'Extração cancelada' : `${clip.status_detail || 'Extraindo trecho'} · ${clip.progress || 0}%`}</span></div>}
                     </div>
                     <div className="forge-max-extractor-clip-info"><label className="forge-max-extractor-clip-selection"><input type="checkbox" checked={selectedClipIds.includes(clip.id)} disabled={clip.status === 'extracting' || Boolean(clipBusy)} onChange={(event) => setSelectedClipIds((current) => event.target.checked ? [...new Set([...current, clip.id])] : current.filter((id) => id !== clip.id))} aria-label={`Selecionar ${clip.title}`} /><strong title={clip.title}>{clip.title}</strong></label><small>{formatTime(clip.start_seconds)} → {formatTime(clip.end_seconds)} · {formatTime(clip.duration, true)}</small>{clip.error && <em>{clip.error}</em>}</div>

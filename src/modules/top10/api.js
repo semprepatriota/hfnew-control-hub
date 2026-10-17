@@ -21,6 +21,10 @@ export const listProjects = () => request("/projects");
 export const loadProject = (id) => request(`/projects/${id}`);
 export const createProject = (title) =>
   request("/projects", json("POST", { title }));
+export const importForgeMax = (videoId, clipIds, title) => request("/imports/forge-max", {
+  ...json("POST", { video_id: videoId, clip_ids: clipIds, title }),
+  timeoutMs: 120000,
+});
 export const saveProject = (id, body) =>
   request(`/projects/${id}`, json("PUT", body));
 export const deleteProject = (id) =>

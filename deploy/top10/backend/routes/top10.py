@@ -1,4 +1,4 @@
-"""Dedicated TOP 10 API. Existing Forge renderers are not imported."""
+"""Dedicated TOP 10 API. Existing Forge renderers are not modified."""
 
 from pathlib import Path
 import shutil
@@ -23,6 +23,18 @@ class SaveProject(CreateProject):
 
 class ExportRequest(BaseModel):
     revision: int = Field(ge=1)
+
+
+class ForgeMaxImport(BaseModel):
+    video_id: str = Field(pattern=r'^extractor_[a-f0-9]{16}$')
+    clip_ids: list[str] = Field(min_length=1, max_length=10)
+    title: str = Field(default='TOP 10 - Forge Max', min_length=1, max_length=120)
+
+
+@router.post('/imports/forge-max')
+def import_forge_max(body: ForgeMaxImport):
+    from services.top10_forge_max_bridge import import_clips
+    return import_clips(body.video_id, body.clip_ids, body.title)
 
 
 @router.get("/health")

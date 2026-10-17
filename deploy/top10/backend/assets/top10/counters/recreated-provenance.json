@@ -1,0 +1,12 @@
+{
+  "ranks": [
+    2,
+    1
+  ],
+  "renderer": "tools/top10-counters/premium.html",
+  "audio_source": "pink3d/03.mp4",
+  "audio_source_sha256": "424ea6b0545ab4b56e1b574f57d5beb540579f9b7b19c3634ff539813a5c8e2c",
+  "audio_packets": "identical copies of original AAC packets",
+  "frames": 30,
+  "visual_review": "pending user approval"
+}

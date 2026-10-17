@@ -93,6 +93,14 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       color: 'neon-blue'
     },
     {
+      id: 6,
+      module: 'forge_max',
+      label: 'Forge Max 3.0',
+      path: '/forge-max',
+      icon: LayoutPanelLeft,
+      color: 'neon-green'
+    },
+    {
       id: 'top10',
       module: 'top10',
       label: 'TOP 10',
@@ -115,14 +123,6 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
       path: '/the-forge',
       icon: Clapperboard,
       color: 'neon-gold'
-    },
-    {
-      id: 6,
-      module: 'forge_max',
-      label: 'Forge Max 3.0',
-      path: '/forge-max',
-      icon: LayoutPanelLeft,
-      color: 'neon-green'
     },
     {
       id: 'research-studio',

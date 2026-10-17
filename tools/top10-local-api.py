@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from routes.top10 import router
+from routes.forge_max import router as extractor_router
 from utils.user_context import reset_current_user, set_current_user
 
 settings.STORAGE_DIR = str(Path(os.environ["TOP10_PREVIEW_STORAGE"]).resolve())
@@ -18,13 +19,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5184", "http
 
 @app.middleware("http")
 async def preview_context(request, call_next):
-    token = set_current_user({"role": "guest", "workspace_type": "personal", "storage_scope": "top10_local_preview", "workspace_id": "ws_top10_preview"})
+    token = set_current_user({"role": "guest", "platform_role": "workspace_admin", "access": {"modules": {"forge_max": True, "top10": True}}, "workspace_type": "personal", "storage_scope": "top10_local_preview", "workspace_id": "ws_top10_preview"})
     try:
         return await call_next(request)
     finally:
         reset_current_user(token)
 
 app.include_router(router)
+app.include_router(extractor_router)
 
 if __name__ == "__main__":
     import uvicorn

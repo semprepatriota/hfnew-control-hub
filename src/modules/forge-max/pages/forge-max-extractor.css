@@ -1,4 +1,5 @@
 .forge-max-extractor-page {
+  box-sizing: border-box;
   --fmx-bg: #080a0d;
   --fmx-panel: #11151a;
   --fmx-panel-2: #171c22;
@@ -396,6 +397,23 @@ button.forge-max-extractor-panel-heading {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.forge-max-extractor-player-shell.is-portrait {
+  width: min(100%, 340px);
+  aspect-ratio: var(--fmx-source-ratio, 9 / 16);
+  max-height: none;
+  margin-inline: auto;
+}
+
+.forge-max-extractor-clip-preview.is-portrait {
+  aspect-ratio: var(--fmx-source-ratio, 9 / 16);
+}
+
+.forge-max-extractor-clips-toolbar button.forge-max-extractor-send-top10 {
+  background: #16824c;
+  border-color: #2dad6c;
+  color: #ffffff;
 }
 
 .forge-max-extractor-processing {
