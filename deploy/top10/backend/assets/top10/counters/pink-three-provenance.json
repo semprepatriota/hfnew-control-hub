@@ -1,0 +1,7 @@
+{
+  "source_file": "3.mp4",
+  "source_sha256": "22bbdae4b1844ca4be9cef3cbdfce5eba6f169fa335d1d0bd2acdb35502673a4",
+  "frames": 29,
+  "output_sha256": "424ea6b0545ab4b56e1b574f57d5beb540579f9b7b19c3634ff539813a5c8e2c",
+  "timing_note": "Last frame held for one extra frame to preserve the existing timeline."
+}
