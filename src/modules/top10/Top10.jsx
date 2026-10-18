@@ -1183,32 +1183,6 @@ export default function Top10() {
                     />{" "}
                     Usar logo
                   </label>
-                  <Slider
-                    label="Tamanho da logo"
-                    value={config.logo_size}
-                    min={0.04}
-                    max={0.4}
-                    onChange={(value) => update("logo_size", value)}
-                    disabled={busy}
-                  />
-                  <Slider
-                    label="Posição X"
-                    value={config.logo_x}
-                    onChange={(value) => update("logo_x", value)}
-                    disabled={busy}
-                  />
-                  <Slider
-                    label="Posição Y"
-                    value={config.logo_y}
-                    onChange={(value) => update("logo_y", value)}
-                    disabled={busy}
-                  />
-                  <Slider
-                    label="Opacidade"
-                    value={config.logo_opacity}
-                    onChange={(value) => update("logo_opacity", value)}
-                    disabled={busy}
-                  />
                 </>
               )}
             </Panel>

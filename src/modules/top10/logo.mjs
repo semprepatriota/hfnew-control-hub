@@ -1,8 +1,12 @@
 export const isAnimatedLogo = (logo) => logo?.animated === true;
+export const FIXED_LOGO_LAYOUT = Object.freeze({
+  logo_x: .12, logo_y: .9, logo_size: .14, logo_opacity: 1,
+  logo_round: true, logo_layout_version: 2,
+});
 
 export function normalizeLogoLayout(config) {
-  return (config.logo_layout_version || 0) < 1
-    ? { ...config, logo_x: .12, logo_y: .9, logo_round: true, logo_layout_version: 1 }
+  return Object.entries(FIXED_LOGO_LAYOUT).some(([key, value]) => config[key] !== value)
+    ? { ...config, ...FIXED_LOGO_LAYOUT }
     : config;
 }
 
