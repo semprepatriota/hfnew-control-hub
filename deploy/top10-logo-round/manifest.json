@@ -1,0 +1,10 @@
+{
+  "services/top10_service.py": {
+    "before": "415ad635da989f0a9f2301055b002158fa6d9b7577dca25d2a93be20b8a5916a",
+    "after": "b3c36fd4abc0c7f83701e2c755cb2ccc560fa644df4a469b67646a59fd869878"
+  },
+  "services/top10_logo_service.py": {
+    "before": "fb829b0e9cc0fcef5461e12e8353a95cc1925ec438405aac3c275cc1d2eb9f6b",
+    "after": "2430bf7002fdea437aa82c9d260156d5eb0741b541968c21ea19cd86f639786e"
+  }
+}

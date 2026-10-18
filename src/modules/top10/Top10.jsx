@@ -39,6 +39,7 @@ import SceneHeadlineEditor from './SceneHeadlineEditor';
 import { emptyHeadline, fixedHeadline, headlineImage, headlineStyle, needsHeadlineRefresh } from './headline.mjs';
 import "./top10.css";
 import officialLogoUrl from './assets/falcao-zoeira.mp4';
+import { normalizeLogoLayout } from './logo.mjs';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const running = (job) =>
@@ -153,6 +154,7 @@ export default function Top10() {
     } catch {
       /* A corrupted local draft must not prevent opening the saved project. */
     }
+    next.config = normalizeLogoLayout(next.config);
     draftRef.current = next;
     const refreshHeadline = !running(data.job_state) && needsHeadlineRefresh(data, next.config);
     dirty.current = restored || refreshHeadline;
