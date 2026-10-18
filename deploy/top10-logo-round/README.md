@@ -24,4 +24,9 @@ backs up both files, guards active media processing, waits for healthy API start
 checks authentication and protected Forge hashes, and rolls back on failure.
 Publish the frontend only after TOP10_LOGO_ROUND=OK is confirmed.
 
+If the separate SCP transfer closes unexpectedly, use deploy-single-connection.ps1.
+It validates the archive SHA256 and command length locally, sends the small package
+inside the same SSH command and runs the identical protected installer. Only one
+SSH password prompt is needed. -ValidateOnly performs no remote action.
+
 Previously rendered MP4 files are not modified; export again for the new logo layout.
