@@ -1,0 +1,8 @@
+{
+  "name": "hfnew-ranking-renderer",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@remotion/renderer": "4.0.530"
+  }
+}

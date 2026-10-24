@@ -111,7 +111,7 @@ function Sidebar({ isOpen, setIsOpen, onLogout, currentUser, moduleAccess }) {
     {
       id: 4,
       module: 'forge_7030',
-      label: 'The Forge 70/30',
+      label: 'Ranking Multimídia',
       path: '/forge',
       icon: Hammer,
       color: 'neon-red'
