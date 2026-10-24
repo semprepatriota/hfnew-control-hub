@@ -1,5 +1,5 @@
 export const emptyHeadline = () => ({ enabled: false, text: '', original_text: '', translation: '', hook_cta: '', x: 0, y: .08, width: 1, height: .13, font_size: 64, color: '#000000', background: '#ffffff', opacity: 1, cover_original: true });
-export const HEADLINE_LAYOUT_VERSION = 2;
+export const HEADLINE_LAYOUT_VERSION = 3;
 export const needsHeadlineRefresh = (project, config) => config.scenes.some((scene, slot) =>
   project.assets[scene.asset_id] && scene.headline?.enabled && scene.headline.text?.trim()
   && project.scene_headlines?.[String(slot)]?.layout_version !== HEADLINE_LAYOUT_VERSION);
@@ -16,6 +16,6 @@ export function headlineImage(project, slot, scene) {
 }
 export function headlineStyle(headline, native = false) {
   const h = { ...emptyHeadline(), ...headline };
-  const x = Math.min(h.x, 1-h.width), y = Math.min(h.y, 1-h.height);
+  const x = Math.min(h.x, 1-h.width), y = Math.max(0, Math.min(h.y, 1-h.height) - .015);
   return { position: 'absolute', pointerEvents: 'none', left: native ? Math.round(x*1080) : `${x*100}%`, top: native ? Math.round(y*1920) : `${y*100}%`, width: native ? Math.round(h.width*1080) : `${h.width*100}%`, height: native ? Math.round(h.height*1920) : `${h.height*100}%` };
 }

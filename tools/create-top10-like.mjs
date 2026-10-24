@@ -1,0 +1,11 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ThumbsUp } from 'lucide-react';
+import { mkdir, writeFile } from 'node:fs/promises';
+const directory = 'E:/HFNEW-TOP10-TOOLS/headline-cta';
+await mkdir(directory, { recursive: true });
+const icon = renderToStaticMarkup(React.createElement(ThumbsUp, { width: 55, height: 55, color: '#fff', strokeWidth: 2.8 }));
+const html = `<!doctype html><style>html,body{margin:0;background:transparent}#asset{width:104px;height:116px;position:relative}#circle{width:84px;height:84px;position:absolute;top:12px;left:10px;display:grid;place-items:center;border-radius:50%;background:#237df0;box-shadow:2px 5px 0 #0005;border:3px solid white;box-sizing:border-box}</style><div id="asset"><div id="circle">${icon}</div></div>`;
+await writeFile(`${directory}/like.html`, html);
+await writeFile(`${directory}/capture-like.cjs`, `async page => { await page.setContent(${JSON.stringify(html)}); await page.locator('#asset').screenshot({path: '${directory}/subscribe-short-like.png', omitBackground: true}); }`);
+console.log('LIKE_ART=READY');

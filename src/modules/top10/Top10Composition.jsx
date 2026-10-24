@@ -11,6 +11,7 @@ import { counterUrl, mediaUrl } from "./api";
 import { buildTimeline } from "./timeline.mjs";
 import { headlineImage, headlineStyle } from './headline.mjs';
 import { isAnimatedLogo, logoStyle } from './logo.mjs';
+import Top10Cta from './Top10Cta';
 
 function Fill({ style, children }) {
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", ...style }}>{children}</div>;
@@ -97,6 +98,7 @@ export default function Top10Composition({ project, config }) {
           }
         />
       )}
+      {config.cta_enabled !== false && <Top10Cta frame={frame} duration={duration} fps={fps} />}
     </Fill>
   );
 }

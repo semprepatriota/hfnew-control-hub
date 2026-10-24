@@ -22,7 +22,7 @@ test('preview uses the saved render PNG only when all painting settings match', 
   assert.equal(headlineImage(project,2,{headline:{...headline,enabled:false}}),null);
   assert.equal(headlineImage(project,2,{headline:{...headline,text:'Outro'}}),null);
   assert.ok(parseFloat(headlineStyle(headline).left)<21);
-  assert.equal(headlineStyle(headline).top,'80%');
+  assert.equal(headlineStyle(headline).top,'78.5%');
 });
 test('generation is an explicit per-scene POST and cannot run from load or render', () => {
   const page=readFileSync(new URL('../src/modules/top10/Top10.jsx',import.meta.url),'utf8');
@@ -59,7 +59,7 @@ test('compact headline image upgrade is needed once, without changing text or re
   const project = { assets: { video: {} }, scene_headlines: { '0': { layout_version: 1 } } };
   const original = structuredClone(config);
   assert.equal(needsHeadlineRefresh(project, config), true);
-  project.scene_headlines['0'].layout_version = 2;
+  project.scene_headlines['0'].layout_version = 3;
   assert.equal(needsHeadlineRefresh(project, config), false);
   assert.deepEqual(config, original);
   delete project.scene_headlines['0'];
