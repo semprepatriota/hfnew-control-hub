@@ -78,19 +78,19 @@ class Top10Config(BaseModel):
     title_y: float = Field(default=0.08, ge=0, le=0.85)
     logo_enabled: bool = False
     logo_x: float = Field(default=0.12, ge=0, le=1)
-    logo_y: float = Field(default=0.84, ge=0, le=1)
+    logo_y: float = Field(default=0.78, ge=0, le=1)
     logo_size: float = Field(default=0.14, ge=0.04, le=0.4)
     logo_opacity: float = Field(default=1, ge=0, le=1)
     logo_round: bool = True
-    logo_layout_version: int = Field(default=4, ge=0, le=4)
+    logo_layout_version: int = Field(default=5, ge=0, le=5)
     cta_enabled: bool = True
 
     @model_validator(mode="before")
     @classmethod
     def lock_logo_layout(cls, values):
         if isinstance(values, dict):
-            return {**values, 'logo_x': .12, 'logo_y': .84, 'logo_size': .14,
-                    'logo_opacity': 1, 'logo_round': True, 'logo_layout_version': 4}
+            return {**values, 'logo_x': .12, 'logo_y': .78, 'logo_size': .14,
+                    'logo_opacity': 1, 'logo_round': True, 'logo_layout_version': 5}
         return values
 
     @model_validator(mode="after")

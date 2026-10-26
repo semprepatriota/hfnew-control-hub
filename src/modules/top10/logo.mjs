@@ -1,7 +1,7 @@
 export const isAnimatedLogo = (logo) => logo?.animated === true;
 export const FIXED_LOGO_LAYOUT = Object.freeze({
-  logo_x: .12, logo_y: .84, logo_size: .14, logo_opacity: 1,
-  logo_round: true, logo_layout_version: 4,
+  logo_x: .12, logo_y: .78, logo_size: .14, logo_opacity: 1,
+  logo_round: true, logo_layout_version: 5,
 });
 
 export function normalizeLogoLayout(config) {

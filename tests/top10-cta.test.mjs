@@ -24,7 +24,11 @@ test('CTA is silent, fades at both ends and does not overlap the fixed logo', ()
   assert.equal(ctaStyle(timing.end-1, 900).opacity, 0);
   const middle = ctaStyle(timing.start+15, 900);
   assert.equal(middle.opacity, 1);
-  assert.ok(middle.like.top+middle.like.height < logoStyle({width: 720, height: 720}, {}).top);
+  const logo = logoStyle({width: 720, height: 720}, {});
+  for (const box of [middle.button, middle.like]) {
+    assert.ok(box.left >= logo.left + logo.width || box.left + box.width <= logo.left
+      || box.top >= logo.top + logo.height || box.top + box.height <= logo.top);
+  }
   const composition = readFileSync(new URL('../src/modules/top10/Top10Composition.jsx', import.meta.url), 'utf8');
   assert.match(composition, /config.cta_enabled !== false && <Top10Cta/);
   assert.doesNotMatch(readFileSync(new URL('../src/modules/top10/Top10Cta.jsx', import.meta.url),'utf8'), /<Audio|<Video/);
