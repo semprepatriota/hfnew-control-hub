@@ -215,7 +215,7 @@ export default function Top10() {
   };
   const update = (key, value) => {
     change((next) => ({ ...next, config: { ...next.config, [key]: value } }));
-    if (key === "model") {
+    if (key === "model" || key === "counters_enabled") {
       const destination = buildTimeline(current.current, draftRef.current.config).find(item => item.kind === 'scene' && item.slot === selected)?.from || 0;
       player.current?.pause();
       player.current?.seekTo(destination);
@@ -646,8 +646,14 @@ export default function Top10() {
               )}
             </div>
             <aside className="t10-inspector">
-              <Panel title="Modelo de contador">
-                <div className="t10-models">
+              <Panel title="Formato do vídeo">
+                <div className="t10-format" role="group" aria-label="Formato do vídeo">
+                  <button type="button" aria-pressed={config.counters_enabled !== false} disabled={busy}
+                    onClick={() => update('counters_enabled', true)}>Com contadores</button>
+                  <button type="button" aria-pressed={config.counters_enabled === false} disabled={busy}
+                    onClick={() => update('counters_enabled', false)}>Sem contadores</button>
+                </div>
+                {config.counters_enabled !== false && <div className="t10-models">
                   {MODELS.map((model) => (
                     <button
                       key={model.id}
@@ -677,7 +683,7 @@ export default function Top10() {
                       </span>
                     </button>
                   ))}
-                </div>
+                </div>}
               </Panel>
               <Panel title={`Ajustar cena ${10 - selected}`}>
                 <div className="t10-scene-tabs">
@@ -860,7 +866,7 @@ export default function Top10() {
           </div>
           <Panel title={`Timeline · ${items.length} blocos`}>
             <div className="t10-timeline">
-              {items.filter((item) => item.kind === "counter").map(({ slot }) => (
+              {items.filter((item) => item.kind === "scene").map(({ slot }) => (
                 <div className="t10-timeline-pair" key={slot}>
                   {items.filter((item) => item.slot === slot).map((item) => (
                     <button
@@ -1081,13 +1087,13 @@ export default function Top10() {
                 onChange={(value) => update("music_volume", value)}
                 disabled={busy}
               />
-              <Slider
+              {config.counters_enabled !== false && <Slider
                 label="Efeitos dos contadores"
                 value={config.counter_volume}
                 max={1}
                 onChange={(value) => update("counter_volume", value)}
                 disabled={busy}
-              />
+              />}
             </Panel>
             <Panel title="Título e logo" initial={false}>
               <label className="t10-checkbox"><input type="checkbox" checked={config.cta_enabled !== false} disabled={busy}

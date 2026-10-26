@@ -2,6 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildTimeline, emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
+
+test('no-counter format joins ten trimmed scenes with no gaps and keeps the saved model', () => {
+  const project = { assets: { a: { duration: 5 } } };
+  const config = { model: 'film', counters_enabled: false, scenes: Array.from({ length: 10 }, () => ({ ...emptyScene(), asset_id: 'a', start: 1, end: 2.5 })) };
+  const before = structuredClone(config);
+  const items = buildTimeline(project, config);
+  assert.equal(items.length, 10);
+  assert.ok(items.every(item => item.kind === 'scene' && item.frames === 45));
+  assert.deepEqual(items.map(item => item.from), Array.from({ length: 10 }, (_, i) => i * 45));
+  assert.equal(items.at(-1).from + items.at(-1).frames, 450);
+  assert.deepEqual(config, before);
+  assert.equal(buildTimeline(project, { ...config, counters_enabled: true }).length, 20);
+});
+
+test('no-counter format skips empty slots and respects the scene reorder', () => {
+  const project = { assets: { a: { duration: 2 }, b: { duration: 3 } } };
+  const config = { model: 'pink3d', counters_enabled: false, scenes: Array.from({ length: 10 }, emptyScene) };
+  config.scenes[2] = { ...emptyScene(), asset_id: 'a', end: 2 };
+  config.scenes[8] = { ...emptyScene(), asset_id: 'b', start: 1, end: 3 };
+  let items = buildTimeline(project, config);
+  assert.deepEqual(items.map(item => [item.slot, item.from, item.frames]), [[2,0,60], [8,60,60]]);
+  items = buildTimeline(project, swapScenes(config, 2, 8));
+  assert.deepEqual(items.map(item => item.scene.asset_id), ['b', 'a']);
+  assert.deepEqual(buildTimeline(project, { ...config, scenes: Array.from({ length: 10 }, emptyScene) }), []);
+});
 test('partial projects omit empty slots and their counters without renumbering', () => {
   const project = { assets: { a: { duration: 1 } } };
   const config = { model: 'pink3d', scenes: Array.from({ length: 10 }, (_, slot) => ({ ...emptyScene(), asset_id: slot < 8 ? 'a' : '', end: 1 })) };
