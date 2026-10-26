@@ -52,7 +52,7 @@ class Top10CtaTests(unittest.TestCase):
         self.assertTrue(config.cta_enabled)
         self.assertFalse(config.logo_enabled)
         self.assertEqual(config.logo_x,.12)
-        self.assertEqual(config.logo_y,.9)
+        self.assertEqual(config.logo_y,.66)
         self.assertEqual(config.logo_size,.14)
         self.assertFalse(studio.Top10Config(cta_enabled=False).cta_enabled)
 
@@ -105,10 +105,10 @@ class Top10CtaTests(unittest.TestCase):
         measurements={}
         for number in (60,85,100,130,180):
             rendered,control=frame(on,number),frame(off,number)
-            difference=float(np.abs(rendered[1360:1460,315:766]-control[1360:1460,315:766]).mean())
+            difference=float(np.abs(rendered[1328:1428,315:766]-control[1328:1428,315:766]).mean())
             measurements[str(number)]=difference
             self.assertGreater(difference,5) if number in (85,100,130) else self.assertLess(difference,2)
-            self.assertLess(float(np.abs(rendered[1653:1804,54:205]-control[1653:1804,54:205]).mean()),2)
+            self.assertLess(float(np.abs(rendered[1192:1343,54:205]-control[1192:1343,54:205]).mean()),2)
             if number==130:
                 Image.fromarray(rendered.astype(np.uint8)).save(root/'render-with-cta.png')
         def audio(file):

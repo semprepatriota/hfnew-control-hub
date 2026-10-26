@@ -43,6 +43,6 @@ def cta_overlay(input_index, label, segment_start, segment_frames, total_frames,
                 f'settb=1/{fps},setpts=PTS+({start_frame})[{name}]')
     # Even pixel coordinates prevent 4:2:0 chroma alignment from shifting small text.
     filters = [source(input_index, 360, 90, 'top10Subscribe'), source(input_index+1, 76, 86, 'top10Like'),
-               f"[{label}][top10Subscribe]overlay=x=314:y='1362+floor(max(0,({rise_until:.9f}-t)*48)/2)*2':enable='{enable}':eof_action=pass:repeatlast=0:format=auto[withSubscribe]",
-               f"[withSubscribe][top10Like]overlay=x=690:y=1366:enable='{enable}':eof_action=pass:repeatlast=0:format=auto[withCta]"]
+               f"[{label}][top10Subscribe]overlay=x=314:y='1330+floor(max(0,({rise_until:.9f}-t)*48)/2)*2':enable='{enable}':eof_action=pass:repeatlast=0:format=auto[withSubscribe]",
+               f"[withSubscribe][top10Like]overlay=x=690:y=1334:enable='{enable}':eof_action=pass:repeatlast=0:format=auto[withCta]"]
     return inputs, filters, 'withCta'
