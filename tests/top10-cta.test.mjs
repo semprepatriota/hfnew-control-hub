@@ -25,6 +25,7 @@ test('CTA is silent, fades at both ends and does not overlap the fixed logo', ()
   const middle = ctaStyle(timing.start+15, 900);
   assert.equal(middle.opacity, 1);
   const logo = logoStyle({width: 720, height: 720}, {});
+  assert.equal(middle.button.top - (logo.top + logo.height), 19);
   for (const box of [middle.button, middle.like]) {
     assert.ok(box.left >= logo.left + logo.width || box.left + box.width <= logo.left
       || box.top >= logo.top + logo.height || box.top + box.height <= logo.top);

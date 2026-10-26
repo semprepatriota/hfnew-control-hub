@@ -13,7 +13,7 @@ test('logo cannot change size, position, opacity or round shape through an old d
   assert.equal(style.width, 151);
   assert.equal(style.height, 151);
   assert.equal(style.left, 54);
-  assert.equal(style.top, 1422);
+  assert.equal(style.top, 1192);
   assert.equal(style.opacity, 1);
   assert.equal(style.borderRadius, '50%');
 });
@@ -22,15 +22,15 @@ test('old and current projects keep the approved layout and preserve enable/disa
   const next = normalizeLogoLayout(old);
   assert.equal(old.logo_x, .86);
   assert.equal(next.logo_x, .12);
-  assert.equal(next.logo_y, .78);
+  assert.equal(next.logo_y, .66);
   const style = logoStyle({ width: 720, height: 720 }, next);
   assert.equal(style.borderRadius, '50%');
   assert.equal(style.left, 54);
-  assert.equal(style.top, 1422);
+  assert.equal(style.top, 1192);
   assert.equal(style.width, style.height);
   const edited = { ...next, logo_x: .3, logo_y: .8, logo_enabled: false };
   assert.equal(normalizeLogoLayout(edited).logo_x, .12);
-  assert.equal(normalizeLogoLayout(edited).logo_y, .78);
+  assert.equal(normalizeLogoLayout(edited).logo_y, .66);
   assert.equal(normalizeLogoLayout(edited).logo_enabled, false);
   assert.equal(normalizeLogoLayout(next), next);
 });
