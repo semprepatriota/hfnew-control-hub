@@ -31,6 +31,10 @@ export const saveProject = (id, body) =>
 export const generateSceneHeadline = (id, slot, body) => request(`/projects/${id}/scenes/${slot}/generate-headline`, {
   ...json('POST', body), timeoutMs: 150000, retries: 0,
 });
+export const generateSceneAnime = (id, slot, body) => request(`/projects/${id}/scenes/${slot}/anime`, {
+  ...json('POST', body), timeoutMs: 240000, retries: 0,
+});
+export const approveSceneAnime = (id, slot, body) => request(`/projects/${id}/scenes/${slot}/anime`, json('PUT', body));
 export const deleteProject = (id) =>
   request(`/projects/${id}`, { method: "DELETE" });
 export const deleteAsset = (id, asset) =>

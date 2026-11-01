@@ -39,6 +39,8 @@ export default function Top10Composition({ project, config }) {
               volume={config.counter_volume}
               style={{ width: "100%", height: "100%" }}
             />
+          ) : item.kind === 'anime' ? (
+            <Img src={mediaUrl(item.anime.url)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
           ) : item.asset ? (
             <>
               <Fill style={{ overflow: "hidden" }}>

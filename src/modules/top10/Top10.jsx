@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import * as api from "./api";
 import {
+  activeSlots,
+  animeMatches,
   buildTimeline,
   FPS,
   MODELS,
@@ -121,6 +123,7 @@ export default function Top10() {
   const mounted = useRef(true);
   const busy = Boolean(action) || running(job);
   const config = draft?.config;
+  const slots = activeSlots(config);
   const items = useMemo(
     () => (project && config ? buildTimeline(project, config) : []),
     [project, config],
@@ -128,11 +131,10 @@ export default function Top10() {
   const durationFrames = items.length
     ? items.at(-1).from + items.at(-1).frames
     : 30;
-  const filled =
-    config?.scenes.filter((scene) => project?.assets[scene.asset_id]).length ||
-    0;
+  const filled = config ? slots.filter((slot) => project?.assets[config.scenes[slot].asset_id]).length : 0;
   const scene = config?.scenes[selected];
   const asset = project?.assets[scene?.asset_id];
+  const anime = project?.anime?.[scene?.asset_id];
 
   const refresh = useCallback(async () => {
     const data = await api.listProjects();
@@ -215,7 +217,7 @@ export default function Top10() {
   };
   const update = (key, value) => {
     change((next) => ({ ...next, config: { ...next.config, [key]: value } }));
-    if (key === "model" || key === "counters_enabled") {
+    if (key === "model" || key === "counters_enabled" || key === 'format') {
       const destination = buildTimeline(current.current, draftRef.current.config).find(item => item.kind === 'scene' && item.slot === selected)?.from || 0;
       player.current?.pause();
       player.current?.seekTo(destination);
@@ -337,6 +339,9 @@ export default function Top10() {
     if (video && scene && video.readyState >= 1)
       video.currentTime = scene.start;
   }, [selected, scene?.asset_id]);
+  useEffect(() => {
+    if (config?.format === 'anime_5' && selected < 5) setSelected(5);
+  }, [config?.format, selected]);
 
   const perform = async (name, task) => {
     setAction(name);
@@ -388,9 +393,8 @@ export default function Top10() {
       await saveCurrent();
       const slots =
         slot == null
-          ? current.current.config.scenes
-              .map((item, index) => (!item.asset_id ? index : null))
-              .filter((item) => item != null)
+          ? activeSlots(current.current.config)
+              .filter((index) => !current.current.config.scenes[index].asset_id)
           : [slot];
       if (kind === "video" && incoming.length > slots.length)
         throw new Error(
@@ -446,6 +450,29 @@ export default function Top10() {
       const result = await api.startExport(saved.id, saved.revision);
       setJob(result);
     });
+  const generateAnime = () => {
+    if (!asset || busy || config.format !== 'anime_5') return;
+    if (!window.confirm('Gerar uma imagem anime desta cena? Esta acao usa creditos da API OpenAI.')) return;
+    perform(`Gerando anime da cena ${10-selected}`, async () => {
+      const saved = await saveCurrent();
+      const chosen = saved.config.scenes[selected];
+      const second = Math.max(chosen.start, Math.min((chosen.end || asset.duration) - 1/FPS,
+        trimPlayer.current?.currentTime ?? (chosen.start + (chosen.end || asset.duration))/2));
+      const result = await api.generateSceneAnime(saved.id, selected, {
+        revision: saved.revision, asset_id: chosen.asset_id, second,
+        request_id: crypto.randomUUID().replaceAll('-', ''),
+      });
+      apply(result);
+      setNotice(`Cena ${10-selected}: confira a imagem e aprove para incluir no MP4.`);
+    });
+  };
+  const setAnimeApproved = (approved) => perform(approved ? 'Aprovando anime' : 'Retirando anime', async () => {
+    const saved = await saveCurrent();
+    const result = await api.approveSceneAnime(saved.id, selected, {
+      revision: saved.revision, asset_id: saved.config.scenes[selected].asset_id, approved,
+    });
+    apply(result);
+  });
   const setCut = (key, value) => {
     if (!asset) return;
     const safe = Math.max(0, Math.min(asset.duration, Math.round((Number(value) || 0) * FPS) / FPS));
@@ -647,6 +674,12 @@ export default function Top10() {
             </div>
             <aside className="t10-inspector">
               <Panel title="Formato do vídeo">
+                <div className="t10-format" role="group" aria-label="Sequencia de cenas">
+                  <button type="button" aria-pressed={config.format !== 'anime_5'} disabled={busy}
+                    onClick={() => update('format', 'classic')}>10 a 1</button>
+                  <button type="button" aria-pressed={config.format === 'anime_5'} disabled={busy}
+                    onClick={() => { update('format', 'anime_5'); setSelected(5); }}>5 a 1 com anime</button>
+                </div>
                 <div className="t10-format" role="group" aria-label="Formato do vídeo">
                   <button type="button" aria-pressed={config.counters_enabled !== false} disabled={busy}
                     onClick={() => update('counters_enabled', true)}>Com contadores</button>
@@ -687,7 +720,7 @@ export default function Top10() {
               </Panel>
               <Panel title={`Ajustar cena ${10 - selected}`}>
                 <div className="t10-scene-tabs">
-                  {Array.from({ length: 10 }, (_, i) => (
+                  {slots.map((i) => (
                     <button
                       key={i}
                       onClick={() => selectScene(i)}
@@ -797,6 +830,21 @@ export default function Top10() {
                         <RefreshCw size={14} />
                       </button>
                     </div>
+                    {config.format === 'anime_5' && <div className="t10-anime-editor">
+                      <button type="button" className="t10-button primary" disabled={busy} onClick={generateAnime}>
+                        <ImagePlus size={15} /> {anime ? 'Gerar outra imagem anime' : 'Gerar anime deste quadro'}
+                      </button>
+                      {anime && <>
+                        <img src={api.mediaUrl(anime.url)} alt={`Anime da cena ${10-selected}`} />
+                        {!animeMatches(scene, anime) && <span role="status">O corte mudou. Gere outra imagem para usar no vídeo.</span>}
+                        <div className="t10-cut-buttons">
+                          <button type="button" className="t10-button" disabled={busy || anime.approved || !animeMatches(scene, anime)}
+                            onClick={() => setAnimeApproved(true)}><Check size={15} /> Aprovar</button>
+                          <button type="button" className="t10-button" disabled={busy || !anime.approved}
+                            onClick={() => setAnimeApproved(false)}><X size={15} /> Retirar do vídeo</button>
+                        </div>
+                      </>}
+                    </div>}
                     <Slider
                       label="Início"
                       min={0}
@@ -873,10 +921,12 @@ export default function Top10() {
                       key={item.kind}
                       className={`${item.kind} ${frame >= item.from && frame < item.from + item.frames ? "active" : ""}`}
                       onClick={() => seek(item)}
-                      title={`${item.kind === "counter" ? "Contador" : "Cena"} ${item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
+                      title={`${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"} ${item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
                     >
                       {item.kind === "counter" ? (
                         <strong>{item.rank}</strong>
+                      ) : item.kind === 'anime' ? (
+                        <img src={api.mediaUrl(item.anime.url)} alt={`Anime ${item.rank}`} loading="lazy" />
                       ) : item.asset?.thumbnail_url ? (
                         <img
                           src={api.mediaUrl(item.asset.thumbnail_url)}
@@ -887,7 +937,7 @@ export default function Top10() {
                         <Film size={20} />
                       )}
                       <span>
-                        {item.kind === "counter" ? "Contador" : "Cena"}{" "}
+                        {item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"}{" "}
                         {item.rank}
                       </span>
                       <small>{(item.frames / FPS).toFixed(2)}s</small>
@@ -898,11 +948,11 @@ export default function Top10() {
             </div>
           </Panel>
           <Panel
-            title={`Cenas · ${filled}/10`}
+            title={`Cenas · ${filled}/${slots.length}`}
             trailing={
               <button
                 className="t10-button primary"
-                disabled={busy || filled === 10}
+                disabled={busy || filled === slots.length}
                 onClick={() => {
                   replacementSlot.current = null;
                   uploadInput.current.multiple = true;
@@ -925,7 +975,8 @@ export default function Top10() {
               }}
             />
             <div className="t10-scene-grid">
-              {config.scenes.map((entry, slot) => {
+              {slots.map((slot) => {
+                const entry = config.scenes[slot];
                 const media = project.assets[entry.asset_id];
                 return (
                   <article
@@ -1009,7 +1060,7 @@ export default function Top10() {
                     </div>
                     <div className="t10-reorder">
                       <button
-                        disabled={busy || slot === 0}
+                        disabled={busy || slot === slots[0]}
                         onClick={() =>
                           change((next) => ({
                             ...next,
