@@ -8,7 +8,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { counterUrl, mediaUrl } from "./api";
-import { buildTimeline } from "./timeline.mjs";
+import { buildTimeline, headlineFrames } from "./timeline.mjs";
 import { headlineImage, headlineStyle } from './headline.mjs';
 import { isAnimatedLogo, logoStyle } from './logo.mjs';
 import Top10Cta from './Top10Cta';
@@ -59,7 +59,13 @@ export default function Top10Composition({ project, config }) {
                   }}
                 />
               </Fill>
-              {headlineImage(project, item.slot, item.scene) && <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />}
+              {headlineImage(project, item.slot, item.scene) && (
+                headlineFrames(config, items, item, fps) < item.frames ? (
+                  <Sequence from={0} durationInFrames={headlineFrames(config, items, item, fps)}>
+                    <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />
+                  </Sequence>
+                ) : <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />
+              )}
               {!(item.scene.headline?.enabled && item.scene.headline.text?.trim()) && config.title_enabled && project.title_image_url && (
                 <Img
                   src={mediaUrl(project.title_image_url)}

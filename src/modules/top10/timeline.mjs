@@ -4,6 +4,11 @@ export const FPS = 30;
 export const activeSlots = (config) => config?.format === 'anime_5' ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 export const MODELS = Object.entries(catalog.models).map(([id, model]) => ({ id, ...model }));
 export const emptyScene = () => ({ asset_id: '', start: 0, end: 0, x: 0.5, y: 0.5, zoom: 1, volume: 1, headline: emptyHeadline() });
+export const headlineFrames = (config, items, item, fps = FPS) =>
+  config.counters_enabled === false && item.kind === 'scene' &&
+  item.slot === items.find((part) => part.kind === 'scene')?.slot
+    ? Math.min(item.frames, Math.round(0.4 * fps))
+    : item.frames;
 export const animeMatches = (scene, anime) => anime?.framing &&
   ['start', 'end', 'x', 'y', 'zoom'].every(key => anime.framing[key] === scene[key]);
 export function buildTimeline(project, config) {
