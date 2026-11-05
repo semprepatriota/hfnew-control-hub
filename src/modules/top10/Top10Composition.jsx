@@ -8,7 +8,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { counterUrl, mediaUrl } from "./api";
-import { buildTimeline, headlineFrames } from "./timeline.mjs";
+import { buildTimeline, headlineFrames, INTRO_HEADLINE_DROP_PX, isIntroHeadline } from "./timeline.mjs";
 import { headlineImage, headlineStyle } from './headline.mjs';
 import { isAnimatedLogo, logoStyle } from './logo.mjs';
 import Top10Cta from './Top10Cta';
@@ -64,9 +64,9 @@ export default function Top10Composition({ project, config }) {
               {headlineImage(project, item.slot, item.scene) && (
                 headlineFrames(config, items, item, fps) < item.frames ? (
                   <Sequence from={0} durationInFrames={headlineFrames(config, items, item, fps)}>
-                    <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />
+                    <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true, isIntroHeadline(config, items, item) ? INTRO_HEADLINE_DROP_PX : 0)} />
                   </Sequence>
-                ) : <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true)} />
+                ) : <Img src={mediaUrl(headlineImage(project, item.slot, item.scene).url)} style={headlineStyle(item.scene.headline, true, isIntroHeadline(config, items, item) ? INTRO_HEADLINE_DROP_PX : 0)} />
               )}
               {!(item.scene.headline?.enabled && item.scene.headline.text?.trim()) && config.title_enabled && project.title_image_url && (
                 <Img
