@@ -12,6 +12,8 @@ import { buildTimeline, headlineFrames } from "./timeline.mjs";
 import { headlineImage, headlineStyle } from './headline.mjs';
 import { isAnimatedLogo, logoStyle } from './logo.mjs';
 import Top10Cta from './Top10Cta';
+import { COMMENT_CTA_BOX, showCommentCta } from './cta.mjs';
+import commentCta from './assets/comment-question.png';
 
 function Fill({ style, children }) {
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", ...style }}>{children}</div>;
@@ -76,6 +78,9 @@ export default function Top10Composition({ project, config }) {
                     top: Math.round(1920 * config.title_y),
                   }}
                 />
+              )}
+              {config.cta_enabled !== false && showCommentCta(item) && (
+                <Img src={commentCta} alt="Qual das cenas você gostou? Deixe nos comentários" style={{ position: 'absolute', ...COMMENT_CTA_BOX }} />
               )}
             </>
           ) : (

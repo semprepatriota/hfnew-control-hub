@@ -1148,7 +1148,7 @@ export default function Top10() {
             </Panel>
             <Panel title="Título e logo" initial={false}>
               <label className="t10-checkbox"><input type="checkbox" checked={config.cta_enabled !== false} disabled={busy}
-                onChange={event => update('cta_enabled', event.target.checked)} />Inscreva-se e joinha</label>
+                onChange={event => update('cta_enabled', event.target.checked)} />Inscreva-se, joinha e comentários</label>
               <label className="t10-checkbox">
                 <input
                   type="checkbox"

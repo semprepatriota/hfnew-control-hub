@@ -1,4 +1,6 @@
 export const CTA_VERSION = 2;
+export const COMMENT_CTA_BOX = Object.freeze({ left: 248, top: 1180, width: 760, height: 138 });
+export const showCommentCta = (item) => item.kind === 'scene' && (item.rank === 2 || item.rank === 1);
 // TOP 10 placement; preserve the timing and one appearance per video.
 export function ctaTiming(totalFrames, fps = 30) {
   if (!Number.isInteger(totalFrames) || totalFrames < 1 || !Number.isFinite(fps) || fps <= 0) throw new Error('Duração inválida');
