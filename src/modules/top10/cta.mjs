@@ -1,19 +1,15 @@
-export const CTA_VERSION = 2;
-export const COMMENT_CTA_BOX = Object.freeze({ left: 248, top: 1180, width: 760, height: 138 });
-export const showCommentCta = (item) => item.kind === 'scene' && item.rank === 2;
-export const commentCtaFrames = (frames, fps = 30) =>
-  Math.max(1, frames - Math.min(Math.round(fps * .5), Math.max(1, Math.floor(frames * .2))));
-// TOP 10 placement; preserve the timing and one appearance per video.
-export function ctaTiming(totalFrames, fps = 30) {
+export const CTA_VERSION = 3;
+export const ctaSceneSlots = (items) => new Set(items.filter((item) => item.kind === 'scene').slice(-3).map((item) => item.slot));
+export function ctaTiming(totalFrames, fps = 30, perScene = false) {
   if (!Number.isInteger(totalFrames) || totalFrames < 1 || !Number.isFinite(fps) || fps <= 0) throw new Error('Duração inválida');
   const seconds = totalFrames / fps;
-  const length = Math.min(totalFrames, Math.max(1, Math.round(Math.min(3, Math.max(.2, seconds-.1))*fps)));
+  const length = Math.min(totalFrames, Math.max(1, Math.round((perScene ? Math.min(1.5, Math.max(.2, seconds*.4)) : Math.min(3, Math.max(.2, seconds-.1)))*fps)));
   const latest = Math.max(0, totalFrames-length-Math.round(.1*fps));
-  const start = Math.min(Math.round(Math.max(2.5, Math.min(8, seconds*.22))*fps), latest);
+  const start = Math.min(Math.round((perScene ? seconds*.55 : Math.max(2.5, Math.min(8, seconds*.22)))*fps), latest);
   return { start, length, end: start+length, fade: Math.max(1, Math.min(Math.round(.24*fps), Math.floor(length/4))) };
 }
-export function ctaStyle(frame, totalFrames, fps = 30) {
-  const timing = ctaTiming(totalFrames, fps);
+export function ctaStyle(frame, totalFrames, fps = 30, perScene = false) {
+  const timing = ctaTiming(totalFrames, fps, perScene);
   const local = frame-timing.start;
   const visible = local >= 0 && local < timing.length;
   const opacity = visible ? Math.max(0, Math.min(1, local/timing.fade, (timing.length-1-local)/timing.fade)) : 0;

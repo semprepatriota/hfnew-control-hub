@@ -32,7 +32,8 @@ test('CTA is silent, fades at both ends and does not overlap the fixed logo', ()
       || box.top >= logo.top + logo.height || box.top + box.height <= logo.top);
   }
   const composition = readFileSync(new URL('../src/modules/top10/Top10Composition.jsx', import.meta.url), 'utf8');
-  assert.match(composition, /config.cta_enabled !== false && <Top10Cta/);
+  assert.match(composition, /config.format !== 'top3' && config.cta_enabled !== false/);
+  assert.match(composition, /config.format === 'top3' && config.cta_enabled !== false && ctaSlots.has/);
   assert.doesNotMatch(readFileSync(new URL('../src/modules/top10/Top10Cta.jsx', import.meta.url),'utf8'), /<Audio|<Video/);
 });
 test('headline lift is stable, clamped and never accumulates on repeated previews', () => {

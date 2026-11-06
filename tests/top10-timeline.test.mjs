@@ -1,7 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildTimeline, emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
+import { activeSlots, buildTimeline, emptyScene, swapScenes } from '../src/modules/top10/timeline.mjs';
+
+test('TOP 3 uses ranks 3, 2, 1 and places optional extras between populated scenes', () => {
+  const project = { assets: { a: {duration: 2}, b: {duration: 2}, c: {duration: 2}, image: {kind: 'insert_image'}, clip: {kind: 'insert_video', duration: 2} } };
+  const scenes = Array.from({length:10}, emptyScene);
+  for (const slot of [7, 8, 9]) scenes[slot] = {...emptyScene(), asset_id: ['a','b','c'][slot-7], end: 2};
+  scenes[0] = {...emptyScene(), asset_id: 'a', end: 2};
+  const config = {format:'top3', model:'pink3d', counters_enabled:false, scenes,
+    inserts:[{asset_id:'image', start:0, duration:1, volume:0}, {asset_id:'clip', start:.5, duration:1, volume:0}]};
+  assert.deepEqual(activeSlots(config), [7,8,9]);
+  const items = buildTimeline(project, config);
+  assert.deepEqual(items.map(item=>item.kind), ['scene','insert','scene','insert','scene']);
+  assert.deepEqual(items.filter(item=>item.kind==='scene').map(item=>item.rank), [3,2,1]);
+  assert.deepEqual(items.map(item=>item.from), [0,60,90,150,180]);
+  assert.equal(buildTimeline(project, {...config, counters_enabled:true}).filter(item=>item.kind==='counter').length,3);
+  scenes[8] = emptyScene();
+  assert.deepEqual(buildTimeline(project, config).map(item=>item.kind), ['scene','scene']);
+});
 
 test('no-counter format joins ten trimmed scenes with no gaps and keeps the saved model', () => {
   const project = { assets: { a: { duration: 5 } } };

@@ -1,29 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMENT_CTA_BOX, commentCtaFrames, showCommentCta } from '../src/modules/top10/cta.mjs';
+import { readFileSync } from 'node:fs';
+import { ctaSceneSlots, ctaTiming } from '../src/modules/top10/cta.mjs';
 
-test('comment CTA appears only on the video for position 2', () => {
-  for (const rank of [10, 9, 8, 7, 6, 5, 4, 3, 1]) {
-    assert.equal(showCommentCta({ kind: 'scene', rank }), false);
-  }
-  assert.equal(showCommentCta({ kind: 'scene', rank: 2 }), true);
-  assert.equal(showCommentCta({ kind: 'counter', rank: 2 }), false);
-  assert.equal(showCommentCta({ kind: 'anime', rank: 2 }), false);
+test('subscribe CTA targets only the last three populated scenes', () => {
+  const items = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].flatMap((rank) => [
+    { kind: 'counter', rank, slot: 10-rank }, { kind: 'scene', rank, slot: 10-rank },
+  ]);
+  assert.deepEqual([...ctaSceneSlots(items)], [7, 8, 9]);
+  assert.deepEqual([...ctaSceneSlots(items.slice(0, 6))], [0, 1, 2]);
 });
 
-test('comment CTA leaves a clean end even when scene 2 is the final scene', () => {
-  for (const frames of [2, 15, 30, 60, 150]) {
-    assert.ok(commentCtaFrames(frames) >= 1);
-    assert.ok(commentCtaFrames(frames) < frames);
+test('TOP 3 CTA is brief within each scene; existing TOP 10 timing stays unchanged', () => {
+  assert.equal(ctaTiming(900).length, 90);
+  for (const frames of [2, 15, 30, 60, 150, 900]) {
+    const timing = ctaTiming(frames, 30, true);
+    assert.ok(timing.length <= 45 && timing.end <= frames);
   }
-  assert.equal(commentCtaFrames(150), 135);
-  assert.equal(commentCtaFrames(60), 48);
 });
 
-test('comment CTA aligns beside the fixed logo and above subscribe', () => {
-  assert.equal(COMMENT_CTA_BOX.left, 248);
-  assert.equal(COMMENT_CTA_BOX.top, 1180);
-  assert.ok(COMMENT_CTA_BOX.left > 205);
-  assert.ok(COMMENT_CTA_BOX.top + COMMENT_CTA_BOX.height < 1330);
-  assert.ok(COMMENT_CTA_BOX.left + COMMENT_CTA_BOX.width < 1080);
+test('question CTA is absent from preview and renderer', () => {
+  const composition = readFileSync(new URL('../src/modules/top10/Top10Composition.jsx', import.meta.url), 'utf8');
+  const backend = readFileSync(new URL('../deploy/top10/backend/services/top10_service.py', import.meta.url), 'utf8');
+  assert.doesNotMatch(composition, /commentCta|comment-question/);
+  assert.doesNotMatch(backend, /comment_overlay/);
 });

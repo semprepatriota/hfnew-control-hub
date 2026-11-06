@@ -114,6 +114,8 @@ export default function Top10() {
   const trimPlayer = useRef(null);
   const uploadInput = useRef(null);
   const replacementSlot = useRef(null);
+  const insertInput = useRef(null);
+  const insertSlot = useRef(null);
   const headlineBusy = useRef(false);
   const current = useRef(null);
   const draftRef = useRef(null);
@@ -218,7 +220,10 @@ export default function Top10() {
   const update = (key, value) => {
     change((next) => ({ ...next, config: { ...next.config, [key]: value } }));
     if (key === "model" || key === "counters_enabled" || key === 'format') {
-      const destination = buildTimeline(current.current, draftRef.current.config).find(item => item.kind === 'scene' && item.slot === selected)?.from || 0;
+      const active = activeSlots(draftRef.current.config);
+      const targetSlot = active.includes(selected) ? selected : active[0];
+      const destination = buildTimeline(current.current, draftRef.current.config).find(item => item.kind === 'scene' && item.slot === targetSlot)?.from || 0;
+      setSelected(targetSlot);
       player.current?.pause();
       player.current?.seekTo(destination);
       setFrame(destination);
@@ -229,6 +234,21 @@ export default function Top10() {
       next.config.scenes[selected][key] = value;
       return next;
     });
+  const updateInsert = (gap, key, value) => change((next) => {
+    const insert = next.config.inserts[gap];
+    const media = project.assets[insert.asset_id];
+    if (key === 'start') {
+      insert.start = Math.max(0, Math.min(Number(value) || 0, Math.max(0, (media?.duration || 0) - 2 / FPS)));
+    } else if (key === 'duration') {
+      insert.duration = Math.max(2 / FPS, Math.min(Number(value) || 0, 5));
+    } else {
+      insert[key] = value;
+    }
+    if (media?.kind === 'insert_video') {
+      insert.duration = Math.max(2 / FPS, Math.min(insert.duration, media.duration - insert.start));
+    }
+    return next;
+  });
   const updateHeadline = (slot, patch) => change(next => {
     const h = fixedHeadline({ ...next.config.scenes[slot].headline, ...patch });
     next.config.scenes[slot].headline = h;
@@ -340,7 +360,7 @@ export default function Top10() {
       video.currentTime = scene.start;
   }, [selected, scene?.asset_id]);
   useEffect(() => {
-    if (config?.format === 'anime_5' && selected < 5) setSelected(5);
+    if (config && !activeSlots(config).includes(selected)) setSelected(activeSlots(config)[0]);
   }, [config?.format, selected]);
 
   const perform = async (name, task) => {
@@ -405,7 +425,7 @@ export default function Top10() {
         const data = await api.uploadAsset(
           project.id,
           kind,
-          kind === "video" ? slots[i] : null,
+          kind === "video" || kind === 'insert' ? slots[i] : null,
           incoming[i],
         );
         localStorage.removeItem(draftKey(project.id));
@@ -563,7 +583,7 @@ export default function Top10() {
               <Film size={16} />
               <span>{item.title}</span>
               <small>
-                {item.config.scenes.filter((entry) => entry.asset_id).length}/10
+                {activeSlots(item.config).filter((slot) => item.config.scenes[slot].asset_id).length}/{activeSlots(item.config).length}
               </small>
             </button>
           ))}
@@ -675,10 +695,12 @@ export default function Top10() {
             <aside className="t10-inspector">
               <Panel title="Formato do vídeo">
                 <div className="t10-format" role="group" aria-label="Sequencia de cenas">
-                  <button type="button" aria-pressed={config.format !== 'anime_5'} disabled={busy}
+                  <button type="button" aria-pressed={config.format === 'classic'} disabled={busy}
                     onClick={() => update('format', 'classic')}>10 a 1</button>
                   <button type="button" aria-pressed={config.format === 'anime_5'} disabled={busy}
-                    onClick={() => { update('format', 'anime_5'); setSelected(5); }}>5 a 1 com anime</button>
+                    onClick={() => update('format', 'anime_5')}>5 a 1 com anime</button>
+                  <button type="button" aria-pressed={config.format === 'top3'} disabled={busy}
+                    onClick={() => update('format', 'top3')}>TOP 3 · 3 a 1</button>
                 </div>
                 <div className="t10-format" role="group" aria-label="Formato do vídeo">
                   <button type="button" aria-pressed={config.counters_enabled !== false} disabled={busy}
@@ -696,7 +718,7 @@ export default function Top10() {
                       aria-pressed={config.model === model.id}
                     >
                       <video
-                        src={api.counterUrl(model.id, 10)}
+                        src={api.counterUrl(model.id, config.format === 'top3' ? 3 : 10)}
                         muted
                         loop
                         playsInline
@@ -913,7 +935,7 @@ export default function Top10() {
             </aside>
           </div>
           <Panel title={`Timeline · ${items.length} blocos`}>
-            <div className="t10-timeline">
+            <div className={`t10-timeline ${config.format === 'top3' ? 'top3' : ''}`}>
               {items.filter((item) => item.kind === "scene").map(({ slot }) => (
                 <div className="t10-timeline-pair" key={slot}>
                   {items.filter((item) => item.slot === slot).map((item) => (
@@ -921,12 +943,14 @@ export default function Top10() {
                       key={item.kind}
                       className={`${item.kind} ${frame >= item.from && frame < item.from + item.frames ? "active" : ""}`}
                       onClick={() => seek(item)}
-                      title={`${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"} ${item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
+                      title={`${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : item.kind === 'insert' ? `Extra ${item.rank}-${item.rank-1}` : "Cena"} ${item.kind === 'insert' ? '' : item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
                     >
                       {item.kind === "counter" ? (
                         <strong>{item.rank}</strong>
                       ) : item.kind === 'anime' ? (
                         <img src={api.mediaUrl(item.anime.url)} alt={`Anime ${item.rank}`} loading="lazy" />
+                      ) : item.kind === 'insert' ? (
+                        <img src={api.mediaUrl(item.asset.thumbnail_url || item.asset.url)} alt={`Extra ${item.rank}-${item.rank-1}`} loading="lazy" />
                       ) : item.asset?.thumbnail_url ? (
                         <img
                           src={api.mediaUrl(item.asset.thumbnail_url)}
@@ -937,8 +961,8 @@ export default function Top10() {
                         <Film size={20} />
                       )}
                       <span>
-                        {item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"}{" "}
-                        {item.rank}
+                        {item.kind === 'insert' ? `Extra ${item.rank}-${item.rank-1}` :
+                          `${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"} ${item.rank}`}
                       </span>
                       <small>{(item.frames / FPS).toFixed(2)}s</small>
                     </button>
@@ -974,7 +998,7 @@ export default function Top10() {
                 event.currentTarget.value = "";
               }}
             />
-            <div className="t10-scene-grid">
+            <div className={`t10-scene-grid ${config.format === 'top3' ? 'top3' : ''}`}>
               {slots.map((slot) => {
                 const entry = config.scenes[slot];
                 const media = project.assets[entry.asset_id];
@@ -1094,6 +1118,59 @@ export default function Top10() {
               })}
             </div>
           </Panel>
+          {config.format === 'top3' && <Panel title="Extras entre cenas">
+            <input ref={insertInput} type="file" hidden
+              accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-m4v"
+              onChange={(event) => {
+                upload('insert', event.target.files, insertSlot.current);
+                event.currentTarget.value = '';
+              }} />
+            <div className="t10-insert-grid">
+              {[7, 8].map((slot, gap) => {
+                const insert = config.inserts[gap];
+                const media = project.assets[insert.asset_id];
+                return <article className="t10-insert-card" key={slot}>
+                  <div className="t10-scene-card-heading">
+                    <span>Entre cenas {10-slot} e {9-slot}</span>
+                    {media && <button type="button" className="t10-icon danger" disabled={busy}
+                      onClick={() => removeAsset(media.id)} aria-label={`Excluir extra entre cenas ${10-slot} e ${9-slot}`}>
+                      <X size={15} />
+                    </button>}
+                  </div>
+                  {media && <div className="t10-insert-preview">
+                    {media.kind === 'insert_image'
+                      ? <img src={api.mediaUrl(media.url)} alt={media.name} />
+                      : <video src={api.mediaUrl(media.url)} controls playsInline preload="metadata" />}
+                  </div>}
+                  <div className="t10-scene-card-footer">
+                    <span title={media?.name}>{media?.name || 'Opcional'}</span>
+                    <button type="button" className="t10-icon" disabled={busy}
+                      title={media ? 'Substituir extra' : 'Adicionar imagem ou microvídeo'}
+                      aria-label={`${media ? 'Substituir' : 'Adicionar'} extra entre cenas ${10-slot} e ${9-slot}`}
+                      onClick={() => { insertSlot.current = slot; insertInput.current.click(); }}>
+                      <Upload size={15} />
+                    </button>
+                  </div>
+                  {media && <div className="t10-insert-controls">
+                    {media.kind === 'insert_video' && <label>Início (s)
+                      <input type="number" min={0} max={Math.max(0, media.duration - 2/FPS)} step={1/FPS}
+                        value={Number(insert.start.toFixed(3))} disabled={busy}
+                        onChange={(event) => updateInsert(gap, 'start', event.target.value)} />
+                    </label>}
+                    <label>Duração (s)
+                      <input type="number" min={2/FPS} max={media.kind === 'insert_video' ? Math.min(5, media.duration-insert.start) : 5}
+                        step={1/FPS} value={Number(insert.duration.toFixed(3))} disabled={busy}
+                        onChange={(event) => updateInsert(gap, 'duration', event.target.value)} />
+                    </label>
+                    {media.kind === 'insert_video' && <label className="t10-insert-audio">
+                      <input type="checkbox" checked={insert.volume > 0} disabled={busy}
+                        onChange={(event) => updateInsert(gap, 'volume', event.target.checked ? 1 : 0)} /> Áudio do extra
+                    </label>}
+                  </div>}
+                </article>;
+              })}
+            </div>
+          </Panel>}
           <div className="t10-bottom-grid">
             <Panel title="Música e efeitos" initial={false}>
               <div className="t10-file-row">
@@ -1148,7 +1225,7 @@ export default function Top10() {
             </Panel>
             <Panel title="Título e logo" initial={false}>
               <label className="t10-checkbox"><input type="checkbox" checked={config.cta_enabled !== false} disabled={busy}
-                onChange={event => update('cta_enabled', event.target.checked)} />Inscreva-se, joinha e comentários</label>
+                onChange={event => update('cta_enabled', event.target.checked)} />Inscreva-se e joinha nas 3 cenas finais</label>
               <label className="t10-checkbox">
                 <input
                   type="checkbox"

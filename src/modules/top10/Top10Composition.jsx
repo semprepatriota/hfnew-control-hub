@@ -12,8 +12,7 @@ import { buildTimeline, headlineFrames, INTRO_HEADLINE_DROP_PX, isIntroHeadline 
 import { headlineImage, headlineStyle } from './headline.mjs';
 import { isAnimatedLogo, logoStyle } from './logo.mjs';
 import Top10Cta from './Top10Cta';
-import { COMMENT_CTA_BOX, commentCtaFrames, showCommentCta } from './cta.mjs';
-import commentCta from './assets/comment-question.png';
+import { ctaSceneSlots } from './cta.mjs';
 
 function Fill({ style, children }) {
   return <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", ...style }}>{children}</div>;
@@ -24,6 +23,7 @@ export default function Top10Composition({ project, config }) {
   const frame = useCurrentFrame();
   const items = buildTimeline(project, config);
   const duration = items.length ? items.at(-1).from + items.at(-1).frames : 1;
+  const ctaSlots = ctaSceneSlots(items);
   const logo = project.assets[project.logo];
   const music = project.assets[project.music];
   return (
@@ -43,6 +43,11 @@ export default function Top10Composition({ project, config }) {
             />
           ) : item.kind === 'anime' ? (
             <Img src={mediaUrl(item.anime.url)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+          ) : item.kind === 'insert' ? (
+            item.asset.kind === 'insert_image'
+              ? <Img src={mediaUrl(item.asset.url)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+              : <Video src={mediaUrl(item.asset.url)} startFrom={Math.round(item.insert.start * fps)} volume={item.insert.volume}
+                  style={{width: '100%', height: '100%', objectFit: 'cover'}} />
           ) : item.asset ? (
             <>
               <Fill style={{ overflow: "hidden" }}>
@@ -79,11 +84,8 @@ export default function Top10Composition({ project, config }) {
                   }}
                 />
               )}
-              {config.cta_enabled !== false && showCommentCta(item) && (
-                <Sequence from={0} durationInFrames={commentCtaFrames(item.frames, fps)}>
-                  <Img src={commentCta} alt="Qual das cenas você gostou? Deixe nos comentários" style={{ position: 'absolute', ...COMMENT_CTA_BOX }} />
-                </Sequence>
-              )}
+              {config.format === 'top3' && config.cta_enabled !== false && ctaSlots.has(item.slot) &&
+                <Top10Cta frame={frame - item.from} duration={item.frames} fps={fps} perScene />}
             </>
           ) : (
             <Fill
@@ -113,7 +115,8 @@ export default function Top10Composition({ project, config }) {
           }
         />
       )}
-      {config.cta_enabled !== false && <Top10Cta frame={frame} duration={duration} fps={fps} />}
+      {config.format !== 'top3' && config.cta_enabled !== false &&
+        <Top10Cta frame={frame} duration={duration} fps={fps} />}
     </Fill>
   );
 }
