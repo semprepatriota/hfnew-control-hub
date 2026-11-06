@@ -15,7 +15,7 @@ test('only the first populated scene without counters gets a 12-frame headline',
   assert.equal(headlineFrames(config, items, items[1]), 60);
   assert.equal(isIntroHeadline(config, items, items[0]), true);
   assert.equal(isIntroHeadline(config, items, items[1]), false);
-  assert.equal(headlineStyle(scenes[2].headline, true, INTRO_HEADLINE_DROP_PX).top, 445);
+  assert.equal(headlineStyle(scenes[2].headline, true, INTRO_HEADLINE_DROP_PX).top, 541);
   assert.equal(headlineStyle(scenes[4].headline, true).top, 125);
   config.counters_enabled = true;
   items = buildTimeline(project, config);

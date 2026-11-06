@@ -1,7 +1,7 @@
 import catalog from './counter-catalog.json' with { type: 'json' };
 import { emptyHeadline } from './headline.mjs';
 export const FPS = 30;
-export const INTRO_HEADLINE_DROP_PX = 320;
+export const INTRO_HEADLINE_DROP_PX = 416;
 export const activeSlots = (config) => config?.format === 'anime_5' ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 export const MODELS = Object.entries(catalog.models).map(([id, model]) => ({ id, ...model }));
 export const emptyScene = () => ({ asset_id: '', start: 0, end: 0, x: 0.5, y: 0.5, zoom: 1, volume: 1, headline: emptyHeadline() });

@@ -66,3 +66,19 @@ test('compact headline image upgrade is needed once, without changing text or re
   headline.enabled = false;
   assert.equal(needsHeadlineRefresh(project, config), false);
 });
+
+test('only the first populated no-counter scene refreshes to the shorter white band', () => {
+  const scenes = Array.from({ length: 10 }, emptyScene);
+  const headline = { ...emptyHeadline(), enabled: true, text: 'POV: sustos' };
+  scenes[2] = { ...emptyScene(), asset_id: 'first', headline };
+  scenes[4] = { ...emptyScene(), asset_id: 'second', headline };
+  const config = { counters_enabled: false, scenes };
+  const project = { assets: { first: {}, second: {} }, scene_headlines: {
+    '2': { layout_version: 3 }, '4': { layout_version: 3 },
+  } };
+  assert.equal(needsHeadlineRefresh(project, config), true);
+  project.scene_headlines['2'].layout_version = 4;
+  assert.equal(needsHeadlineRefresh(project, config), false);
+  config.counters_enabled = true;
+  assert.equal(needsHeadlineRefresh(project, config), true);
+});
