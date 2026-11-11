@@ -416,6 +416,18 @@ button.forge-max-extractor-panel-heading {
   color: #ffffff;
 }
 
+.forge-max-extractor-clips-toolbar button.forge-max-extractor-send-top5 {
+  background: #175785;
+  border-color: #318fc3;
+  color: #ffffff;
+}
+
+.forge-max-extractor-clips-toolbar button.forge-max-extractor-send-top3 {
+  background: #71551b;
+  border-color: #c29539;
+  color: #ffffff;
+}
+
 .forge-max-extractor-processing {
   position: absolute;
   z-index: 2;

@@ -160,15 +160,22 @@ function ForgeMaxExtractor() {
     setError('');
   }, []);
 
-  async function sendClipsToTop10() {
+  async function sendClipsToTop10(format = 'classic') {
     if (clipOperationRef.current || !activeVideo) return;
     clearNotice();
-    if (!selectedClipsReady) { setError('Selecione os trechos prontos que deseja enviar ao TOP 10.'); return; }
-    if (selectedClips.length > 10) { setError('O TOP 10 aceita ate dez cenas por projeto. Selecione no maximo dez trechos.'); return; }
-    clipOperationRef.current = 'top10';
-    setClipBusy('top10');
+    const targets = {
+      classic: { label: 'TOP 10', limit: 10 },
+      anime_5: { label: 'TOP 5', limit: 5 },
+      top3: { label: 'TOP 3', limit: 3 },
+    };
+    const target = targets[format];
+    if (!target) return;
+    if (!selectedClipsReady) { setError(`Selecione os trechos prontos que deseja enviar ao ${target.label}.`); return; }
+    if (selectedClips.length > target.limit) { setError(`O ${target.label} aceita ate ${target.limit} cenas por projeto.`); return; }
+    clipOperationRef.current = format;
+    setClipBusy(format);
     try {
-      const project = await importForgeMax(activeVideo.id, selectedClips.map((clip) => clip.id), `TOP 10 - ${activeVideo.original_name || 'Forge Max'}`.slice(0, 120));
+      const project = await importForgeMax(activeVideo.id, selectedClips.map((clip) => clip.id), `${target.label} - ${activeVideo.original_name || 'Forge Max'}`.slice(0, 120), format);
       navigate(`/top-10?project=${encodeURIComponent(project.id)}`);
     } catch (caught) { setError(caught.message); }
     finally { clipOperationRef.current = ''; setClipBusy(''); }
@@ -787,7 +794,9 @@ function ForgeMaxExtractor() {
                   Selecionar todos
                 </label>
                 <span>{selectedClips.length} selecionado(s)</span>
-                <button type="button" className="forge-max-extractor-send-top10" onClick={sendClipsToTop10} disabled={!selectedClipsReady || selectedClips.length > 10 || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Criar um TOP 10 com os trechos selecionados (ate dez cenas)">{clipBusy === 'top10' ? <Loader2 className="spin" size={15} /> : <ArrowRight size={15} />}Enviar ao TOP 10</button>
+                <button type="button" className="forge-max-extractor-send-top10" onClick={() => sendClipsToTop10('classic')} disabled={!selectedClipsReady || selectedClips.length > 10 || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Criar TOP 10 com ate dez trechos selecionados">{clipBusy === 'classic' ? <Loader2 className="spin" size={15} /> : <ArrowRight size={15} />}Enviar ao TOP 10</button>
+                <button type="button" className="forge-max-extractor-send-top5" onClick={() => sendClipsToTop10('anime_5')} disabled={!selectedClipsReady || selectedClips.length > 5 || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Criar TOP 5 com ate cinco trechos selecionados">{clipBusy === 'anime_5' ? <Loader2 className="spin" size={15} /> : <ArrowRight size={15} />}Enviar ao TOP 5</button>
+                <button type="button" className="forge-max-extractor-send-top3" onClick={() => sendClipsToTop10('top3')} disabled={!selectedClipsReady || selectedClips.length > 3 || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Criar TOP 3 com ate tres trechos selecionados">{clipBusy === 'top3' ? <Loader2 className="spin" size={15} /> : <ArrowRight size={15} />}Enviar ao TOP 3</button>
                 <button type="button" title="Limpar seleção" onClick={() => setSelectedClipIds([])} disabled={!selectedClips.length || Boolean(clipBusy)}><XCircle size={15} />Limpar</button>
                 <button type="button" onClick={() => handleDownloadClips(selectedClips.map((clip) => clip.id))} disabled={!selectedClipsReady || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Baixar trechos selecionados em ZIP"><Download size={15} />Baixar selecionados</button>
                 <button type="button" className="danger" onClick={() => handleDeleteClips(selectedClips)} disabled={!selectedClips.length || uploadBusy || Boolean(busyAction) || Boolean(clipBusy)} title="Excluir trechos selecionados"><Trash2 size={15} />Excluir selecionados</button>

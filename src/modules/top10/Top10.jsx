@@ -532,9 +532,9 @@ export default function Top10() {
     <main className="top10">
       <header className="t10-header">
         <div>
-          <h1>TOP 10</h1>
+          <h1>{config?.format === 'anime_5' ? 'TOP 5' : config?.format === 'top3' ? 'TOP 3' : 'TOP 10'}</h1>
           <span>
-            {filled}/10 cenas · {timeLabel(durationFrames / FPS)}
+            {filled}/{slots.length} cenas · {timeLabel(durationFrames / FPS)}
           </span>
         </div>
         <div className="t10-header-actions">
