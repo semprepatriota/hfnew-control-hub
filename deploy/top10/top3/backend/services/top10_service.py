@@ -70,13 +70,13 @@ class SceneConfig(BaseModel):
 class InsertConfig(BaseModel):
     asset_id: str = ""
     start: float = Field(default=0, ge=0, le=MAX_VIDEO_SECONDS)
-    duration: float = Field(default=1, ge=2 / FPS, le=5)
+    duration: float = Field(default=2, ge=2 / FPS, le=5)
     volume: float = Field(default=0, ge=0, le=1)
 
     @model_validator(mode="after")
     def align_frames(self):
         self.start = int(self.start * FPS + 0.5) / FPS
-        self.duration = max(2, int(self.duration * FPS + 0.5)) / FPS
+        self.duration = min((1.5, 2.0, 3.0), key=lambda value: abs(value - self.duration))
         return self
 
 
@@ -85,7 +85,7 @@ class Top10Config(BaseModel):
     format: str = Field(default="classic", pattern=r'^(classic|anime_5|top3)$')
     counters_enabled: bool = True
     scenes: list[SceneConfig] = Field(default_factory=lambda: [SceneConfig() for _ in range(10)], min_length=10, max_length=10)
-    inserts: list[InsertConfig] = Field(default_factory=lambda: [InsertConfig(), InsertConfig()], min_length=2, max_length=2)
+    inserts: list[InsertConfig] = Field(default_factory=lambda: [InsertConfig() for _ in range(3)], min_length=3, max_length=3)
     counter_volume: float = Field(default=0.6, ge=0, le=1)
     music_volume: float = Field(default=0.15, ge=0, le=1)
     title_enabled: bool = False
@@ -106,7 +106,11 @@ class Top10Config(BaseModel):
     @classmethod
     def lock_logo_layout(cls, values):
         if isinstance(values, dict):
-            return {**values, 'logo_x': .12, 'logo_y': .66, 'logo_size': .14,
+            inserts = values.get('inserts')
+            if isinstance(inserts, list) and len(inserts) == 2:
+                inserts = [*inserts, InsertConfig().model_dump()]
+            return {**values, **({'inserts': inserts} if inserts is not None else {}),
+                    'logo_x': .12, 'logo_y': .66, 'logo_size': .14,
                     'logo_opacity': 1, 'logo_round': True, 'logo_layout_version': 6}
         return values
 
@@ -300,8 +304,8 @@ def save_project(project_id: str, title: str, config: Top10Config, revision: int
                 raise HTTPException(400, "Extra nao pertence a este projeto")
             if asset["kind"] == "insert_image" and insert.start:
                 raise HTTPException(400, "Imagem extra nao possui ponto de inicio")
-            if asset["kind"] == "insert_video" and insert.start + insert.duration > asset["duration"] + 0.05:
-                raise HTTPException(400, "Corte do microvideo excede sua duracao")
+            if asset["kind"] == "insert_video" and insert.start + 2 / FPS > asset["duration"] + 0.05:
+                raise HTTPException(400, "Inicio do microvideo excede sua duracao")
         data.update(title=title.strip() or "TOP 10", config=config.model_dump())
         _title_image(data)
         prepare_headlines(data)
@@ -322,8 +326,8 @@ def add_asset(project_id: str, path: Path, kind: str, original_name: str, slot: 
         asset_id = path.stem
         asset = {"id": asset_id, "kind": kind, "filename": path.name, "name": Path(original_name).name[:180], "size": path.stat().st_size}
         if kind == "insert":
-            if slot not in (7, 8):
-                raise HTTPException(400, "Escolha o intervalo 3-2 ou 2-1")
+            if slot not in (7, 8, 9):
+                raise HTTPException(400, "Escolha o extra entre cenas ou apos a cena 1")
             if path.suffix.lower() in VIDEO_EXT:
                 media = probe_media(path)
                 if media.duration < 2 / FPS or media.duration > MAX_VIDEO_SECONDS or not media.width or not media.height:
@@ -334,7 +338,7 @@ def add_asset(project_id: str, path: Path, kind: str, original_name: str, slot: 
                                check=True, capture_output=True, timeout=60)
                 asset.update(kind="insert_video", duration=media.duration, width=media.width, height=media.height,
                              has_audio=bool(media.audio_codec), thumbnail=thumbnail.name)
-                duration = min(1, int(media.duration * FPS) / FPS)
+                duration = 2
             else:
                 with Image.open(path) as image:
                     image.verify()
@@ -342,8 +346,10 @@ def add_asset(project_id: str, path: Path, kind: str, original_name: str, slot: 
                     if image.width > 8000 or image.height > 8000:
                         raise HTTPException(400, "Imagem extra muito grande")
                     asset.update(kind="insert_image", width=image.width, height=image.height, has_audio=False)
-                duration = 1
-            data["config"].setdefault("inserts", [InsertConfig().model_dump(), InsertConfig().model_dump()])
+                duration = 2
+            data["config"].setdefault("inserts", [])
+            while len(data["config"]["inserts"]) < 3:
+                data["config"]["inserts"].append(InsertConfig().model_dump())
             old_id = data["config"]["inserts"][slot - 7]["asset_id"]
             data["config"]["inserts"][slot - 7] = InsertConfig(asset_id=asset_id, duration=max(2 / FPS, duration)).model_dump()
             data["assets"][asset_id] = asset
@@ -462,14 +468,14 @@ def timeline(data: dict) -> list[dict]:
             items.append({"kind": "anime", "rank": 10-i, "slot": i, "frames": 24, "from": frame,
                           "filename": anime['filename']})
             frame += 24
-        if config.format == 'top3' and i in (7, 8) and config.scenes[i + 1].asset_id:
+        if config.format == 'top3' and i in (7, 8, 9) and (i == 9 or config.scenes[i + 1].asset_id):
             insert = config.inserts[i - 7]
             if insert.asset_id:
                 extra = data['assets'].get(insert.asset_id)
                 if not extra or extra['kind'] not in {'insert_image', 'insert_video'}:
-                    raise HTTPException(400, f'Extra entre {10-i} e {9-i} indisponivel')
-                if extra['kind'] == 'insert_video' and insert.start + insert.duration > extra['duration'] + .05:
-                    raise HTTPException(400, 'Corte do microvideo excede sua duracao')
+                    raise HTTPException(400, f'Extra da cena {10-i} indisponivel')
+                if extra['kind'] == 'insert_video' and insert.start + 2 / FPS > extra['duration'] + .05:
+                    raise HTTPException(400, 'Inicio do microvideo excede sua duracao')
                 if not (project_root(data['id']) / 'files' / extra['filename']).is_file():
                     raise HTTPException(409, 'Arquivo extra nao esta disponivel')
                 insert_frames = max(2, int(insert.duration * FPS + .5))
@@ -623,9 +629,23 @@ def render_project(data: dict, job_path: Path) -> dict:
             source = root / 'files' / item['filename'] if item['kind'] == 'anime' else (
                 root / "files" / asset["filename"] if asset else counter_path(config.model, item["rank"]))
             seconds = item["frames"] / FPS
+            loop_insert = bool(insert and asset['kind'] == 'insert_video' and
+                               asset['duration'] - insert.start < seconds - 1 / FPS)
+            seek_start = scene.start if is_scene else insert.start if insert else 0
+            if loop_insert and insert.start:
+                trimmed = temp / f'insert_loop_{n:02d}.mp4'
+                _run([settings.FFMPEG_BIN, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
+                      '-ss', f'{insert.start:.6f}', '-i', str(source),
+                      '-t', f'{asset["duration"] - insert.start:.6f}', '-map', '0:v:0', '-map', '0:a?',
+                      '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '20',
+                      '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(trimmed)], job_path)
+                source = trimmed
+                seek_start = 0
             command = [settings.FFMPEG_BIN, "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-threads", "2", "-filter_complex_threads", "1"]
+            if loop_insert:
+                command += ['-stream_loop', '-1']
             if is_scene or (insert and asset['kind'] == 'insert_video'):
-                command += ["-ss", f"{scene.start if is_scene else insert.start:.6f}"]
+                command += ["-ss", f"{seek_start:.6f}"]
             if item['kind'] == 'anime' or (insert and asset['kind'] == 'insert_image'):
                 command += ['-loop', '1']
             command += ["-i", str(source)]

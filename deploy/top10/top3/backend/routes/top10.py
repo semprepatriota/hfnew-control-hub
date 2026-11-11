@@ -125,8 +125,8 @@ def upload(project_id: str, kind: str = Query(pattern="^(video|music|logo|insert
         raise HTTPException(400, "Formato de arquivo nao permitido")
     if kind == "video" and slot is None:
         raise HTTPException(400, "Escolha a posicao da cena")
-    if kind == "insert" and slot not in (7, 8):
-        raise HTTPException(400, "Escolha o intervalo 3-2 ou 2-1")
+    if kind == "insert" and slot not in (7, 8, 9):
+        raise HTTPException(400, "Escolha o extra entre cenas ou apos a cena 1")
     maximum = 20 * 1024**2 if kind == "logo" or (kind == "insert" and ext in studio.IMAGE_EXT) else studio.MAX_INSERT_BYTES if kind == "insert" else studio.MAX_UPLOAD_BYTES
     path = studio.project_root(project_id) / "files" / f"asset_{uuid.uuid4().hex[:24]}{ext}"
     try:

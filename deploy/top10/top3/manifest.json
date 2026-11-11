@@ -1,14 +1,14 @@
 {
     "services/top10_service.py":  {
-                                      "old":  "0226949cd3a4384fa4b14d93959b88f4f58f83cbe17abad7fac7c486070d6fb6",
-                                      "new":  "5beb2bb653dd9abd7824cae0bd5a4366615ea97de5d028ab5658221e79e648f8"
+                                      "old":  "5beb2bb653dd9abd7824cae0bd5a4366615ea97de5d028ab5658221e79e648f8",
+                                      "new":  "91296240ca0471d7930acbcf020525a74d2b780196ecc62d1e35ce6b2d92dbe7"
                                   },
     "routes/top10.py":  {
-                            "old":  "2a0ea09254a7c09c96b903e4db39ad60da9658c4078cbe905f031ad5697f7ad8",
-                            "new":  "074512fafc7f0f4a2d62bd9b8bd7aa3c9773843de91b483902ed41acc16aec44"
+                            "old":  "074512fafc7f0f4a2d62bd9b8bd7aa3c9773843de91b483902ed41acc16aec44",
+                            "new":  "cc47c22f12dbc10264ea2331fe59631c7a44511f6c1a8b8d7ba831e8c7d6b8fb"
                         },
     "services/top10_cta_service.py":  {
-                                          "old":  "241b607de02e0d7cdf430827f5963000339602efa24c1f5c0d274d6108366bb7",
+                                          "old":  "6c2391e079fde2c79a682428ad40886b08556d8d53608b2a553a217e61ff0b31",
                                           "new":  "6c2391e079fde2c79a682428ad40886b08556d8d53608b2a553a217e61ff0b31"
                                       }
 }

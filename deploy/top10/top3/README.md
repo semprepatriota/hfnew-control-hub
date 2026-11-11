@@ -8,7 +8,8 @@ manifest of the existing files before upload and refuses to install when the
 live files differ. The installer saves an on-VPS backup, waits for idle render
 capacity, checks API health and authentication, and rolls back on failure.
 
-Validation: `npm test` (173 passing), `npm run build`, and three backend TOP 3
-tests including a real 1080x1920 H.264 export with image and video inserts.
+Validation: `npm test` (173 passing), `npm run build`, and five backend TOP 3
+tests including real 1080x1920 H.264 exports with three inserts and a trimmed
+microvideo repeated to fill its selected 1.5-second slot.
 Three legacy pixel assertions also fail on the unchanged backend in the local
 Windows environment; they are not evidence that TOP 3 passed those assertions.

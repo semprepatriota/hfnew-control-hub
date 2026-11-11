@@ -46,7 +46,7 @@ export default function Top10Composition({ project, config }) {
           ) : item.kind === 'insert' ? (
             item.asset.kind === 'insert_image'
               ? <Img src={mediaUrl(item.asset.url)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-              : <Video src={mediaUrl(item.asset.url)} startFrom={Math.round(item.insert.start * fps)} volume={item.insert.volume}
+              : <Video src={mediaUrl(item.asset.url)} startFrom={Math.round(item.insert.start * fps)} loop volume={item.insert.volume}
                   style={{width: '100%', height: '100%', objectFit: 'cover'}} />
           ) : item.asset ? (
             <>
