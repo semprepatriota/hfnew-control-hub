@@ -8,13 +8,12 @@ export const MODELS = Object.entries(catalog.models).map(([id, model]) => ({ id,
 export const emptyScene = () => ({ asset_id: '', start: 0, end: 0, x: 0.5, y: 0.5, zoom: 1, volume: 1, headline: emptyHeadline() });
 export const INSERT_DURATIONS = [1.5, 2, 3];
 export const emptyInsert = () => ({ asset_id: '', start: 0, duration: 2, volume: 0 });
+const normalizedInsert = (insert = emptyInsert()) => ({...insert, duration: INSERT_DURATIONS.reduce((best, value) =>
+  Math.abs(value - insert.duration) < Math.abs(best - insert.duration) ? value : best, 2)});
 export const normalizeInserts = (config) => ({
   ...config,
-  inserts: Array.from({length: 3}, (_, index) => {
-    const insert = config.inserts?.[index] || emptyInsert();
-    return {...insert, duration: INSERT_DURATIONS.reduce((best, value) =>
-      Math.abs(value - insert.duration) < Math.abs(best - insert.duration) ? value : best, 2)};
-  }),
+  inserts: Array.from({length: 3}, (_, index) => normalizedInsert(config.inserts?.[index] || emptyInsert())),
+  anime_inserts: Array.from({length: 5}, (_, index) => normalizedInsert(config.anime_inserts?.[index] || emptyInsert())),
 });
 export const isIntroHeadline = (config, items, item) =>
   config.counters_enabled === false && item.kind === 'scene' &&
@@ -41,9 +40,10 @@ export function buildTimeline(project, config) {
     const anime = config.format === 'anime_5' ? project.anime?.[scene.asset_id] : null;
     const still = anime?.approved && anime?.url && animeMatches(scene, anime) ? {kind: 'anime', slot, rank: 10-slot, from: cursor, frames: 24, anime} : null;
     if (still) cursor += still.frames;
-    const insert = config.format === 'top3' ? config.inserts?.[slot - 7] : null;
+    const insert = config.format === 'top3' ? config.inserts?.[slot - 7] :
+      config.format === 'anime_5' ? config.anime_inserts?.[slot - 5] : null;
     const insertAsset = insert?.asset_id && project.assets[insert.asset_id];
-    const adjacent = slot === 9 || project.assets[config.scenes[slot + 1]?.asset_id];
+    const adjacent = config.format === 'anime_5' || slot === 9 || project.assets[config.scenes[slot + 1]?.asset_id];
     const available = insertAsset?.kind === 'insert_image' || insertAsset?.kind === 'insert_video';
     const insertFrames = available && adjacent ? Math.round(insert.duration * FPS) : 0;
     const bridge = insertFrames > 0 ? {kind: 'insert', slot, rank: 10-slot, from: cursor, frames: insertFrames, asset: insertAsset, insert} : null;

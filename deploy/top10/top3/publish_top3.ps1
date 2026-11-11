@@ -37,19 +37,15 @@ try {
     Copy-Item -LiteralPath (Join-Path $stage 'deploy_top3.py') -Destination (Join-Path $release 'deploy_top3.py') -Force
     & tar.exe -czf $archive -C $release 'backend' 'manifest.json' 'deploy_top3.py'
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar pacote TOP 3' }
-    Write-Host '1/2 Enviando TOP 3. Digite a senha root quando o SSH pedir.'
+    Write-Host '1/1 Publicando extras do TOP 5. Digite a senha root quando o SSH pedir.'
+    $encoded = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($archive))
+    $remote = "echo $encoded | base64 -d > /root/hfnew-top3-release.tar.gz && mkdir -p /root/hfnew-top3-release && tar -xzf /root/hfnew-top3-release.tar.gz -C /root/hfnew-top3-release && /root/ALLIANCE-DARK/backend/venv/bin/python /root/hfnew-top3-release/deploy_top3.py"
     $ErrorActionPreference = 'Continue'
-    & scp.exe -O -o ConnectTimeout=30 -o ServerAliveInterval=15 $archive 'root@2.25.172.207:/root/hfnew-top3-release.tar.gz'
-    $send = $LASTEXITCODE
-    $ErrorActionPreference = 'Stop'
-    if ($send -ne 0) { throw "Falha no envio (scp codigo $send). Nada foi aplicado." }
-    Write-Host '2/2 Aplicando backend com backup e teste. Digite a senha root novamente.'
-    $ErrorActionPreference = 'Continue'
-    & ssh.exe -tt -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=10 root@2.25.172.207 'mkdir -p /root/hfnew-top3-release && tar -xzf /root/hfnew-top3-release.tar.gz -C /root/hfnew-top3-release && /root/ALLIANCE-DARK/backend/venv/bin/python /root/hfnew-top3-release/deploy_top3.py'
+    & ssh.exe -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=10 root@2.25.172.207 $remote
     $applied = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($applied -ne 0) { throw "Falha ao aplicar (ssh codigo $applied). Leia ROLLBACK acima." }
-    Write-Host 'TOP3_DEPLOY=OK' -ForegroundColor Green
+    Write-Host 'TOP5_DEPLOY=OK' -ForegroundColor Green
 } catch {
     Write-Host "ERRO=$($_.Exception.Message)" -ForegroundColor Red
 } finally {

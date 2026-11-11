@@ -49,8 +49,10 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const running = (job) =>
   ["queued", "running", "cancelling"].includes(job?.status);
 const draftKey = (id) => `hfnew:top10:draft:${id}`;
-const insertLabel = (slot) => slot === 9 ? 'Extra final' : `Extra ${10-slot}-${9-slot}`;
-const insertLocation = (slot) => slot === 9 ? 'Após cena 1' : `Entre cenas ${10-slot} e ${9-slot}`;
+const insertLabel = (slot, format) => format === 'anime_5' ? `Extra após cena ${10-slot}` :
+  slot === 9 ? 'Extra final' : `Extra ${10-slot}-${9-slot}`;
+const insertLocation = (slot, format) => format === 'anime_5' ? `Após cena ${10-slot}` :
+  slot === 9 ? 'Após cena 1' : `Entre cenas ${10-slot} e ${9-slot}`;
 
 function Panel({ title, children, initial = true, trailing }) {
   const [open, setOpen] = useState(initial);
@@ -239,7 +241,7 @@ export default function Top10() {
       return next;
     });
   const updateInsert = (gap, key, value) => change((next) => {
-    const insert = next.config.inserts[gap];
+    const insert = (next.config.format === 'anime_5' ? next.config.anime_inserts : next.config.inserts)[gap];
     const media = project.assets[insert.asset_id];
     if (key === 'start') {
       insert.start = Math.max(0, Math.min(Number(value) || 0, Math.max(0, (media?.duration || 0) - 2 / FPS)));
@@ -426,7 +428,7 @@ export default function Top10() {
         const data = await api.uploadAsset(
           project.id,
           kind,
-          kind === "video" || kind === 'insert' ? slots[i] : null,
+          kind === "video" || kind === 'insert' || kind === 'anime_insert' ? slots[i] : null,
           incoming[i],
         );
         localStorage.removeItem(draftKey(project.id));
@@ -699,7 +701,7 @@ export default function Top10() {
                   <button type="button" aria-pressed={config.format === 'classic'} disabled={busy}
                     onClick={() => update('format', 'classic')}>10 a 1</button>
                   <button type="button" aria-pressed={config.format === 'anime_5'} disabled={busy}
-                    onClick={() => update('format', 'anime_5')}>5 a 1 com anime</button>
+                    onClick={() => update('format', 'anime_5')}>TOP 5 · 5 a 1 com anime</button>
                   <button type="button" aria-pressed={config.format === 'top3'} disabled={busy}
                     onClick={() => update('format', 'top3')}>TOP 3 · 3 a 1</button>
                 </div>
@@ -944,14 +946,14 @@ export default function Top10() {
                       key={item.kind}
                       className={`${item.kind} ${frame >= item.from && frame < item.from + item.frames ? "active" : ""}`}
                       onClick={() => seek(item)}
-                      title={`${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : item.kind === 'insert' ? insertLabel(item.slot) : "Cena"} ${item.kind === 'insert' ? '' : item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
+                      title={`${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : item.kind === 'insert' ? insertLabel(item.slot, config.format) : "Cena"} ${item.kind === 'insert' ? '' : item.rank} · ${(item.frames / FPS).toFixed(2)}s`}
                     >
                       {item.kind === "counter" ? (
                         <strong>{item.rank}</strong>
                       ) : item.kind === 'anime' ? (
                         <img src={api.mediaUrl(item.anime.url)} alt={`Anime ${item.rank}`} loading="lazy" />
                       ) : item.kind === 'insert' ? (
-                        <img src={api.mediaUrl(item.asset.thumbnail_url || item.asset.url)} alt={insertLabel(item.slot)} loading="lazy" />
+                        <img src={api.mediaUrl(item.asset.thumbnail_url || item.asset.url)} alt={insertLabel(item.slot, config.format)} loading="lazy" />
                       ) : item.asset?.thumbnail_url ? (
                         <img
                           src={api.mediaUrl(item.asset.thumbnail_url)}
@@ -962,7 +964,7 @@ export default function Top10() {
                         <Film size={20} />
                       )}
                       <span>
-                        {item.kind === 'insert' ? insertLabel(item.slot) :
+                        {item.kind === 'insert' ? insertLabel(item.slot, config.format) :
                           `${item.kind === "counter" ? "Contador" : item.kind === 'anime' ? 'Anime' : "Cena"} ${item.rank}`}
                       </span>
                       <small>{(item.frames / FPS).toFixed(2)}s</small>
@@ -1119,22 +1121,22 @@ export default function Top10() {
               })}
             </div>
           </Panel>
-          {config.format === 'top3' && <Panel title="Extras do TOP 3">
+          {(config.format === 'top3' || config.format === 'anime_5') && <Panel title={config.format === 'anime_5' ? 'Extras do TOP 5' : 'Extras do TOP 3'}>
             <input ref={insertInput} type="file" hidden
               accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-m4v"
               onChange={(event) => {
-                upload('insert', event.target.files, insertSlot.current);
+                upload(config.format === 'anime_5' ? 'anime_insert' : 'insert', event.target.files, insertSlot.current);
                 event.currentTarget.value = '';
               }} />
             <div className="t10-insert-grid">
-              {[7, 8, 9].map((slot, gap) => {
-                const insert = config.inserts[gap];
+              {(config.format === 'anime_5' ? [5, 6, 7, 8, 9] : [7, 8, 9]).map((slot, gap) => {
+                const insert = (config.format === 'anime_5' ? config.anime_inserts : config.inserts)[gap];
                 const media = project.assets[insert.asset_id];
                 return <article className="t10-insert-card" key={slot}>
                   <div className="t10-scene-card-heading">
-                    <span>{insertLocation(slot)}</span>
+                    <span>{insertLocation(slot, config.format)}</span>
                     {media && <button type="button" className="t10-icon danger" disabled={busy}
-                      onClick={() => removeAsset(media.id)} aria-label={`Excluir ${insertLocation(slot).toLowerCase()}`}>
+                      onClick={() => removeAsset(media.id)} aria-label={`Excluir ${insertLocation(slot, config.format).toLowerCase()}`}>
                       <X size={15} />
                     </button>}
                   </div>
@@ -1147,7 +1149,7 @@ export default function Top10() {
                     <span title={media?.name}>{media?.name || 'Opcional'}</span>
                     <button type="button" className="t10-icon" disabled={busy}
                       title={media ? 'Substituir extra' : 'Adicionar imagem ou microvídeo'}
-                      aria-label={`${media ? 'Substituir' : 'Adicionar'} extra ${insertLocation(slot).toLowerCase()}`}
+                      aria-label={`${media ? 'Substituir' : 'Adicionar'} extra ${insertLocation(slot, config.format).toLowerCase()}`}
                       onClick={() => { insertSlot.current = slot; insertInput.current.click(); }}>
                       <Upload size={15} />
                     </button>
@@ -1158,7 +1160,7 @@ export default function Top10() {
                         value={Number(insert.start.toFixed(3))} disabled={busy}
                         onChange={(event) => updateInsert(gap, 'start', event.target.value)} />
                     </label>}
-                    <div className="t10-insert-duration" role="group" aria-label={`Duração ${insertLocation(slot).toLowerCase()}`}>
+                    <div className="t10-insert-duration" role="group" aria-label={`Duração ${insertLocation(slot, config.format).toLowerCase()}`}>
                       {INSERT_DURATIONS.map((duration) => <button type="button" key={duration}
                         aria-pressed={insert.duration === duration} disabled={busy}
                         onClick={() => updateInsert(gap, 'duration', duration)}>{String(duration).replace('.', ',')} s</button>)}

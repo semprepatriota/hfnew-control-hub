@@ -86,6 +86,7 @@ class Top10Config(BaseModel):
     counters_enabled: bool = True
     scenes: list[SceneConfig] = Field(default_factory=lambda: [SceneConfig() for _ in range(10)], min_length=10, max_length=10)
     inserts: list[InsertConfig] = Field(default_factory=lambda: [InsertConfig() for _ in range(3)], min_length=3, max_length=3)
+    anime_inserts: list[InsertConfig] = Field(default_factory=lambda: [InsertConfig() for _ in range(5)], min_length=5, max_length=5)
     counter_volume: float = Field(default=0.6, ge=0, le=1)
     music_volume: float = Field(default=0.15, ge=0, le=1)
     title_enabled: bool = False
@@ -296,7 +297,7 @@ def save_project(project_id: str, title: str, config: Top10Config, revision: int
                 end = scene.end or asset["duration"]
                 if scene.start >= end or end > asset["duration"] + 0.05:
                     raise HTTPException(400, "O inicio deve vir antes do fim e respeitar a duracao da cena")
-        for insert in config.inserts:
+        for insert in (*config.inserts, *config.anime_inserts):
             if not insert.asset_id:
                 continue
             asset = data["assets"].get(insert.asset_id)
@@ -325,8 +326,8 @@ def add_asset(project_id: str, path: Path, kind: str, original_name: str, slot: 
         _assert_idle(data)
         asset_id = path.stem
         asset = {"id": asset_id, "kind": kind, "filename": path.name, "name": Path(original_name).name[:180], "size": path.stat().st_size}
-        if kind == "insert":
-            if slot not in (7, 8, 9):
+        if kind in {"insert", "anime_insert"}:
+            if slot not in (range(7, 10) if kind == "insert" else range(5, 10)):
                 raise HTTPException(400, "Escolha o extra entre cenas ou apos a cena 1")
             if path.suffix.lower() in VIDEO_EXT:
                 media = probe_media(path)
@@ -347,14 +348,16 @@ def add_asset(project_id: str, path: Path, kind: str, original_name: str, slot: 
                         raise HTTPException(400, "Imagem extra muito grande")
                     asset.update(kind="insert_image", width=image.width, height=image.height, has_audio=False)
                 duration = 2
-            data["config"].setdefault("inserts", [])
-            while len(data["config"]["inserts"]) < 3:
-                data["config"]["inserts"].append(InsertConfig().model_dump())
-            old_id = data["config"]["inserts"][slot - 7]["asset_id"]
-            data["config"]["inserts"][slot - 7] = InsertConfig(asset_id=asset_id, duration=max(2 / FPS, duration)).model_dump()
+            field, first, count = ("inserts", 7, 3) if kind == "insert" else ("anime_inserts", 5, 5)
+            data["config"].setdefault(field, [])
+            while len(data["config"][field]) < count:
+                data["config"][field].append(InsertConfig().model_dump())
+            old_id = data["config"][field][slot - first]["asset_id"]
+            data["config"][field][slot - first] = InsertConfig(asset_id=asset_id, duration=max(2 / FPS, duration)).model_dump()
             data["assets"][asset_id] = asset
             old_asset = None
-            if old_id and not any(entry["asset_id"] == old_id for entry in data["config"]["inserts"]):
+            if old_id and not any(entry["asset_id"] == old_id for key in ("inserts", "anime_inserts")
+                                  for entry in data["config"].get(key, [])):
                 old_asset = data["assets"].pop(old_id, None)
             result = public_project(_write(data))
             if old_asset and old_asset["kind"] in {"insert_image", "insert_video"}:
@@ -410,9 +413,10 @@ def delete_asset(project_id: str, asset_id: str) -> dict:
         for i, scene in enumerate(data["config"]["scenes"]):
             if scene["asset_id"] == asset_id:
                 data["config"]["scenes"][i] = SceneConfig().model_dump()
-        for i, insert in enumerate(data["config"].get("inserts", [])):
-            if insert["asset_id"] == asset_id:
-                data["config"]["inserts"][i] = InsertConfig().model_dump()
+        for field in ("inserts", "anime_inserts"):
+            for i, insert in enumerate(data["config"].get(field, [])):
+                if insert["asset_id"] == asset_id:
+                    data["config"][field][i] = InsertConfig().model_dump()
         for key in ("music", "logo"):
             if data.get(key) == asset_id:
                 data[key] = ""
@@ -468,8 +472,8 @@ def timeline(data: dict) -> list[dict]:
             items.append({"kind": "anime", "rank": 10-i, "slot": i, "frames": 24, "from": frame,
                           "filename": anime['filename']})
             frame += 24
-        if config.format == 'top3' and i in (7, 8, 9) and (i == 9 or config.scenes[i + 1].asset_id):
-            insert = config.inserts[i - 7]
+        if (config.format == 'anime_5' and i in range(5, 10)) or (config.format == 'top3' and i in (7, 8, 9) and (i == 9 or config.scenes[i + 1].asset_id)):
+            insert = config.anime_inserts[i - 5] if config.format == 'anime_5' else config.inserts[i - 7]
             if insert.asset_id:
                 extra = data['assets'].get(insert.asset_id)
                 if not extra or extra['kind'] not in {'insert_image', 'insert_video'}:
@@ -624,7 +628,8 @@ def render_project(data: dict, job_path: Path) -> dict:
         for n, item in enumerate(items):
             scene = config.scenes[item.get("slot", 0)]
             is_scene = item['kind'] == 'scene'
-            insert = config.inserts[item['slot'] - 7] if item['kind'] == 'insert' else None
+            insert = (config.anime_inserts[item['slot'] - 5] if config.format == 'anime_5' else
+                      config.inserts[item['slot'] - 7]) if item['kind'] == 'insert' else None
             asset = data['assets'].get(scene.asset_id if is_scene else item.get('asset_id'))
             source = root / 'files' / item['filename'] if item['kind'] == 'anime' else (
                 root / "files" / asset["filename"] if asset else counter_path(config.model, item["rank"]))

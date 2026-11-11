@@ -144,6 +144,68 @@ class Top3BackendTests(unittest.TestCase):
             self.assertGreater(red, 100)
             self.assertGreater(blue, 100)
 
+    def test_top5_all_five_extras_render_after_scenes(self):
+        colors = ('red', 'green', 'blue', 'magenta', 'cyan')
+        for slot, color in zip(range(5, 10), colors):
+            self.project = studio.add_asset(self.project['id'], self.video(f'asset_top5_scene{slot}.mp4', color),
+                                            'video', f'scene{slot}.mp4', slot)
+            extra = self.root / 'files' / f'asset_top5_extra{slot}.png'
+            Image.new('RGB', (270, 480), 'yellow').save(extra)
+            self.project = studio.add_asset(self.project['id'], extra, 'anime_insert', f'extra{slot}.png', slot)
+        config = studio.Top10Config(**self.project['config'])
+        config.format = 'anime_5'
+        config.counters_enabled = False
+        for insert, duration in zip(config.anime_inserts, (1.5, 2, 3, 1.5, 2)):
+            insert.duration = duration
+        saved = studio.save_project(self.project['id'], 'Top 5 test', config, self.project['revision'])
+        data = studio.read_project(saved['id'])
+        items = studio.timeline(data)
+        self.assertEqual([item['kind'] for item in items], ['scene', 'insert'] * 5)
+        self.assertEqual([item['rank'] for item in items if item['kind'] == 'insert'], [5, 4, 3, 2, 1])
+        self.assertEqual([item['frames'] for item in items if item['kind'] == 'insert'], [45, 60, 90, 45, 60])
+        for previous, current in zip(items, items[1:]):
+            self.assertEqual(previous['from'] + previous['frames'], current['from'])
+        job_path = self.root / 'jobs' / ('job_' + '3' * 24 + '.json')
+        write_json_atomic(job_path, {'status': 'running', 'progress': 0})
+        result = studio.render_project(data, job_path)
+        video = self.root / 'renders' / result['filename']
+        probe = studio.probe_media(video)
+        self.assertEqual((probe.width, probe.height, probe.video_codec), (1080, 1920, 'h264'))
+        self.assertAlmostEqual(probe.duration, 15, delta=.3)
+        for item in items:
+            at = (item['from'] + item['frames'] / 2) / studio.FPS
+            frame = self.root / f'top5_{item["from"]}.png'
+            subprocess.run([settings.FFMPEG_BIN, '-nostdin', '-hide_banner', '-loglevel', 'error',
+                            '-ss', str(at), '-i', str(video), '-frames:v', '1', '-y', str(frame)], check=True)
+            with Image.open(frame) as image:
+                red, green, blue = image.convert('RGB').getpixel((540, 300))
+                if item['kind'] == 'insert':
+                    self.assertGreater(red, 150)
+                    self.assertGreater(green, 150)
+                    self.assertLess(blue, 100)
+
+    def test_top5_old_project_and_optional_extras(self):
+        data = studio.read_project(self.project['id'])
+        data['config'].pop('anime_inserts', None)
+        studio._write(data)
+        self.assertEqual(len(studio.public_project(data)['config']['anime_inserts']), 5)
+        for slot in (5, 7):
+            self.project = studio.add_asset(data['id'], self.video(f'asset_optional_scene{slot}.mp4', 'red'),
+                                            'video', f'scene{slot}.mp4', slot)
+        image = self.root / 'files' / 'asset_optional_extra5.png'
+        Image.new('RGB', (270, 480), 'yellow').save(image)
+        self.project = studio.add_asset(data['id'], image, 'anime_insert', 'extra5.png', 5)
+        config = studio.Top10Config(**self.project['config'])
+        config.format = 'anime_5'
+        config.counters_enabled = False
+        saved = studio.save_project(data['id'], 'Top 5 optional', config, self.project['revision'])
+        self.assertEqual([item['kind'] for item in studio.timeline(studio.read_project(saved['id']))],
+                         ['scene', 'insert', 'scene'])
+        removed = studio.delete_asset(data['id'], image.stem)
+        self.assertEqual(removed['config']['anime_inserts'][0]['asset_id'], '')
+        self.assertEqual([item['kind'] for item in studio.timeline(studio.read_project(data['id']))],
+                         ['scene', 'scene'])
+
 
 if __name__ == '__main__':
     unittest.main()

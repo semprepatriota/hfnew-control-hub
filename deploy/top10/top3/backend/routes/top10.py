@@ -111,7 +111,7 @@ def delete_project(project_id: str):
 
 
 @router.post("/projects/{project_id}/assets")
-def upload(project_id: str, kind: str = Query(pattern="^(video|music|logo|insert)$"), slot: int | None = Query(default=None, ge=0, le=9), file: UploadFile = File(...)):
+def upload(project_id: str, kind: str = Query(pattern="^(video|music|logo|insert|anime_insert)$"), slot: int | None = Query(default=None, ge=0, le=9), file: UploadFile = File(...)):
     data = studio.read_project(project_id)
     studio._assert_idle(data)
     allowed = {
@@ -119,6 +119,7 @@ def upload(project_id: str, kind: str = Query(pattern="^(video|music|logo|insert
         "music": studio.AUDIO_EXT,
         "logo": studio.IMAGE_EXT | studio.LOGO_VIDEO_EXT,
         "insert": studio.IMAGE_EXT | studio.VIDEO_EXT,
+        "anime_insert": studio.IMAGE_EXT | studio.VIDEO_EXT,
     }[kind]
     ext = Path(file.filename or "").suffix.lower()
     if ext not in allowed:
@@ -127,7 +128,9 @@ def upload(project_id: str, kind: str = Query(pattern="^(video|music|logo|insert
         raise HTTPException(400, "Escolha a posicao da cena")
     if kind == "insert" and slot not in (7, 8, 9):
         raise HTTPException(400, "Escolha o extra entre cenas ou apos a cena 1")
-    maximum = 20 * 1024**2 if kind == "logo" or (kind == "insert" and ext in studio.IMAGE_EXT) else studio.MAX_INSERT_BYTES if kind == "insert" else studio.MAX_UPLOAD_BYTES
+    if kind == "anime_insert" and slot not in range(5, 10):
+        raise HTTPException(400, "Escolha o extra apos uma das cinco cenas")
+    maximum = 20 * 1024**2 if kind == "logo" or (kind in {"insert", "anime_insert"} and ext in studio.IMAGE_EXT) else studio.MAX_INSERT_BYTES if kind in {"insert", "anime_insert"} else studio.MAX_UPLOAD_BYTES
     path = studio.project_root(project_id) / "files" / f"asset_{uuid.uuid4().hex[:24]}{ext}"
     try:
         total = 0

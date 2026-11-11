@@ -25,6 +25,36 @@ test('TOP 3 uses ranks 3, 2, 1 and places optional extras between populated scen
   assert.deepEqual(buildTimeline(project, oldConfig).map(item=>item.kind), ['scene','scene']);
 });
 
+test('TOP 5 places five independent extras after scenes 5 through 1', () => {
+  const scenes = Array.from({length: 10}, emptyScene);
+  const assets = {image: {kind: 'insert_image'}, clip: {kind: 'insert_video', duration: .8}};
+  for (let slot = 5; slot <= 9; slot++) {
+    assets[`scene${slot}`] = {duration: 1};
+    scenes[slot] = {...emptyScene(), asset_id: `scene${slot}`, end: 1};
+  }
+  const config = normalizeInserts({format: 'anime_5', model: 'pink3d', counters_enabled: false, scenes,
+    anime_inserts: [
+      {asset_id: 'image', duration: 1.5, start: 0, volume: 0},
+      {asset_id: 'clip', duration: 2, start: 0, volume: 1},
+      {asset_id: 'image', duration: 3, start: 0, volume: 0},
+      {asset_id: 'image', duration: 1.5, start: 0, volume: 0},
+      {asset_id: 'clip', duration: 2, start: 0, volume: 0},
+    ]});
+  const project = {assets};
+  const items = buildTimeline(project, config);
+  assert.deepEqual(activeSlots(config), [5, 6, 7, 8, 9]);
+  assert.deepEqual(items.map(item => item.kind), Array.from({length: 5}, () => ['scene', 'insert']).flat());
+  assert.deepEqual(items.filter(item => item.kind === 'insert').map(item => item.frames), [45, 60, 90, 45, 60]);
+  assert.deepEqual(items.filter(item => item.kind === 'insert').map(item => item.rank), [5, 4, 3, 2, 1]);
+  for (let i = 1; i < items.length; i++) assert.equal(items[i].from, items[i - 1].from + items[i - 1].frames);
+  scenes[6] = emptyScene();
+  assert.deepEqual(buildTimeline(project, config).slice(0, 3).map(item => item.kind), ['scene', 'insert', 'scene']);
+  assert.equal(normalizeInserts({format: 'anime_5', scenes}).anime_inserts.length, 5);
+  assert.equal(normalizeInserts({format: 'anime_5', scenes}).anime_inserts[4].duration, 2);
+  assert.equal(normalizeInserts({...config, anime_inserts: [{duration: 1}]}).anime_inserts[0].duration, 1.5);
+  assert.equal(config.inserts.length, 3);
+});
+
 test('no-counter format joins ten trimmed scenes with no gaps and keeps the saved model', () => {
   const project = { assets: { a: { duration: 5 } } };
   const config = { model: 'film', counters_enabled: false, scenes: Array.from({ length: 10 }, () => ({ ...emptyScene(), asset_id: 'a', start: 1, end: 2.5 })) };
