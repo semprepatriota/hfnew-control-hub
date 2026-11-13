@@ -43,9 +43,8 @@ export function buildTimeline(project, config) {
     const insert = config.format === 'top3' ? config.inserts?.[slot - 7] :
       config.format === 'anime_5' ? config.anime_inserts?.[slot - 5] : null;
     const insertAsset = insert?.asset_id && project.assets[insert.asset_id];
-    const adjacent = config.format === 'anime_5' || slot === 9 || project.assets[config.scenes[slot + 1]?.asset_id];
     const available = insertAsset?.kind === 'insert_image' || insertAsset?.kind === 'insert_video';
-    const insertFrames = available && adjacent ? Math.round(insert.duration * FPS) : 0;
+    const insertFrames = available ? Math.round(insert.duration * FPS) : 0;
     const bridge = insertFrames > 0 ? {kind: 'insert', slot, rank: 10-slot, from: cursor, frames: insertFrames, asset: insertAsset, insert} : null;
     if (bridge) cursor += bridge.frames;
     return [...(counterFrames ? [counter] : []), clip, ...(still ? [still] : []), ...(bridge ? [bridge] : [])];

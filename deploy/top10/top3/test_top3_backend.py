@@ -121,6 +121,40 @@ class Top3BackendTests(unittest.TestCase):
                 rgb = image.convert('RGB').getpixel((540, 300))
                 self.assertGreater(rgb[dominant], 100, (at, rgb))
 
+    def test_mp4_renders_single_scene_extra_logo_and_music(self):
+        data = self.build()
+        logo = self.root / 'files' / 'asset_logo.png'
+        Image.new('RGB', (200, 200), 'white').save(logo)
+        data = studio.add_asset(data['id'], logo, 'logo', 'logo.png', None)
+        music = self.root / 'files' / 'asset_music.mp3'
+        subprocess.run([settings.FFMPEG_BIN, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
+                        '-f', 'lavfi', '-i', 'sine=frequency=660:duration=2.5',
+                        '-c:a', 'libmp3lame', str(music)], check=True)
+        data = studio.add_asset(data['id'], music, 'music', 'music.mp3', None)
+        config = studio.Top10Config(**data['config'])
+        config.scenes[8].asset_id = ''
+        config.scenes[9].asset_id = ''
+        config.cta_enabled = False
+        data = studio.save_project(data['id'], 'One scene plus extra', config, data['revision'])
+        data = studio.read_project(data['id'])
+        self.assertEqual([item['kind'] for item in studio.timeline(data)], ['scene', 'insert'])
+        job_path = self.root / 'jobs' / ('job_' + '4' * 24 + '.json')
+        write_json_atomic(job_path, {'status': 'running', 'progress': 0})
+        result = studio.render_project(data, job_path)
+        video = self.root / 'renders' / result['filename']
+        probe = studio.probe_media(video)
+        self.assertEqual((probe.width, probe.height, probe.video_codec, probe.audio_codec),
+                         (1080, 1920, 'h264', 'aac'))
+        self.assertAlmostEqual(probe.duration, 2.5, delta=.3)
+        frame = self.root / 'single_extra.png'
+        subprocess.run([settings.FFMPEG_BIN, '-nostdin', '-hide_banner', '-loglevel', 'error',
+                        '-ss', '1.8', '-i', str(video), '-frames:v', '1', '-y', str(frame)], check=True)
+        with Image.open(frame) as image:
+            red, green, blue = image.convert('RGB').getpixel((540, 300))
+            self.assertGreater(red, 150)
+            self.assertGreater(green, 150)
+            self.assertLess(blue, 100)
+
     def test_short_microvideo_loops_after_trim(self):
         data = self.build()
         config = studio.Top10Config(**data['config'])

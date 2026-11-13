@@ -472,7 +472,7 @@ def timeline(data: dict) -> list[dict]:
             items.append({"kind": "anime", "rank": 10-i, "slot": i, "frames": 24, "from": frame,
                           "filename": anime['filename']})
             frame += 24
-        if (config.format == 'anime_5' and i in range(5, 10)) or (config.format == 'top3' and i in (7, 8, 9) and (i == 9 or config.scenes[i + 1].asset_id)):
+        if (config.format == 'anime_5' and i in range(5, 10)) or (config.format == 'top3' and i in (7, 8, 9)):
             insert = config.anime_inserts[i - 5] if config.format == 'anime_5' else config.inserts[i - 7]
             if insert.asset_id:
                 extra = data['assets'].get(insert.asset_id)

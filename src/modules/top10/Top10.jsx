@@ -49,10 +49,8 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const running = (job) =>
   ["queued", "running", "cancelling"].includes(job?.status);
 const draftKey = (id) => `hfnew:top10:draft:${id}`;
-const insertLabel = (slot, format) => format === 'anime_5' ? `Extra após cena ${10-slot}` :
-  slot === 9 ? 'Extra final' : `Extra ${10-slot}-${9-slot}`;
-const insertLocation = (slot, format) => format === 'anime_5' ? `Após cena ${10-slot}` :
-  slot === 9 ? 'Após cena 1' : `Entre cenas ${10-slot} e ${9-slot}`;
+const insertLabel = (slot) => `Extra após cena ${10-slot}`;
+const insertLocation = (slot) => `Após cena ${10-slot}`;
 
 function Panel({ title, children, initial = true, trailing }) {
   const [open, setOpen] = useState(initial);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { activeSlots, buildTimeline, emptyScene, normalizeInserts, swapScenes } from '../src/modules/top10/timeline.mjs';
 
-test('TOP 3 uses ranks 3, 2, 1 and places optional extras between populated scenes', () => {
+test('TOP 3 uses ranks 3, 2, 1 and keeps extras after their scene even without the next scene', () => {
   const project = { assets: { a: {duration: 2}, b: {duration: 2}, c: {duration: 2}, image: {kind: 'insert_image'}, clip: {kind: 'insert_video', duration: 2}, final: {kind: 'insert_image'} } };
   const scenes = Array.from({length:10}, emptyScene);
   for (const slot of [7, 8, 9]) scenes[slot] = {...emptyScene(), asset_id: ['a','b','c'][slot-7], end: 2};
@@ -17,12 +17,25 @@ test('TOP 3 uses ranks 3, 2, 1 and places optional extras between populated scen
   assert.deepEqual(items.map(item=>item.from), [0,60,105,165,225,285]);
   assert.equal(buildTimeline(project, {...config, counters_enabled:true}).filter(item=>item.kind==='counter').length,3);
   scenes[8] = emptyScene();
-  assert.deepEqual(buildTimeline(project, config).map(item=>item.kind), ['scene','scene','insert']);
+  assert.deepEqual(buildTimeline(project, config).map(item=>item.kind), ['scene','insert','scene','insert']);
   const oldConfig = {...config, inserts: config.inserts.slice(0, 2)};
   assert.equal(normalizeInserts(oldConfig).inserts.length, 3);
   assert.equal(normalizeInserts({...config, inserts:[{asset_id:'image', duration:1}]}).inserts[0].duration, 1.5);
   assert.equal(normalizeInserts(oldConfig).inserts[2].duration, 2);
-  assert.deepEqual(buildTimeline(project, oldConfig).map(item=>item.kind), ['scene','scene']);
+  assert.deepEqual(buildTimeline(project, oldConfig).map(item=>item.kind), ['scene','insert','scene']);
+});
+
+test('TOP 3 renders one selected scene and its extra in each rank', () => {
+  const project = {assets: {scene: {duration: 1}, extra: {kind: 'insert_image'}}};
+  for (const slot of [7, 8, 9]) {
+    const scenes = Array.from({length: 10}, emptyScene);
+    scenes[slot] = {...emptyScene(), asset_id: 'scene', end: 1};
+    const inserts = Array.from({length: 3}, () => ({asset_id: '', duration: 2}));
+    inserts[slot - 7].asset_id = 'extra';
+    const items = buildTimeline(project, {format: 'top3', scenes, inserts, counters_enabled: false});
+    assert.deepEqual(items.map(item => item.kind), ['scene', 'insert']);
+    assert.deepEqual(items.map(item => item.from), [0, 30]);
+  }
 });
 
 test('TOP 5 places five independent extras after scenes 5 through 1', () => {

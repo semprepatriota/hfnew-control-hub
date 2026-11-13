@@ -1,14 +1,6 @@
 {
-    "services/top10_service.py":  {
-                                      "old":  "91296240ca0471d7930acbcf020525a74d2b780196ecc62d1e35ce6b2d92dbe7",
-                                      "new":  "f5864feb68ecad9fe4ed243c60af51fb0a8c9a4b4e34eda6ec184df17ea43b83"
-                                  },
-    "routes/top10.py":  {
-                            "old":  "cc47c22f12dbc10264ea2331fe59631c7a44511f6c1a8b8d7ba831e8c7d6b8fb",
-                            "new":  "6f85330d52a0e7f9baced3e83fb06f29d901d142947f7ac2cf0ffde2cf0cbcdb"
-                        },
-    "services/top10_cta_service.py":  {
-                                          "old":  "6c2391e079fde2c79a682428ad40886b08556d8d53608b2a553a217e61ff0b31",
-                                          "new":  "6c2391e079fde2c79a682428ad40886b08556d8d53608b2a553a217e61ff0b31"
-                                      }
+  "services/top10_service.py": {
+    "old": "f5864feb68ecad9fe4ed243c60af51fb0a8c9a4b4e34eda6ec184df17ea43b83",
+    "new": "0a08db5051fc46ea27a3f5b16c54a3c72bde67212e670d885714a60341f58b6c"
+  }
 }

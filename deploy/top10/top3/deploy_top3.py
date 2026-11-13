@@ -16,9 +16,10 @@ from redis import Redis
 
 ROOT = Path('/root/ALLIANCE-DARK/backend')
 PACKAGE = Path(__file__).resolve().parent
-FILES = ('services/top10_service.py', 'services/top10_cta_service.py', 'routes/top10.py')
+FILES = ('services/top10_service.py',)
 PROTECTED = ('routes/forge.py', 'routes/forge2.py', 'routes/forge_5050.py',
-             'routes/forge_max.py', 'services/render_coordinator.py')
+             'routes/forge_max.py', 'routes/top10.py', 'services/top10_cta_service.py',
+             'services/render_coordinator.py')
 
 
 def digest(path):
